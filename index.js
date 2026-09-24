@@ -117,6 +117,8 @@
         fabIconUrl: '',
         fabX: null,
         fabY: null,
+        capsuleX: null,
+        capsuleY: null,
         panelX: null,
         panelY: null,
         hideFab: false,
@@ -1199,6 +1201,7 @@
                 }
                 applyFabSettings();
                 adjustPanelPosition();
+                applyCapsulePosition();
             } catch (e) {
                 console.warn('[ST Direct] 屏幕尺寸变化后修正位置失败:', e);
             }
@@ -2136,6 +2139,121 @@
     }
 
     let highestZIndex = 10010;
+
+    function applyCapsulePosition() {
+        const capsule = document.getElementById('se-floating-capsule');
+        if (!capsule) return;
+        // 拖动进行中不恢复位置，避免自动刷新把胶囊拽回旧位并丢失本次拖动结果
+        if (capsule.classList.contains('se-capsule-dragging')) return;
+        const s = getSettings();
+        const sx = Number(s.capsuleX);
+        const sy = Number(s.capsuleY);
+        const vw = window.innerWidth || document.documentElement.clientWidth || 360;
+        const vh = window.innerHeight || document.documentElement.clientHeight || 640;
+        const w = capsule.offsetWidth || 320;
+        const h = capsule.offsetHeight || 44;
+        let left, top;
+        if (Number.isFinite(sx) && Number.isFinite(sy) && (sx > 0 || sy > 0)) {
+            left = Math.max(8, Math.min(sx, vw - w - 8));
+            top = Math.max(20, Math.min(sy, vh - h - 20));
+        } else {
+            left = Math.max(8, Math.round((vw - w) / 2));
+            top = 50;
+        }
+        capsule.style.left = left + 'px';
+        capsule.style.top = top + 'px';
+        capsule.style.right = 'auto';
+        capsule.style.bottom = 'auto';
+    }
+
+    function makeCapsuleDraggable(capsule) {
+        if (!capsule) return;
+
+        let dragging = false;
+        let moved = false;
+        let sx = 0, sy = 0;
+        let ox = 0, oy = 0;
+
+        const onDown = (e) => {
+            if (e.button !== undefined && e.button !== 0) return;
+            // 点击胶囊内部按钮时交给按钮处理，不触发拖拽
+            if (e.target.closest('button')) return;
+            const pt = e.touches ? e.touches[0] : e;
+            if (!pt) return;
+            dragging = true;
+            moved = false;
+            sx = pt.clientX;
+            sy = pt.clientY;
+            const rect = capsule.getBoundingClientRect();
+            ox = rect.left;
+            oy = rect.top;
+            capsule.classList.add('se-capsule-dragging');
+
+            document.addEventListener('mousemove', onMove, { passive: false });
+            document.addEventListener('mouseup', onUp);
+            document.addEventListener('touchmove', onMove, { passive: false });
+            document.addEventListener('touchend', onUp);
+            document.addEventListener('touchcancel', onUp);
+        };
+
+        const onMove = (e) => {
+            if (!dragging) return;
+            const pt = e.touches ? e.touches[0] : e;
+            if (!pt) return;
+            const dx = pt.clientX - sx;
+            const dy = pt.clientY - sy;
+
+            if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
+                moved = true;
+            }
+
+            if (moved) {
+                if (e.cancelable) e.preventDefault();
+                const vw = window.innerWidth || document.documentElement.clientWidth || 360;
+                const vh = window.innerHeight || document.documentElement.clientHeight || 640;
+                const w = capsule.offsetWidth || 320;
+                const h = capsule.offsetHeight || 44;
+                const left = Math.max(8, Math.min(ox + dx, vw - w - 8));
+                const top = Math.max(20, Math.min(oy + dy, vh - h - 20));
+                capsule.style.left = left + 'px';
+                capsule.style.top = top + 'px';
+                capsule.style.right = 'auto';
+                capsule.style.bottom = 'auto';
+            }
+        };
+
+        const onUp = () => {
+            if (!dragging) return;
+            dragging = false;
+            capsule.classList.remove('se-capsule-dragging');
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            document.removeEventListener('touchmove', onMove);
+            document.removeEventListener('touchend', onUp);
+            document.removeEventListener('touchcancel', onUp);
+
+            if (moved) {
+                const s = getSettings();
+                s.capsuleX = parseFloat(capsule.style.left) || 0;
+                s.capsuleY = parseFloat(capsule.style.top) || 0;
+                persistSettings(s);
+            }
+        };
+
+        capsule.addEventListener('mousedown', onDown);
+        capsule.addEventListener('touchstart', onDown, { passive: true });
+
+        // 捕获阶段拦截：产生了真实拖拽时阻止本次 click，避免误触胶囊内按钮
+        capsule.addEventListener('click', (e) => {
+            if (moved) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                moved = false;
+                return;
+            }
+        }, true);
+    }
 
     function isMobileView() {
         const isMobileUA = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
@@ -3334,6 +3452,7 @@
 
         let curMax = Number(event.maxTurns) || 3;
         const isActive = state.activeEvent?.id === eventId && state.activeEvent.isActive;
+        const oldActiveMax = isActive ? (Number(state.activeEvent.maxTurns) || curMax) : curMax;
         const minAllowed = 1;
 
         curMax = Math.min(30, Math.max(minAllowed, curMax + delta));
@@ -3346,6 +3465,7 @@
         if (isActive) {
             state.activeEvent.maxTurns = Math.max(curMax, state.activeEvent.currentTurn);
             event.maxTurns = state.activeEvent.maxTurns;
+            rebuildStagePlan(state.activeEvent, oldActiveMax);
             registerInjection(buildActiveStagePrompt(state.activeEvent));
             updateFloatingCapsule();
         }
@@ -3363,6 +3483,7 @@
 
         const isActive = state.activeEvent?.id === eventId && state.activeEvent.isActive;
         const newMax = Math.min(30, Math.max(1, Number(targetValue) || 1));
+        const oldActiveMax = isActive ? (Number(state.activeEvent.maxTurns) || newMax) : newMax;
 
         if (event.stages?.length === 1 && newMax > 1) {
             if (window.toastr) toastr.warning('单轮剧本没有独立铺垫纸条，请重新生成多轮事件');
@@ -3373,6 +3494,7 @@
         if (isActive) {
             state.activeEvent.maxTurns = Math.max(newMax, state.activeEvent.currentTurn);
             event.maxTurns = state.activeEvent.maxTurns;
+            rebuildStagePlan(state.activeEvent, oldActiveMax);
             registerInjection(buildActiveStagePrompt(state.activeEvent));
             updateFloatingCapsule();
         }
@@ -5463,6 +5585,144 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
         return null;
     }
 
+    // ========== 回合与纸条 均匀分配计划（锚点式） ==========
+    // splitEvenly：把 total 均分成 parts 组，余数依次加给最后一组。例：(8,7)=>[1,1,1,1,1,1,2]；(8,3)=>[2,3,3]
+    function splitEvenly(total, parts) {
+        const p = Math.max(1, Math.floor(parts) || 1);
+        const t = Math.max(0, Math.floor(total) || 0);
+        const base = Math.floor(t / p);
+        const rem = t % p;
+        const out = [];
+        for (let i = 0; i < p; i++) out.push(base + (i >= p - rem ? 1 : 0));
+        return out;
+    }
+
+    // legacyStageIndex：旧的全局等比例映射，用于无计划存档/兜底，保证升级后当前纸条不跳
+    function legacyStageIndex(stageCount, maxTurns, turn) {
+        const N = Math.max(1, Math.floor(stageCount) || 1);
+        const total = Math.max(1, Math.floor(Number(maxTurns) || N));
+        const cur = Math.max(1, Math.floor(Number(turn) || 1));
+        if (cur >= total) return N - 1;
+        if (N < 2) return 0;
+        return Math.max(0, Math.min(Math.max(0, N - 2), Math.floor((cur - 1) * (N - 1) / Math.max(1, total - 1))));
+    }
+
+    // plainStagePlan：从第 1 回合整体均匀分配（激活/未开演时使用）
+    function plainStagePlan(stageCount, maxTurns) {
+        const N = Math.max(1, Math.floor(stageCount) || 1);
+        const M = Math.min(30, Math.max(1, Math.floor(Number(maxTurns) || N)));
+        const plan = [];
+        if (M >= N) {
+            const sizes = splitEvenly(M, N);
+            let t = 0;
+            for (let j = 0; j < N; j++) {
+                for (let k = 0; k < sizes[j]; k++) { plan[t] = [j]; t++; }
+            }
+        } else {
+            const sizes = splitEvenly(N, M);
+            let n = 0;
+            for (let i = 0; i < M; i++) {
+                const list = [];
+                for (let k = 0; k < sizes[i]; k++) list.push(n++);
+                plan[i] = list;
+            }
+        }
+        while (plan.length < M) plan.push([]);
+        return plan;
+    }
+
+    // buildStagePlan：事件（重新）激活时从第 1 回合整体均匀分配
+    function buildStagePlan(active) {
+        if (!active || !Array.isArray(active.stages) || !active.stages.length) return null;
+        const M = Math.min(30, Math.max(1, Math.floor(Number(active.maxTurns) || active.stages.length)));
+        active.stagePlan = plainStagePlan(active.stages.length, M);
+        return active.stagePlan;
+    }
+
+    // rebuildStagePlan：maxTurns 变动时，保留已演部分、固定当前纸条、剩余纸条均摊剩余回合。
+    // legacyMaxTurns：改动前的旧上限，仅在无计划（旧存档）时用于推导“当前正在演哪张纸条”，避免纸条跳变
+    function rebuildStagePlan(active, legacyMaxTurns) {
+        if (!active || !Array.isArray(active.stages) || !active.stages.length) return null;
+        const N = active.stages.length;
+        const M = Math.min(30, Math.max(1, Math.floor(Number(active.maxTurns) || N)));
+        const X = Math.min(M, Math.max(1, Math.floor(Number(active.currentTurn) || 1)));
+        const old = Array.isArray(active.stagePlan) ? active.stagePlan : null;
+        const legacyM = Math.min(30, Math.max(1, Math.floor(Number(legacyMaxTurns) || M)));
+
+        // 尚未开演（第 1 回合）：直接整体重排，命中「1、2、3、4、5、6、7-8」这类从头的均摊
+        if (X <= 1) {
+            active.stagePlan = plainStagePlan(N, M);
+            return active.stagePlan;
+        }
+
+        // 当前正在演绎的纸条索引：优先取旧计划当前回合最后一张，缺失时用旧比例公式（改动前的上限）兜底
+        let C = (old && Array.isArray(old[X - 1]) && old[X - 1].length)
+            ? old[X - 1][old[X - 1].length - 1]
+            : legacyStageIndex(N, legacyM, X);
+        C = Math.min(Math.max(0, C), N - 1);
+
+        const plan = [];
+        // 保留已演部分（第 1..X 回合），保证倒退/历史显示不失真
+        for (let i = 0; i < X; i++) {
+            plan[i] = (old && Array.isArray(old[i]) && old[i].length)
+                ? [...old[i]]
+                : [legacyStageIndex(N, legacyM, i + 1)];
+        }
+
+        // 已推进到终局回合：把剩余未演纸条并入当前回合，不丢弃任何纸条
+        if (X >= M) {
+            const merged = [];
+            for (let j = C; j < N; j++) merged.push(j);
+            plan[X - 1] = merged.length ? merged : [N - 1];
+            active.stagePlan = plan;
+            return plan;
+        }
+
+        // 未来回合：未演纸条（C+1..最后）均摊到 X+1..M
+        const futureNotes = [];
+        for (let j = C + 1; j < N; j++) futureNotes.push(j);
+        const futureTurns = M - X;
+        if (futureTurns > 0) {
+            if (futureNotes.length === 0) {
+                // 全部纸条已演完：最后一张延续到剩余回合
+                for (let i = X; i < M; i++) plan[i] = [C];
+            } else if (futureTurns >= futureNotes.length) {
+                // 纸条比回合少：一张纸条跨多回合，余数给末尾纸条
+                const sizes = splitEvenly(futureTurns, futureNotes.length);
+                let t = X;
+                for (let j = 0; j < futureNotes.length; j++) {
+                    for (let k = 0; k < sizes[j]; k++) { plan[t] = [futureNotes[j]]; t++; }
+                }
+            } else {
+                // 纸条比回合多：一回合合并多张，余数给末尾回合（终局必含最后一张）
+                const sizes = splitEvenly(futureNotes.length, futureTurns);
+                let n = 0;
+                for (let i = X; i < M; i++) {
+                    const list = [];
+                    for (let k = 0; k < sizes[i - X]; k++) list.push(futureNotes[n++]);
+                    plan[i] = list;
+                }
+            }
+        }
+        while (plan.length < M) plan.push([]);
+        active.stagePlan = plan;
+        return plan;
+    }
+
+    // stageGroupForTurn：读取某回合应演绎的纸条索引组；无计划（旧存档/未激活）时退回旧比例公式。
+    // maxTurnsOverride：buildSegmentPrompt 会按传入的 totalRounds 映射（可能 ≠ event.maxTurns），此时以它为上限
+    function stageGroupForTurn(active, turn, maxTurnsOverride) {
+        const N = Array.isArray(active?.stages) ? active.stages.length : 0;
+        if (!N) return [];
+        const M = Math.min(30, Math.max(1, Math.floor(Number(maxTurnsOverride) || Number(active?.maxTurns) || N)));
+        const T = Math.min(M, Math.max(1, Math.floor(Number(turn) || 1)));
+        if (Array.isArray(active?.stagePlan) && active.stagePlan.length === M && Array.isArray(active.stagePlan[T - 1])) {
+            const g = active.stagePlan[T - 1].filter(x => Number.isInteger(x) && x >= 0 && x < N);
+            if (g.length) return g;
+        }
+        return [legacyStageIndex(N, M, T)];
+    }
+
     function activateEvent(event, force = false) {
         if (!event) throw new Error('找不到待激活事件');
         const state = getChatState();
@@ -5488,6 +5748,7 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
             activationToken: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
             lastCountedMessageId: null, lastCountedUserMessageId: null, updatedAt: Date.now()
         };
+        buildStagePlan(active);
         state.activeEvent = active;
         runtimeEvent = { state, chatId: getCtx()?.chatId, active };
         return active;
@@ -5591,12 +5852,16 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
             if (!Array.isArray(stages) || !stages.length || current > total) return '';
             const final = current === total;
             if (!final && stages.length < 2) throw new Error('单轮剧本不能提前公开终局，请重新生成多轮事件');
-            // 预算调整时只复用中盘节点，绝不因缺轮提前取出终局纸条。
-            const index = final
-                ? stages.length - 1
-                : Math.max(0, Math.min(Math.max(0, stages.length - 2), Math.floor((current - 1) * (stages.length - 1) / Math.max(1, total - 1))));
-            const segment = stages[index] || stages[0];
-            if (!segment) return '';
+            // 读取本回合应演绎的纸条组（支持多张合并进同一回合，也支持一张跨多回合延续），无计划时退回旧比例映射
+            const group = stageGroupForTurn(event, current, total);
+            const segments = group.map(i => stages[i]).filter(Boolean);
+            if (!segments.length) return '';
+            // 同一纸条跨多回合延续：提示继续演绎，避免模型另起新事件
+            const prevGroup = current > 1 ? stageGroupForTurn(event, current - 1, total) : [];
+            const continuation = prevGroup.length === 1 && group.length === 1 && prevGroup[0] === group[0]
+                ? '\n（承接上一回合：同一张小纸条延续演绎，紧接当前局面继续推进）'
+                : '';
+            const content = segments.map(s => s.content).join('\n\n');
             const genreRule = {
                 combat: '战斗特化：只呈现双方实际动作、位置、距离、消耗与可观察破绽，不代投玩家骰子，不凭空削弱或增强角色。',
                 reasoning: '推理特化：只呈现客观物证、可疑现场与NPC的主动遮掩；不得抢先指出玩家尚未推导出的答案。',
@@ -5618,7 +5883,7 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
                 '1. 【剧情显化强制】：严禁一笔带过、无视纸条或视作后台建议！本轮正文必须将纸条指示的突发客观环境变故与NPC行动当场显化并写进实际场景正文，推动可观察的现场变化，不得仅用心理描写替代事件。',
                 '2. 【玩家真实言行裁判准则】：必须以玩家最新实际输入的具体动作与发言为唯一现实既定事实！严禁假定玩家态度，严禁代写玩家言行、内心与决定。若玩家上一轮言行产生合理干预，依据物理因果与NPC动机给出真实反馈；若玩家尚未察觉事件，NPC的主动动作与客观危机必须主动显现，制造紧迫压迫感，强行推动局势咬合。',
                 final ? '3. 【终局收束】：根据已发生的真实行动裁决；尚未作出的选择保持未定，不得虚构玩家行动以凑结局。' : '3. 【末尾动作留钩 (Action Hook)】：正文末尾绝对严禁进行概括升华、说教总结或单方面擅自替局势画上句号。必须停留在NPC的具体逼问、关键动作交互、物理危机抉择或明确的现场情境上，留下清晰的操作空间，以供玩家在下一轮作出选择！',
-                `【本轮可执行客观内容】\n${segment.content}`,
+                `【本轮可执行客观内容】\n${content}${continuation}`,
                 genreRule,
                 final ? `【终局后台判定依据】\n后台真相档案：\n${event.theKey || ''}\n结局分支判定标准：\n${event.endings || [event.goodEnd, event.badEnd].filter(Boolean).join('\n')}` : '',
                 branchNotice,
@@ -5656,9 +5921,12 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
         const maxTurns = Math.max(1, Number(active.maxTurns) || active.stages.length);
         const totalStages = active.stages.length;
         const final = curTurn >= maxTurns;
-        const stageIdx = final ? totalStages - 1 : Math.max(0, Math.min(totalStages - 2, Math.floor((curTurn - 1) * (totalStages - 1) / Math.max(1, maxTurns - 1))));
+        const group = stageGroupForTurn(active, curTurn);
+        const stageIdx = group.length ? group[0] : (final ? totalStages - 1 : 0);
         const stage = active.stages[stageIdx];
-        return {stageIdx, stageNumber: stageIdx + 1, totalStages, curTurn, maxTurns, stageTitle: stage.title, stageContent: stage.content, isFinalStage: final, theKey: active.theKey || '', goodEnd: active.goodEnd || '', badEnd: active.badEnd || ''};
+        const stageLabel = group.length > 1 ? `小纸条 ${group[0] + 1}-${group[group.length - 1] + 1}` : `小纸条 ${stageIdx + 1}`;
+        const stageContent = group.map(i => active.stages[i]?.content).filter(Boolean).join('\n\n');
+        return {stageIdx, stageNumber: stageIdx + 1, stageIndexes: group, stageLabel, totalStages, curTurn, maxTurns, stageTitle: stage?.title, stageContent, isFinalStage: final, theKey: active.theKey || '', goodEnd: active.goodEnd || '', badEnd: active.badEnd || ''};
     }
 
     function buildActiveStagePrompt(active) {
@@ -5961,6 +6229,7 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
             capsule.id = 'se-floating-capsule';
             capsule.className = 'se-floating-capsule se-capsule-hidden';
             (root || document.body).appendChild(capsule);
+            makeCapsuleDraggable(capsule);
 
             capsule.addEventListener('click', (e) => {
                 const btn = e.target.closest('button[data-capsule-action]');
@@ -5993,6 +6262,7 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
         }
 
         capsule.classList.remove('se-capsule-hidden');
+        applyCapsulePosition();
         const typeLabel = EVENT_TYPES[active.type]?.title || active.type || '事件';
 
         capsule.innerHTML = `
@@ -6002,6 +6272,7 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
                 <span class="se-capsule-turns">第 <strong>${info.curTurn}</strong>/${info.maxTurns} 回合</span>
             </div>
             <div class="se-capsule-actions">
+                <button type="button" class="se-cap-btn" data-capsule-action="rewind-turn" title="退回上一轮，重新演绎上一张小纸条">倒退</button>
                 <button type="button" class="se-cap-btn" data-capsule-action="advance-turn" title="手动推进到下一轮">推进</button>
                 <button type="button" class="se-cap-btn se-cap-close" data-capsule-action="end-event" title="结束当前事件">结束</button>
             </div>
@@ -6032,8 +6303,10 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
                 if (window.toastr) toastr.info('单回合档案需要重新生成后才能扩展，请在细分设置里选择回合数');
                 return;
             }
-            state.activeEvent.maxTurns = (Number(state.activeEvent.maxTurns) || 8) + 1;
+            const oldMax = Number(state.activeEvent.maxTurns) || 8;
+            state.activeEvent.maxTurns = oldMax + 1;
             if (state.activeEvent.maxTurns > 30) state.activeEvent.maxTurns = 30;
+            rebuildStagePlan(state.activeEvent, oldMax);
             registerInjection(buildActiveStagePrompt(state.activeEvent));
             await saveChatState();
             updateFloatingCapsule();
@@ -6042,7 +6315,9 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
         } else if (action === 'sub-turn') {
             const curTurn = Number(state.activeEvent.currentTurn) || 1;
             if (state.activeEvent.maxTurns > curTurn) {
-                state.activeEvent.maxTurns -= 1;
+                const oldMax = Number(state.activeEvent.maxTurns) || 8;
+                state.activeEvent.maxTurns = oldMax - 1;
+                rebuildStagePlan(state.activeEvent, oldMax);
                 registerInjection(buildActiveStagePrompt(state.activeEvent));
                 await saveChatState();
                 updateFloatingCapsule();
@@ -6121,6 +6396,7 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
             descEl.innerHTML = `正在进行：<strong style="color:var(--se-accent)">${escapeHtml(active.id)}</strong><br>第 <strong>${info.curTurn}</strong>/${info.maxTurns} 回合 · ${info.isFinalStage ? '本轮收束' : '等待玩家行动'}。剧本内容默认隐藏。`;
             const climaxText = active.type === 'romance' ? '提前收束' : (active.type === 'reasoning' ? '提前结案' : '提前决胜');
             actionsEl.innerHTML = `
+                <button type="button" class="se-cap-btn" data-capsule-action="rewind-turn" title="退回上一轮，重新演绎上一张小纸条">倒退一轮</button>
                 <button type="button" class="se-cap-btn se-cap-advance" data-capsule-action="advance-turn" title="手动推进到下一轮">推进一轮</button>
                 <button type="button" class="se-cap-btn" data-capsule-action="add-turn" title="扩大总回合上限 1 轮">+1回合上限</button>
                 <button type="button" class="se-cap-btn" data-capsule-action="sub-turn" title="缩减总回合上限 1 轮">-1回合上限</button>
@@ -6233,9 +6509,8 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
         const isActive = state.activeEvent?.id === event.id && state.activeEvent.isActive;
         const curTurn = isActive ? (Number(state.activeEvent.currentTurn) || 1) : 1;
         const maxTurns = isActive ? (Number(state.activeEvent.maxTurns) || 2) : (Number(event.maxTurns) || 2);
-        const currentStageIdx = parsed.stages.length === maxTurns
-            ? Math.min(parsed.stages.length - 1, curTurn - 1)
-            : Math.min(parsed.stages.length - 1, Math.floor(((curTurn - 1) / Math.max(1, maxTurns - 1)) * (parsed.stages.length - 1)));
+        // 活动事件按回合分配计划高亮本回合全部纸条（合并回合会同时高亮多张）
+        const currentStageIdxs = isActive ? new Set(stageGroupForTurn(state.activeEvent, curTurn)) : null;
 
         titleEl.textContent = `【${event.id}】分轮剧本小纸条与暗箱档案 (共 ${maxTurns} 回合)`;
 
@@ -6275,7 +6550,7 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
         `;
 
         parsed.stages.forEach((stg, idx) => {
-            const isCurrent = isActive && (idx === currentStageIdx);
+            const isCurrent = isActive && !!currentStageIdxs && currentStageIdxs.has(idx);
             html += `
                 <div class="se-stage-card ${isCurrent ? 'se-stage-current' : ''}">
                     <div class="se-stage-card-head">

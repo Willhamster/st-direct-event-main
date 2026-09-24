@@ -1850,7 +1850,6 @@
     position: fixed;
     top: 50px;
     left: 50%;
-    transform: translateX(-50%);
     z-index: 9999;
     display: flex;
     align-items: center;
@@ -1861,15 +1860,22 @@
     border-radius: 999px;
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.65), 0 0 14px var(--se-accent-glow, rgba(255, 117, 160, 0.3));
     backdrop-filter: blur(16px);
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     user-select: none;
-    cursor: default;
+    cursor: grab;
+    touch-action: none;
+}
+
+.se-floating-capsule.se-capsule-dragging {
+    cursor: grabbing;
+    transition: none;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.75), 0 0 20px var(--se-accent-glow, rgba(255, 117, 160, 0.45));
 }
 
 .se-floating-capsule.se-capsule-hidden {
     opacity: 0;
     pointer-events: none;
-    transform: translateX(-50%) translateY(-20px) scale(0.95);
+    transform: translateY(-20px) scale(0.95);
 }
 
 .se-capsule-indicator {
@@ -2822,7 +2828,7 @@
 #st-direct-event-root .se-stage-raw-pre { color: var(--se-text-main); }
 @media (max-width: 540px) {
     #st-direct-event-root .se-floating-capsule {
-        top: calc(46px + env(safe-area-inset-top, 0px)) !important;
+        top: calc(46px + env(safe-area-inset-top, 0px));
         width: auto !important;
         max-width: calc(100vw - 20px) !important;
         justify-content: center;
