@@ -1,0 +1,26 @@
+# Temporary backup files
+*.bak*
+*.bak_*
+backup-*/
+
+# Unrelated nested extensions
+World-master/
+
+# Archives & binaries
+*.rar
+*.zip
+*.7z
+
+# Logs & temp
+*.log
+scratch/
+.system_generated/
+st-direct-event-review/
+
+# OS specific
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Presets
+Kemini_Dramatron*.json
