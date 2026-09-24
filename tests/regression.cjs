@@ -61,6 +61,25 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
     check('Context cleaner removes all director content and thinking',()=>{const clean=h2.api.cleanRecentContext('正文<director_event>SECRET_A</director_event><st_direct_slip>SECRET_B</st_direct_slip><event_archive>SECRET_C</event_archive><thinking>SECRET_D</thinking>继续');assert.equal(clean,'正文继续');});
     check('Single round has no contradictory do-not-finish instruction',()=>{const h3=harness();const e=seed(h3,1);assert(!h3.api.buildDynamicSlipStructure(1,'reasoning').includes('严禁一回合'));assert(h3.api.EventInjectionTool.buildSegmentPrompt(e,1,1).includes('SECRET_CULPRIT'));});
     check('Budget stretch never exposes final slip early',()=>{assert(!h2.api.EventInjectionTool.buildSegmentPrompt(e2,2,3).includes('SECRET'));assert(!h2.api.EventInjectionTool.buildSegmentPrompt(e2,2,3).includes('ROUND_TWO'));});
+    check('Rewind replans so current slip rejoins even spread',()=>{
+        const t=harness();
+        const active={id:'x',type:'reasoning',stages:[{index:1,title:'A',content:'SLIP_ONE'},{index:2,title:'B',content:'SLIP_TWO'}],maxTurns:5,currentTurn:1,stagePlan:[[0],[1],[1],[1],[1]]};
+        t.api.replanFromCurrent(active,1);
+        assert.equal(JSON.stringify(active.stagePlan),'[[0],[0],[1],[1],[1]]');
+        active.currentTurn=2;
+        const prompt=t.api.buildActiveStagePrompt(active);
+        assert(prompt.includes('SLIP_ONE'));
+        assert(!prompt.includes('SLIP_TWO'));
+        assert.equal(JSON.stringify(active.stagePlan[4]),'[1]');
+    });
+    check('Rewind replan stays stable on even plans and keeps final slip last',()=>{
+        const t=harness();
+        const active={id:'y',type:'reasoning',stages:Array.from({length:3},(_,i)=>({index:i+1,title:String(i+1),content:'CONTENT_'+i})),maxTurns:8,currentTurn:3,stagePlan:[[0],[0],[1],[1],[1],[2],[2],[2]]};
+        t.api.replanFromCurrent(active,3);
+        assert.equal(JSON.stringify(active.stagePlan),'[[0],[0],[1],[1],[1],[2],[2],[2]]');
+        t.api.replanFromCurrent(active,8);
+        assert.equal(JSON.stringify(active.stagePlan[7]),'[2]');
+    });
     check('Settings honor zero temperature and authoritative config version',()=>{h2.ctx.extensionSettings['st-direct-event']={temperature:0,configVersion:6,model:'new'};h2.local.set('st_direct_event_settings_v1',JSON.stringify({model:'old',configVersion:5}));assert.equal(h2.api.getSettings().model,'new');assert.equal(h2.api.getSettings().temperature,0);});
     const gen=harness({fetch:async()=>({ok:true,json:async()=>({choices:[{message:{content:raw}}]})})});
     const settings={...gen.api.DEFAULT_SETTINGS,apiKey:'test-only',baseUrl:'https://example.invalid/v1',autoSend:false,enableJailbreak:false,enableNovelBypass:false};

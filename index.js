@@ -5723,6 +5723,52 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
         return [legacyStageIndex(N, M, T)];
     }
 
+    // replanFromCurrent：倒退/回到某进度后，把「当前纸条起」的剩余纸条重新均摊到「当前回合起」的剩余回合。
+    // 与 rebuildStagePlan 的区别：倒退等于重新演绎，当前纸条也要参与均摊（比如 2 张纸条 5 回合
+    // 倒退到第 1 回合后应是 纸条1 演 2 回合、纸条2 演 3 回合，而不是纸条1 仅 1 回合、纸条2 霸占 4 回合）。
+    // rebuildStagePlan 用于改上限：当前回合已经演绎过，固定当前纸条只演它那一回合。
+    function replanFromCurrent(active, X) {
+        if (!active || !Array.isArray(active.stages) || !active.stages.length) return null;
+        const N = active.stages.length;
+        const M = Math.min(30, Math.max(1, Math.floor(Number(active.maxTurns) || N)));
+        const x = Math.min(M, Math.max(1, Math.floor(Number(X) || 1)));
+        const old = Array.isArray(active.stagePlan) ? active.stagePlan : null;
+        // 当前正在演绎的纸条：倒退到该回合原本演的纸条（倒退前计划），无计划时用旧比例公式兜底
+        let C = (old && Array.isArray(old[x - 1]) && old[x - 1].length)
+            ? old[x - 1][old[x - 1].length - 1]
+            : legacyStageIndex(N, M, x);
+        C = Math.min(Math.max(0, C), N - 1);
+
+        const plan = [];
+        // 过去回合（第 1..X-1）保留原样，再次倒退语义不失真
+        for (let i = 0; i < x - 1; i++) {
+            plan[i] = (old && Array.isArray(old[i]) && old[i].length) ? [...old[i]] : [legacyStageIndex(N, M, i + 1)];
+        }
+        // 从当前回合起：R 个回合均摊给 S 张纸条（当前纸条也参与），余数给末尾纸条
+        const R = M - x + 1;
+        const S = N - C;
+        if (S <= 0) {
+            plan[x - 1] = [N - 1];
+        } else if (R >= S) {
+            const sizes = splitEvenly(R, S);
+            let t = x - 1;
+            for (let j = 0; j < S; j++) {
+                for (let k = 0; k < sizes[j]; k++) { plan[t] = [C + j]; t++; }
+            }
+        } else {
+            const sizes = splitEvenly(S, R);
+            let n = C;
+            for (let i = 0; i < R; i++) {
+                const list = [];
+                for (let k = 0; k < sizes[i]; k++) list.push(n++);
+                plan[x - 1 + i] = list;
+            }
+        }
+        while (plan.length < M) plan.push([]);
+        active.stagePlan = plan;
+        return plan;
+    }
+
     function activateEvent(event, force = false) {
         if (!event) throw new Error('找不到待激活事件');
         const state = getChatState();
@@ -6333,6 +6379,8 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
             state.activeEvent.currentTurn = Math.max(1, (Number(state.activeEvent.currentTurn) || 2) - 1);
             state.activeEvent.isActive = true;
             state.activeEvent.lastCountedMessageId = null;
+            // 倒退 = 重新演绎：当前纸条也参与均摊，避免退回后推进仍吃旧的「当前纸条冻结」分配
+            replanFromCurrent(state.activeEvent, state.activeEvent.currentTurn);
             registerInjection(buildActiveStagePrompt(state.activeEvent));
             await saveChatState();
             updateFloatingCapsule();
@@ -7338,6 +7386,7 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
         if (eventTypes.MESSAGE_DELETED) eventSource.on(eventTypes.MESSAGE_DELETED, () => {
             const active = getChatState().activeEvent;
             if (!active?.activationToken || active.manuallyStopped) return;
+            const prevTurn = Number(active.currentTurn) || 1;
             const chat = getCtx()?.chat || [];
             const completed = chat.map((m,i) => ({mark:m.extra?.st_direct,index:i})).filter(x => x.mark?.eventId === active.id && x.mark.activationToken === active.activationToken);
             active.currentTurn = completed.length ? Math.max(...completed.map(x => x.mark.round)) + 1 : 1;
@@ -7345,6 +7394,11 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
             active.lastCountedMessageId = completed.at(-1)?.index ?? null;
             active.lastCountedUserMessageId = null;
             generationRun = null;
+            // 删除消息确实导致回合数回退（含事件从结束状态被救回）时，重新均摊剩余纸条；
+            // 删除无关消息时回合数不变，不重排事件路线
+            if (active.isActive && active.currentTurn < prevTurn) {
+                replanFromCurrent(active, active.currentTurn);
+            }
             if (active.isActive) EventInjectionTool.inject(active, active.currentTurn); else unregisterInjection();
             void saveChatState();
             updateFloatingCapsule();

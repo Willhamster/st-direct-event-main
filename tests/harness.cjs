@@ -24,7 +24,7 @@ function harness(options = {}) {
         renderApiLogs = () => {};
         openStageModalForEvent = () => { globalThis.modalOpened = true; };
         globalThis.transportTestApi = fetchWithProxyFallback;
-        globalThis.testApi = {readCompletionBody, safeParseJsonResponse, decompressZstd, getSettings, getChatState, activateEvent, buildEventPrompt, buildTurnGuidance, buildDynamicSlipStructure, buildRecentContext, cleanRecentContext, generateAndSave, askLLM, findTriggeredEvent, buildActiveStagePrompt, bindSTEvents, EventInjectionTool, refreshWorldInfoCache, buildWorldInfoSystemPrompt, DEFAULT_SETTINGS, DEFAULT_PRESETS, DEFAULT_SUB_PROMPTS, DEFAULT_JAILBREAK_PROMPT, DEFAULT_NOVEL_BYPASS_PROMPT, EVENT_TYPES};
+        globalThis.testApi = {readCompletionBody, safeParseJsonResponse, decompressZstd, getSettings, getChatState, activateEvent, buildEventPrompt, buildTurnGuidance, buildDynamicSlipStructure, buildRecentContext, cleanRecentContext, generateAndSave, askLLM, findTriggeredEvent, buildActiveStagePrompt, bindSTEvents, EventInjectionTool, refreshWorldInfoCache, buildWorldInfoSystemPrompt, DEFAULT_SETTINGS, DEFAULT_PRESETS, DEFAULT_SUB_PROMPTS, DEFAULT_JAILBREAK_PROMPT, DEFAULT_NOVEL_BYPASS_PROMPT, EVENT_TYPES, replanFromCurrent, stageGroupForTurn, splitEvenly};
     })();`;
     vm.runInNewContext(source,sandbox,{filename:'index.js'});
     sandbox.testApi.bindSTEvents();
