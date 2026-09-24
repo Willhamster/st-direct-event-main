@@ -109,7 +109,7 @@
         temperature: 0.8,
         maxTokens: 40000,
         defaultTurns: 8,
-        autoSend: true,
+        autoSend: true, // 兼容字段，等价于 autoSendMode === 'auto'；autoSendMode 由 getSettings 计算
         enableJailbreak: true,
         jailbreakPrompt: '',
         enableNovelBypass: true,
@@ -373,7 +373,14 @@
         if (stored.apiKey !== undefined) merged.apiKey = stored.apiKey;
         if (stored.baseUrl !== undefined) merged.baseUrl = stored.baseUrl;
         merged.configVersion = 7;
-        merged.autoSend = merged.autoSend !== false;
+        // 自动发送模式：新字段 autoSendMode 优先；旧存档只有布尔 autoSend 时平滑迁移
+        const rawMode = ls.autoSendMode ?? stored.autoSendMode;
+        const legacyFlag = ls.autoSend !== undefined ? ls.autoSend : stored.autoSend;
+        const migratedMode = typeof rawMode === 'string' && ['auto', 'fill', 'none'].includes(rawMode)
+            ? rawMode
+            : (legacyFlag === false ? 'none' : 'auto');
+        merged.autoSendMode = migratedMode;
+        merged.autoSend = migratedMode === 'auto';
         merged.enableWorldInfo = (ls.enableWorldInfo ?? stored.enableWorldInfo) !== false;
         merged.worldInfoSelections = ls.worldInfoSelections || stored.worldInfoSelections || null;
         merged.worldInfoOverrides = ls.worldInfoOverrides || stored.worldInfoOverrides || null;
@@ -967,9 +974,16 @@
                             默认注入常驻蓝灯。点击右侧按钮可自主勾选任意条目注入副 API，或直接修改/新增世界观设定。
                         </div>
                     </div>
-                    <label class="se-check-label">
-                        <input id="se-auto-send" type="checkbox" />
-                        自动发送（生成后自动发编号并暗送全文给 AI）
+                    <label class="se-check-label" style="flex-direction:column; align-items:stretch; gap:6px; cursor:default;">
+                        <span style="font-weight:600; color:var(--se-text-title);">事件生成后如何处理</span>
+                        <select id="se-auto-send" style="width:100%; padding:7px 10px; font-size:13px;">
+                            <option value="auto">自动发送（生成后自动发编号并暗送全文给 AI）</option>
+                            <option value="fill">仅填入对话框（可追加提示词后手动发送）</option>
+                            <option value="none">不发送也不填入（仅保存，之后从事件列表发送）</option>
+                        </select>
+                        <span style="font-size:11px; color:var(--se-text-muted); line-height:1.4;">
+                            想追加自己的提示词再发送？选「仅填入对话框」，生成后事件编号会自动填好，你可以继续打字再手动发送。
+                        </span>
                     </label>
                 </div>
                 <div class="se-settings-actions">
@@ -2983,7 +2997,7 @@
         setChecked('se-enable-novel-bypass', s.enableNovelBypass !== false);
         setChecked('se-enable-world-info', s.enableWorldInfo !== false);
         setChecked('se-hide-fab', !!s.hideFab);
-        setChecked('se-auto-send', s.autoSend !== false);
+        set('se-auto-send', s.autoSendMode || 'auto');
 
         const themeSelect = root?.querySelector('#se-theme-select');
         if (themeSelect) {
@@ -3022,7 +3036,8 @@
             temperature: Math.min(2, Math.max(0, num('se-temperature', DEFAULT_SETTINGS.temperature))),
             maxTokens: Math.max(1, Math.floor(num('se-max-tokens', DEFAULT_SETTINGS.maxTokens))),
             defaultTurns: Math.min(30, Math.max(1, Math.floor(num('se-default-turns', DEFAULT_SETTINGS.defaultTurns || 3)))),
-            autoSend: checked('se-auto-send'),
+            autoSend: String(val('se-auto-send') || 'auto') === 'auto',
+            autoSendMode: ['auto', 'fill', 'none'].includes(String(val('se-auto-send') || 'auto')) ? String(val('se-auto-send')) : 'auto',
             enableJailbreak: checked('se-enable-jailbreak'),
             enableNovelBypass: checked('se-enable-novel-bypass'),
             enableWorldInfo: checked('se-enable-world-info'),
@@ -3486,7 +3501,9 @@
         try {
             const event = await generateAndSave(type, settings, requestController.signal);
             const enemyNotice = event.enemyProfile ? ` (遭遇对手: ${event.enemyProfile})` : '';
-            if (window.toastr) toastr.success((settings.autoSend ? '已生成并发送 ' : '已保存，可在事件列表发送 ') + event.id + enemyNotice);
+            const autoMode = settings.autoSendMode || (settings.autoSend === false ? 'none' : 'auto');
+            const sendNotice = autoMode === 'auto' ? '已生成并发送 ' : (autoMode === 'fill' ? '已生成并填入对话框，可追加提示词后发送 ' : '已保存，可在事件列表发送 ');
+            if (window.toastr) toastr.success(sendNotice + event.id + enemyNotice);
         } catch (err) {
             if (err?.name === 'AbortError' || err?.message?.includes('取消') || activeGenerationController?.signal?.aborted) {
                 console.log('[ST Direct] 生成已由用户主动取消');
@@ -3605,8 +3622,9 @@
 
         updateFloatingCapsule();
 
-        if (settings.autoSend && !signal?.aborted) {
-            await sendEventTrigger(event, sourceChatId);
+        const autoMode = settings.autoSendMode || (settings.autoSend === false ? 'none' : 'auto');
+        if (autoMode !== 'none' && !signal?.aborted) {
+            await sendEventTrigger(event, sourceChatId, autoMode === 'fill' ? 'fill' : 'auto');
         }
 
         // 生成后保持详情关闭，只有用户点击查看剧本才显示后台内容。
@@ -7130,7 +7148,7 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
         }
     }
 
-    async function sendEventTrigger(event, targetChatId = null) {
+    async function sendEventTrigger(event, targetChatId = null, mode = 'auto') {
         const initialCtx = getCtx();
         if (targetChatId && initialCtx?.chatId && initialCtx.chatId !== targetChatId) {
             throw new Error(`聊天已切换 (${initialCtx.chatId} !== ${targetChatId})，取消自动发送`);
@@ -7152,6 +7170,23 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
         if (!textarea) throw new Error('找不到发送输入框 #send_textarea');
 
         const curVal = String(textarea.value || '').trim();
+
+        // 「仅填入」模式：事件编号置顶，允许玩家内容追加在下方；不激活不发送。
+        // 必须设 pendingHiddenEvent，玩家发送时编号后带了自定义提示词，严格匹配会失败，靠它兜底激活。
+        if (mode === 'fill') {
+            ensureSTEventsBound();
+            pendingHiddenEvent = event;
+            const marker = `【突发事件】${event.title} (${event.id})`;
+            const nextValue = curVal ? `${marker}\n${curVal}` : marker;
+            if (window.jQuery) {
+                window.jQuery('#send_textarea').val(nextValue).trigger('input');
+            }
+            textarea.value = nextValue;
+            textarea.dispatchEvent(new Event('input', { bubbles: true }));
+            if (window.toastr) toastr.info(`已填入对话框 ${event.id}，可追加提示词后手动发送`);
+            return;
+        }
+
         if (curVal) throw new Error('输入框中有未发送内容，事件已保存；请处理输入内容后手动发送事件');
 
         ensureSTEventsBound();
