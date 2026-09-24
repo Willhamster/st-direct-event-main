@@ -4165,3 +4165,96 @@
         cursor: pointer;
     }
 }
+
+/* ==========================================================================
+   文本框强制反差保底 (Input Contrast Lock)
+   --------------------------------------------------------------------------
+   用途：无论酒馆全局主题、浏览器自动填充或插件外样式如何覆盖，
+   插件内所有可输入控件都锁定为「深底亮字」，杜绝亮底亮字看不清。
+   说明：--se-bg-input 为各主题深色底，--se-text-main 为各主题亮色字。
+   ========================================================================== */
+
+/* 1. 所有文本框、下拉框、多行文本框：强制深底 + 亮字 */
+#st-direct-event-root textarea,
+#st-direct-event-root input[type="text"],
+#st-direct-event-root input[type="password"],
+#st-direct-event-root input[type="number"],
+#st-direct-event-root input[type="search"],
+#st-direct-event-root input[type="email"],
+#st-direct-event-root input[type="url"],
+#st-direct-event-root select {
+    background-color: var(--se-bg-input, rgba(12, 20, 36, 0.96)) !important;
+    color: var(--se-text-main, #e0f7ff) !important;
+    caret-color: var(--se-accent, #38bdf8) !important;
+    -webkit-text-fill-color: var(--se-text-main, #e0f7ff) !important;
+    border: 1px solid var(--se-border-subtle, rgba(0, 240, 255, 0.24)) !important;
+}
+
+/* 1b. 下拉框：清掉系统渐变底，并绘制主题色下拉箭头（防止去原生箭头后无视觉指示） */
+#st-direct-event-root select {
+    background-color: var(--se-bg-input, rgba(12, 20, 36, 0.96)) !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2338bdf8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 8px center !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    appearance: none !important;
+    padding-right: 28px !important;
+}
+#st-direct-event-root select option {
+    background-color: var(--se-bg-input, rgba(12, 20, 36, 0.96)) !important;
+    color: var(--se-text-main, #e0f7ff) !important;
+}
+
+/* 2. 聚焦态：保留主题高亮边框，底色维持深色 */
+#st-direct-event-root textarea:focus,
+#st-direct-event-root input:focus,
+#st-direct-event-root select:focus {
+    background-color: var(--se-bg-input, rgba(12, 20, 36, 0.96)) !important;
+    color: var(--se-text-main, #e0f7ff) !important;
+    -webkit-text-fill-color: var(--se-text-main, #e0f7ff) !important;
+    border-color: var(--se-border-focus, var(--se-accent, #38bdf8)) !important;
+}
+
+/* 3. 禁用 / 只读态：略淡但仍保持反差，不使用系统浅灰 */
+#st-direct-event-root textarea:disabled,
+#st-direct-event-root input:disabled,
+#st-direct-event-root select:disabled,
+#st-direct-event-root textarea[readonly],
+#st-direct-event-root input[readonly] {
+    background-color: var(--se-bg-card, rgba(16, 26, 46, 0.96)) !important;
+    color: var(--se-text-sub, #bae6fd) !important;
+    -webkit-text-fill-color: var(--se-text-sub, #bae6fd) !important;
+    opacity: 1 !important;
+}
+
+/* 4. 占位符：暗底上的中性提示色，与正文区分但不刺眼 */
+#st-direct-event-root textarea::placeholder,
+#st-direct-event-root input::placeholder {
+    color: var(--se-text-muted, #7dd3fc) !important;
+    -webkit-text-fill-color: var(--se-text-muted, #7dd3fc) !important;
+    opacity: 0.75 !important;
+}
+
+/* 5. 浏览器自动填充（Chrome/Safari 会把背景刷成不透明白/黄），强制拉回深底亮字 */
+#st-direct-event-root input:-webkit-autofill,
+#st-direct-event-root input:-webkit-autofill:hover,
+#st-direct-event-root input:-webkit-autofill:focus,
+#st-direct-event-root textarea:-webkit-autofill,
+#st-direct-event-root textarea:-webkit-autofill:hover,
+#st-direct-event-root textarea:-webkit-autofill:focus,
+#st-direct-event-root select:-webkit-autofill {
+    -webkit-text-fill-color: var(--se-text-main, #e0f7ff) !important;
+    caret-color: var(--se-accent, #38bdf8) !important;
+    -webkit-box-shadow: 0 0 0 1000px var(--se-bg-input, rgba(12, 20, 36, 0.96)) inset !important;
+    box-shadow: 0 0 0 1000px var(--se-bg-input, rgba(12, 20, 36, 0.96)) inset !important;
+    background-color: var(--se-bg-input, rgba(12, 20, 36, 0.96)) !important;
+    transition: background-color 9999s ease-in-out 0s !important;
+}
+
+/* 6. 数字输入框的原生步进箭头：深底上默认可能为黑色，统一着色 */
+#st-direct-event-root input[type="number"]::-webkit-inner-spin-button,
+#st-direct-event-root input[type="number"]::-webkit-outer-spin-button {
+    opacity: 0.65 !important;
+    filter: invert(1) brightness(1.6) !important;
+}
