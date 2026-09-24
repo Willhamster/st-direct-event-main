@@ -81,6 +81,22 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         assert.equal(JSON.stringify(active.stagePlan[7]),'[2]');
     });
     check('Settings honor zero temperature and authoritative config version',()=>{h2.ctx.extensionSettings['st-direct-event']={temperature:0,configVersion:6,model:'new'};h2.local.set('st_direct_event_settings_v1',JSON.stringify({model:'old',configVersion:5}));assert.equal(h2.api.getSettings().model,'new');assert.equal(h2.api.getSettings().temperature,0);});
+    check('Empty model in localStorage never overrides a valid server model',()=>{
+        const hz=harness();
+        hz.ctx.extensionSettings['st-direct-event']={model:'deepseek-chat',configVersion:7};
+        hz.local.set('st_direct_event_settings_v1',JSON.stringify({model:'',configVersion:7}));
+        assert.equal(hz.api.getSettings().model,'deepseek-chat');
+    });
+    check('persistSettings never writes an empty model name',()=>{
+        const hz=harness();
+        hz.ctx.extensionSettings['st-direct-event']={model:'deepseek-chat',configVersion:7};
+        hz.local.set('st_direct_event_settings_v1',JSON.stringify({model:'deepseek-chat',configVersion:7}));
+        hz.api.persistSettings({model:''});
+        assert.equal(hz.api.getSettings().model,'deepseek-chat');
+        const ls=JSON.parse(hz.local.get('st_direct_event_settings_v1'));
+        assert(ls.model);
+        assert.notEqual(ls.model,'');
+    });
     const gen=harness({fetch:async()=>({ok:true,json:async()=>({choices:[{message:{content:raw}}]})})});
     const settings={...gen.api.DEFAULT_SETTINGS,apiKey:'test-only',baseUrl:'https://example.invalid/v1',autoSend:false,enableJailbreak:false,enableNovelBypass:false};
     await gen.api.generateAndSave(gen.api.EVENT_TYPES.reasoning,settings);

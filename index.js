@@ -374,6 +374,8 @@
         // 服务端凭据与地址具有最高权威，绝不被本地共享缓存覆盖
         if (stored.apiKey !== undefined) merged.apiKey = stored.apiKey;
         if (stored.baseUrl !== undefined) merged.baseUrl = stored.baseUrl;
+        // 模型名空串视为未设置：绝不允许 localStorage 里的空值压过服务器端有效值或内置默认值
+        if (!merged.model) merged.model = stored.model || DEFAULT_SETTINGS.model;
         merged.configVersion = 7;
         // 自动发送模式：新字段 autoSendMode 优先；旧存档只有布尔 autoSend 时平滑迁移
         const rawMode = ls.autoSendMode ?? stored.autoSendMode;
@@ -496,8 +498,13 @@
     }
 
     function persistSettings(settings) {
-        const clean = Object.assign({}, DEFAULT_SETTINGS, settings || {}, {configVersion: 7});
         const ctx = getCtx();
+        const clean = Object.assign({}, DEFAULT_SETTINGS, settings || {}, {configVersion: 7});
+        // 模型名禁止落盘为空：空串会污染合并逻辑（localStorage 优先覆盖服务器值），导致生成永远提示配置不完整
+        if (!clean.model) {
+            const prev = (ctx?.extensionSettings?.[PLUGIN_ID] || window.extension_settings?.[PLUGIN_ID] || {}).model;
+            clean.model = prev || DEFAULT_SETTINGS.model;
+        }
         if (ctx?.extensionSettings) ctx.extensionSettings[PLUGIN_ID] = clean;
         if (window.extension_settings) window.extension_settings[PLUGIN_ID] = clean;
         try {
@@ -505,7 +512,9 @@
             delete lsSafe.apiKey;
             delete lsSafe.baseUrl;
             localStorage.setItem(LS_KEY, JSON.stringify(lsSafe));
-        } catch (e) { /* ignore */ }
+        } catch (e) {
+            console.warn('[ST Direct] localStorage 写入失败，设置仅保存在服务器端:', e);
+        }
         try {
             if (typeof ctx?.saveSettingsDebounced === 'function') ctx.saveSettingsDebounced();
             else if (typeof window.saveSettingsDebounced === 'function') window.saveSettingsDebounced();
@@ -2704,7 +2713,7 @@
         }
 
         if (action === 'reset-fab') {
-            const values = collectSettingsForm();
+            const values = getSettings();
             values.fabIconUrl = '';
             persistSettings(values);
             applyFabSettings();
@@ -2713,7 +2722,7 @@
         }
 
         if (action === 'reset-position') {
-            const values = collectSettingsForm();
+            const values = getSettings();
             values.fabX = null;
             values.fabY = null;
             persistSettings(values);
@@ -3313,7 +3322,7 @@
         const nbTa = root?.querySelector('#se-preset-list textarea[data-preset-special="novel_bypass"]');
         const novelBypassPrompt = nbTa ? nbTa.value.trim() : (s.novelBypassPrompt || '');
 
-        const values = collectSettingsForm();
+        const values = getSettings();
         values.presets = presets;
         values.subPrompts = subPrompts;
         values.jailbreakPrompt = jailbreakPrompt;
@@ -3324,7 +3333,7 @@
     }
 
     function resetPresets() {
-        const values = collectSettingsForm();
+        const values = getSettings();
         values.presets = null;
         values.subPrompts = null;
         values.jailbreakPrompt = null;
