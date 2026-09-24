@@ -2379,6 +2379,17 @@
             }
         }
 
+        // 引擎卡片/胶囊等 data-capsule-action 按钮的委托入口。
+        // 悬浮胶囊自身已挂独立监听并 stopPropagation，此处只负责主面板内的胶囊动作按钮。
+        const capBtn = e.target.closest('[data-capsule-action]');
+        if (capBtn) {
+            const capsuleEl = root?.querySelector('#se-floating-capsule');
+            if (!capsuleEl || !capsuleEl.contains(capBtn)) {
+                handleCapsuleAction(capBtn.dataset.capsuleAction);
+                return;
+            }
+        }
+
         const el = e.target.closest('[data-action]');
         if (!el || !root) return;
         const action = el.dataset.action;
@@ -3263,9 +3274,9 @@
                                     <button type="button" class="se-quick-turn-btn ${curTurns === 6 ? 'active' : ''}" data-action="quick-event-turns" data-turns="6" data-id="${escapeHtml(event.id)}" title="6回合标准推演">6回推演</button>
                                 </div>
                                 <div class="se-turn-stepper">
-                                    <button type="button" class="se-turn-step-btn" data-action="dec-event-turns" data-id="${escapeHtml(event.id)}" title="减少 1 回合">-1</button>
+                                    <button type="button" class="se-turn-step-btn" data-action="dec-event-turns" data-id="${escapeHtml(event.id)}" title="总回合上限减少 1 轮">-1</button>
                                     <input type="number" min="1" max="30" class="se-event-turns-input" data-id="${escapeHtml(event.id)}" value="${curTurns}" />
-                                    <button type="button" class="se-turn-step-btn" data-action="inc-event-turns" data-id="${escapeHtml(event.id)}" title="增加 1 回合">+1</button>
+                                    <button type="button" class="se-turn-step-btn" data-action="inc-event-turns" data-id="${escapeHtml(event.id)}" title="总回合上限增加 1 轮">+1</button>
                                     <button type="button" class="se-turn-save-btn" data-action="save-event-turns" data-id="${escapeHtml(event.id)}" title="设定自定义回合">设定</button>
                                 </div>
                             </div>
@@ -5598,7 +5609,13 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
             ].filter(Boolean).join('\n');
         },
                 inject(event, round) {
-            return registerInjection(this.buildSegmentPrompt(event, round, event.maxTurns));
+            const ok = registerInjection(this.buildSegmentPrompt(event, round, event.maxTurns));
+            // 注入成功时补设运行态标记：onGenerationEnded 依赖 run.injected 来计数回合，
+            // 若两个 prompt-ready 事件都没走到，靠这里兜底，避免事件永远停在第一轮。
+            if (ok && typeof markInjection === 'function') {
+                try { markInjection(event, 'ext', null); } catch (err) { console.warn('[ST Direct] 注入标记失败', err); }
+            }
+            return ok;
         },
         advance(active) {
             if (!active?.isActive) return;
@@ -5869,45 +5886,50 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
         const run = generationRun;
         if (!run?.injected || run.stopped || run.committed || run.processing) return;
         run.processing = true;
-        // 等当前事件栈结束，让停止按钮和流式结束信号有机会更新状态。
-        await new Promise(resolve => setTimeout(resolve, 0));
-        const ctx = getCtx();
-        // 校验当前任务有效性、未被中途删除或置空
-        if (!generationRun || generationRun !== run) return;
-        if (!run?.injected || run.stopped || run.committed) return;
-        if (run.chatId && ctx?.chatId && run.chatId !== ctx.chatId) return;
-        const type = generationType || run.type;
-        if (['swipe', 'regenerate', 'continue', 'append', 'first_message', 'quiet', 'impersonate'].includes(type)) return;
-        // 严格定位目标消息：若提供了有效 messageId 则必须存在该消息；若未传则定位最后一条有效 assistant 回复
-        let actualMessageId = null;
-        if (typeof messageId === 'number' && messageId >= 0) {
-            if (ctx?.chat?.[messageId]) {
-                actualMessageId = messageId;
+        try {
+            // 等当前事件栈结束，让停止按钮和流式结束信号有机会更新状态。
+            await new Promise(resolve => setTimeout(resolve, 0));
+            const ctx = getCtx();
+            // 校验当前任务有效性、未被中途删除或置空
+            if (!generationRun || generationRun !== run) return;
+            if (!run?.injected || run.stopped || run.committed) return;
+            if (run.chatId && ctx?.chatId && run.chatId !== ctx.chatId) return;
+            const type = generationType || run.type;
+            if (['swipe', 'regenerate', 'continue', 'append', 'first_message', 'quiet', 'impersonate'].includes(type)) return;
+            // 严格定位目标消息：若提供了有效 messageId 则必须存在该消息；若未传则定位最后一条有效 assistant 回复
+            let actualMessageId = null;
+            if (typeof messageId === 'number' && messageId >= 0) {
+                if (ctx?.chat?.[messageId]) {
+                    actualMessageId = messageId;
+                } else {
+                    // 目标回复已被删除，坚决中止，严禁回退乱标记历史回复
+                    return;
+                }
             } else {
-                // 目标回复已被删除，坚决中止，严禁回退乱标记历史回复
-                return;
+                actualMessageId = ctx?.chat?.findLastIndex(m => !m.is_user && !m.is_system);
             }
-        } else {
-            actualMessageId = ctx?.chat?.findLastIndex(m => !m.is_user && !m.is_system);
+            if (actualMessageId == null || actualMessageId < 0) return;
+            const message = ctx?.chat?.[actualMessageId];
+            if (!message || message.is_user || message.is_system || !String(message.mes || '').trim()) return;
+            const active = getChatState().activeEvent;
+            if (!active?.isActive || active.id !== run.eventId) return;
+            if (run.activationToken && active.activationToken !== run.activationToken) return;
+            if (active.lastCountedMessageId === actualMessageId) return;
+            run.committed = true;
+            message.extra ||= {};
+            message.extra.st_direct = {eventId: active.id, activationToken: active.activationToken, round: run.round};
+            active.lastCountedMessageId = actualMessageId;
+            if (run.userMessageId != null && run.userMessageId >= 0) {
+                active.lastCountedUserMessageId = run.userMessageId;
+            }
+            EventInjectionTool.advance(active);
+            await saveChatState();
+            updateFloatingCapsule();
+            renderEventList();
+        } finally {
+            // 无论正常走完还是中途 return，都释放 processing，防止一次早退永久挡住后续回合计数。
+            if (run && !run.committed) run.processing = false;
         }
-        if (actualMessageId == null || actualMessageId < 0) return;
-        const message = ctx?.chat?.[actualMessageId];
-        if (!message || message.is_user || message.is_system || !String(message.mes || '').trim()) return;
-        const active = getChatState().activeEvent;
-        if (!active?.isActive || active.id !== run.eventId) return;
-        if (run.activationToken && active.activationToken !== run.activationToken) return;
-        if (active.lastCountedMessageId === actualMessageId) return;
-        run.committed = true;
-        message.extra ||= {};
-        message.extra.st_direct = {eventId: active.id, activationToken: active.activationToken, round: run.round};
-        active.lastCountedMessageId = actualMessageId;
-        if (run.userMessageId != null && run.userMessageId >= 0) {
-            active.lastCountedUserMessageId = run.userMessageId;
-        }
-        EventInjectionTool.advance(active);
-        await saveChatState();
-        updateFloatingCapsule();
-        renderEventList();
     }
 
 
@@ -5962,6 +5984,7 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
                 <span class="se-capsule-turns">第 <strong>${info.curTurn}</strong>/${info.maxTurns} 回合</span>
             </div>
             <div class="se-capsule-actions">
+                <button type="button" class="se-cap-btn" data-capsule-action="advance-turn" title="手动推进到下一轮">推进</button>
                 <button type="button" class="se-cap-btn se-cap-close" data-capsule-action="end-event" title="结束当前事件">结束</button>
             </div>
         `;
@@ -5971,7 +5994,22 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
         const state = getChatState();
         if (!state.activeEvent) return;
 
-        if (action === 'add-turn') {
+        if (action === 'advance-turn') {
+            if (!state.activeEvent.isActive) {
+                if (window.toastr) toastr.info('当前事件未在推进中，请先激活');
+                return;
+            }
+            EventInjectionTool.advance(state.activeEvent);
+            await saveChatState();
+            updateFloatingCapsule();
+            renderEventList();
+            const ev = state.activeEvent;
+            if (ev.isActive) {
+                if (window.toastr) toastr.success(`已推进至第 ${ev.currentTurn}/${ev.maxTurns} 回合`);
+            } else {
+                if (window.toastr) toastr.info('已推进至收束，事件结束');
+            }
+        } else if (action === 'add-turn') {
             if (state.activeEvent.stages?.length < 2) {
                 if (window.toastr) toastr.info('单回合档案需要重新生成后才能扩展，请在细分设置里选择回合数');
                 return;
@@ -6065,8 +6103,9 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
             descEl.innerHTML = `正在进行：<strong style="color:var(--se-accent)">${escapeHtml(active.id)}</strong><br>第 <strong>${info.curTurn}</strong>/${info.maxTurns} 回合 · ${info.isFinalStage ? '本轮收束' : '等待玩家行动'}。剧本内容默认隐藏。`;
             const climaxText = active.type === 'romance' ? '提前收束' : (active.type === 'reasoning' ? '提前结案' : '提前决胜');
             actionsEl.innerHTML = `
-                <button type="button" class="se-cap-btn" data-capsule-action="add-turn">+1回合</button>
-                <button type="button" class="se-cap-btn" data-capsule-action="sub-turn">-1回合</button>
+                <button type="button" class="se-cap-btn se-cap-advance" data-capsule-action="advance-turn" title="手动推进到下一轮">推进一轮</button>
+                <button type="button" class="se-cap-btn" data-capsule-action="add-turn" title="扩大总回合上限 1 轮">+1回合上限</button>
+                <button type="button" class="se-cap-btn" data-capsule-action="sub-turn" title="缩减总回合上限 1 轮">-1回合上限</button>
                 <button type="button" class="se-cap-btn se-cap-climax" data-capsule-action="climax">${climaxText}</button>
                 <button type="button" class="se-cap-btn" data-action="open-stage-overview">剧本小纸条</button>
                 <button type="button" class="se-cap-btn" data-action="open-last-raw-output">生成原文</button>
@@ -6923,6 +6962,52 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
         if (window.toastr) toastr.info(`已清空当前聊天的全部 ${count} 个事件`);
     }
 
+    /**
+     * 楼层推进器：回合推进的兜底闸门。
+     * 主生成完成时必然在聊天里新增一条 AI 回复楼层（后台生成只返回文本、不写楼层），
+     * 因此用「最新 AI 楼层是否已被计数」作判据推进事件，绕开 generationRun 的时序依赖，
+     * 与 onGenerationEnded 共用 active.lastCountedMessageId 幂等，两边不会重复推进。
+     */
+    function tryAdvanceActiveEvent(messageId) {
+        try {
+            const ctx = getCtx();
+            const state = getChatState();
+            const active = state && state.activeEvent;
+            if (!active || !active.isActive) return;
+            // 用户点击停止后产出的半截回复不算完整一轮，尊重「停止不消耗回合」语义；
+            // 下一次正常生成会由 onGenerationStarted 重置 generationRun，不会误伤后续回合。
+            if (generationRun?.stopped) return;
+            const chat = ctx?.chat || [];
+            const idx = (typeof messageId === 'number' && messageId >= 0 && chat[messageId])
+                ? messageId
+                : chat.findLastIndex(m => m && !m.is_user && !m.is_system);
+            if (idx == null || idx < 0) return;
+            const msg = chat[idx];
+            if (!msg || msg.is_user || msg.is_system || !String(msg.mes || '').trim()) return;
+            if (active.lastCountedMessageId === idx) return;
+            if (active.triggerMessageId != null && idx <= active.triggerMessageId) return;
+            const mark = msg.extra?.st_direct;
+            if (mark && mark.eventId === active.id && mark.activationToken === active.activationToken) {
+                // 原 onGenerationEnded 已计数过这条楼层，只同步计数不重复推进
+                active.lastCountedMessageId = idx;
+                return;
+            }
+            msg.extra = msg.extra || {};
+            msg.extra.st_direct = {
+                eventId: active.id,
+                activationToken: active.activationToken,
+                round: Number(active.currentTurn) || 1,
+            };
+            active.lastCountedMessageId = idx;
+            EventInjectionTool.advance(active);
+            void saveChatState();
+            try { updateFloatingCapsule(); } catch (e) { /* 面板未就绪时忽略 */ }
+            try { renderEventList(); } catch (e) { /* 列表未就绪时忽略 */ }
+        } catch (e) {
+            console.warn('[ST Direct] 楼层推进异常', e);
+        }
+    }
+
     function bindSTEvents() {
         if (stEventsBound) return;
         const ctx = getCtx();
@@ -6949,9 +7034,11 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
         }
         if (eventTypes.MESSAGE_RECEIVED) {
             eventSource.on(eventTypes.MESSAGE_RECEIVED, onGenerationEnded);
+            eventSource.on(eventTypes.MESSAGE_RECEIVED, tryAdvanceActiveEvent);
         }
         if (eventTypes.GENERATION_ENDED) {
             eventSource.on(eventTypes.GENERATION_ENDED, onGenerationEnded);
+            eventSource.on(eventTypes.GENERATION_ENDED, tryAdvanceActiveEvent);
         }
         if (eventTypes.GENERATION_STARTED) eventSource.on(eventTypes.GENERATION_STARTED, onGenerationStarted);
         if (eventTypes.GENERATION_STOPPED) eventSource.on(eventTypes.GENERATION_STOPPED, () => { if (generationRun) generationRun.stopped = true; });
@@ -7003,7 +7090,11 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
                                 if (!state.activeEvent) return '当前没有激活的事件';
                                 const round = Number(args.round) || state.activeEvent.currentTurn || 1;
                                 EventInjectionTool.inject(state.activeEvent, round);
-                                return `已为事件 ${state.activeEvent.id} 注入第 ${round} 轮小纸条`;
+                                state.activeEvent.currentTurn = Math.min(Math.max(1, round), state.activeEvent.maxTurns);
+                                state.activeEvent.isActive = true;
+                                void saveChatState();
+                                updateFloatingCapsule();
+                                return `已为事件 ${state.activeEvent.id} 注入第 ${round} 轮小纸条，胶囊进度已同步`;
                             },
                             returns: '注入状态',
                             namedArguments: [
@@ -7014,7 +7105,7 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
                                     isRequired: false
                                 })
                             ],
-                            helpString: '【ST Direct 工具】手动分批注入指定轮次的事件小纸条到主模型Prompt中。'
+                            helpString: '【ST Direct 工具】手动分批注入指定轮次的事件小纸条到主模型Prompt中，并将胶囊进度同步到该轮。'
                         }));
                     }).catch(() => {});
                 }).catch(() => {});
