@@ -259,6 +259,31 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         const end = src.indexOf('};', start);
         assert(src.slice(start, end).includes('closeAllUiWindows()'), 'chatChanged does not call closeAllUiWindows');
     });
+    check('World info injection has no hidden truncation caps',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        assert(!src.includes('已达到最大 15 条条目上限'), 'entry-count cap notice still present');
+        assert(!src.includes('其余世界书条目已按长度限制截断'), 'length cap notice still present');
+        const start = src.indexOf('function buildWorldInfoSystemPrompt');
+        const body = src.slice(start, src.indexOf('return lines.join', start));
+        assert(!body.includes('6000'), 'hardcoded 6000-char cap still in buildWorldInfoSystemPrompt');
+        assert(!body.includes('i >= 15'), 'hardcoded 15-entry cap still in buildWorldInfoSystemPrompt');
+    });
+    check('Custom context extract/exclude rules are wired',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        assert(src.includes('function applyCustomContextRules'));
+        assert(src.includes('contextExtractTags'));
+        assert(src.includes('contextExcludeTags'));
+        assert((src.match(/cleanRecentContext\(applyCustomContextRules\(/g) || []).length >= 3, 'rules not applied before built-in cleaning at call sites');
+        assert(src.includes('id="se-context-extract-tags"'));
+        assert(src.includes('id="se-context-exclude-tags"'));
+    });
+    check('Settings modal separates API and context sections',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        assert(src.includes('>API 设置<'));
+        assert(src.includes('>世界书与上下文设置<'));
+        assert(src.includes('>通用<'));
+        assert((src.match(/se-settings-section-title/g) || []).length >= 3, 'section titles missing');
+    });
 
     check('Production source contains no pictographs',()=>{for(const file of ['index.js','style.css']) assert(!/\p{Extended_Pictographic}/u.test(fs.readFileSync(path.join(__dirname,'..',file),'utf8')));});
     const report={checks,passed:true,date:new Date().toISOString()};fs.writeFileSync(path.join(__dirname,'regression-result.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));

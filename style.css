@@ -900,6 +900,24 @@
     margin-top: 4px;
 }
 
+/* 设置弹窗分区标题（API 设置 / 世界书与上下文设置 / 通用） */
+.se-settings-section-title {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--se-accent);
+    padding: 7px 10px;
+    margin-top: 10px;
+    border: 1px solid var(--se-border-subtle);
+    border-radius: var(--se-radius-sm);
+    background: var(--se-bg-input);
+    text-align: center;
+}
+
+.se-settings-section-title:first-child {
+    margin-top: 0;
+}
+
 .se-settings-body input[type="text"],
 .se-settings-body input[type="password"],
 .se-settings-body input[type="number"],

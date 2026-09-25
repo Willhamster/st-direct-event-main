@@ -106,6 +106,8 @@
         apiKey: '',
         model: 'agy-gemini-3.8-flash-high',
         recentRounds: 10,
+        contextExtractTags: '',
+        contextExcludeTags: '',
         temperature: 0.8,
         maxTokens: 40000,
         defaultTurns: 8,
@@ -371,7 +373,7 @@
         delete ls.apiKey;
         delete ls.baseUrl;
         if ((Number(stored.configVersion) || 0) > (Number(ls.configVersion) || 0)) {
-            ls = Object.fromEntries(['enableJailbreak', 'jailbreakPrompt', 'enableNovelBypass', 'novelBypassPrompt'].filter(key => Object.hasOwn(ls, key)).map(key => [key, ls[key]]));
+            ls = Object.fromEntries(['enableJailbreak', 'jailbreakPrompt', 'enableNovelBypass', 'novelBypassPrompt', 'contextExtractTags', 'contextExcludeTags'].filter(key => Object.hasOwn(ls, key)).map(key => [key, ls[key]]));
         }
         const merged = Object.assign({}, DEFAULT_SETTINGS, stored, ls);
         // 服务端凭据与地址具有最高权威，绝不被本地共享缓存覆盖
@@ -407,6 +409,8 @@
         merged.jailbreakPrompt = (ls.jailbreakPrompt ?? stored.jailbreakPrompt) || '';
         merged.enableNovelBypass = (ls.enableNovelBypass ?? stored.enableNovelBypass) !== false;
         merged.novelBypassPrompt = (ls.novelBypassPrompt ?? stored.novelBypassPrompt) || '';
+        merged.contextExtractTags = (ls.contextExtractTags ?? stored.contextExtractTags) || '';
+        merged.contextExcludeTags = (ls.contextExcludeTags ?? stored.contextExcludeTags) || '';
         return merged;
     }
 
@@ -938,6 +942,7 @@
                         </div>
                         <div class="se-theme-grid" id="se-theme-grid"></div>
                     </div>
+                    <div class="se-settings-section-title">API 设置</div>
                     <label>API 地址（Base URL）</label>
                     <input id="se-base-url" type="text" placeholder="https://api.openai.com/v1" autocomplete="off" />
                     <label>请求方式</label>
@@ -969,30 +974,13 @@
                     </datalist>
                     <div class="se-model-tip" style="font-size:11px; opacity:0.75; margin-top:-4px; margin-bottom:8px; line-height:1.4;">支持手动输入任意模型名（如 deepseek-chat、gpt-4o 等）。若接口受跨域限制无法拉取列表，直接手动填写即可正常生成！</div>
 
-                    <label>发送最近 N 轮聊天内容</label>
-                    <input id="se-recent-rounds" type="number" min="1" max="200" />
-
                     <label>温度（Temperature）</label>
                     <input id="se-temperature" type="number" step="0.1" min="0" max="2" />
 
                     <label>最大输出长度</label>
                     <input id="se-max-tokens" type="number" min="1" max="120000" />
 
-                    <label>默认事件总回合数 (回合范围 1 ~ 30；一次有效回复算一回合)</label>
-                    <input id="se-default-turns" type="number" min="1" max="30" step="1" value="8" />
-
-                    <label>悬浮球图标 URL（留空使用默认图标）</label>
-                    <input id="se-fab-icon" type="text" placeholder="https://... 或 data:image/..." autocomplete="off" />
-                    <div class="se-inline-actions">
-                        <button data-action="reset-fab">恢复默认图标</button>
-                        <button data-action="reset-position">重置悬浮球位置</button>
-                    </div>
-
-                    <label class="se-check-label">
-                        <input id="se-hide-fab" type="checkbox" />
-                        隐藏桌面悬浮球（隐藏后可通过输入框左侧魔法棒「剧情导演」随时打开）
-                    </label>
-
+                    <div class="se-settings-section-title">世界书与上下文设置</div>
                     <label class="se-check-label">
                         <input id="se-enable-jailbreak" type="checkbox" />
                         启用全套缝合破限与创作约定（Dramatron 深度创作引擎）
@@ -1016,6 +1004,33 @@
                             默认注入常驻蓝灯。点击右侧按钮可自主勾选任意条目注入副 API，或直接修改/新增世界观设定。
                         </div>
                     </div>
+                    <label>发送最近 N 轮聊天内容</label>
+                    <input id="se-recent-rounds" type="number" min="1" max="200" />
+
+                    <label>自定义提取规则（逗号分隔标签名，留空不启用）</label>
+                    <input id="se-context-extract-tags" type="text" placeholder="content,summary" autocomplete="off" />
+                    <small style="font-size:11px; color:var(--se-text-muted); line-height:1.4;">填写后，上下文只保留这些标签内的内容，标签外的文字（含无标签的普通消息）一律不发送。</small>
+
+                    <label>自定义排除规则（逗号分隔标签名，留空不启用）</label>
+                    <input id="se-context-exclude-tags" type="text" placeholder="thinking,内心" autocomplete="off" />
+                    <small style="font-size:11px; color:var(--se-text-muted); line-height:1.4;">这些标签的完整块（含标签内文字）将从上下文中删除；两者同时填写时先排除、后提取。</small>
+
+                    <div class="se-settings-section-title">通用</div>
+                    <label>默认事件总回合数 (回合范围 1 ~ 30；一次有效回复算一回合)</label>
+                    <input id="se-default-turns" type="number" min="1" max="30" step="1" value="8" />
+
+                    <label>悬浮球图标 URL（留空使用默认图标）</label>
+                    <input id="se-fab-icon" type="text" placeholder="https://... 或 data:image/..." autocomplete="off" />
+                    <div class="se-inline-actions">
+                        <button data-action="reset-fab">恢复默认图标</button>
+                        <button data-action="reset-position">重置悬浮球位置</button>
+                    </div>
+
+                    <label class="se-check-label">
+                        <input id="se-hide-fab" type="checkbox" />
+                        隐藏桌面悬浮球（隐藏后可通过输入框左侧魔法棒「剧情导演」随时打开）
+                    </label>
+
                     <label class="se-check-label" style="flex-direction:column; align-items:stretch; gap:6px; cursor:default;">
                         <span style="font-weight:600; color:var(--se-text-title);">事件生成后如何处理</span>
                         <select id="se-auto-send" style="width:100%; padding:7px 10px; font-size:13px;">
@@ -2389,7 +2404,7 @@
                 const curTypeKey = promptViewerState.typeKey || 'combat';
                 const typeObj = EVENT_TYPES[curTypeKey] || EVENT_TYPES.combat;
                 let ctxText = '';
-                if (promptViewerState.contextMode === 'chat') ctxText = cleanRecentContext(buildRecentContext(s.recentRounds || 6));
+                if (promptViewerState.contextMode === 'chat') ctxText = cleanRecentContext(applyCustomContextRules(buildRecentContext(s.recentRounds || 6), s));
                 else if (promptViewerState.contextMode === 'demo') ctxText = '示例剧情上下文';
                 const tempSettings = {
                     ...s,
@@ -2420,7 +2435,7 @@
                 const curTypeKey = promptViewerState.typeKey || 'combat';
                 const typeObj = EVENT_TYPES[curTypeKey] || EVENT_TYPES.combat;
                 let ctxText = '';
-                if (promptViewerState.contextMode === 'chat') ctxText = cleanRecentContext(buildRecentContext(s.recentRounds || 6));
+                if (promptViewerState.contextMode === 'chat') ctxText = cleanRecentContext(applyCustomContextRules(buildRecentContext(s.recentRounds || 6), s));
                 else if (promptViewerState.contextMode === 'demo') ctxText = '示例剧情上下文';
                 const tempSettings = {
                     ...s,
@@ -3107,6 +3122,8 @@
         set('se-api-key', s.apiKey || '');
         set('se-model', s.model || '');
         set('se-recent-rounds', s.recentRounds);
+        set('se-context-extract-tags', s.contextExtractTags || '');
+        set('se-context-exclude-tags', s.contextExcludeTags || '');
         set('se-temperature', s.temperature);
         set('se-max-tokens', s.maxTokens);
         set('se-default-turns', s.defaultTurns || 8);
@@ -3151,6 +3168,8 @@
             apiKey: String(val('se-api-key')).trim(),
             model: String(val('se-model')).trim(),
             recentRounds: Math.max(1, Math.floor(num('se-recent-rounds', DEFAULT_SETTINGS.recentRounds))),
+            contextExtractTags: String(val('se-context-extract-tags')).trim(),
+            contextExcludeTags: String(val('se-context-exclude-tags')).trim(),
             temperature: Math.min(2, Math.max(0, num('se-temperature', DEFAULT_SETTINGS.temperature))),
             maxTokens: Math.max(1, Math.floor(num('se-max-tokens', DEFAULT_SETTINGS.maxTokens))),
             defaultTurns: Math.min(30, Math.max(1, Math.floor(num('se-default-turns', DEFAULT_SETTINGS.defaultTurns || 3)))),
@@ -3661,7 +3680,7 @@
         const state = getChatState();
         const sourceChatId = getCtx()?.chatId;
         const eventId = getNextEventId(state, type);
-        const context = cleanRecentContext(buildRecentContext(settings.recentRounds));
+        const context = cleanRecentContext(applyCustomContextRules(buildRecentContext(settings.recentRounds), settings));
         console.log('[ST Direct] 开始生成', eventId, '上下文长度', context.length);
 
         const content = await askLLM(type, context, settings, eventId, signal);
@@ -3817,6 +3836,43 @@
             .replace(/\n{3,}/g, '\n\n')
             // 去掉开头/结尾多余空白
             .trim();
+    }
+
+    // ========== 自定义上下文提取/排除规则 ==========
+    // 必须在 cleanRecentContext 之前应用：内置清洗会剥掉所有标签壳，之后按标签截取就来不及了。
+
+    function parseTagList(raw) {
+        return String(raw || '')
+            .split(/[,，、\s]+/)
+            .map(t => t.replace(/[<>/]/g, '').trim().toLowerCase())
+            .filter(Boolean);
+    }
+
+    function escapeRegExp(s) {
+        return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    function applyCustomContextRules(text, settings) {
+        let out = String(text || '');
+        const s = settings || getSettings();
+        // 先排除：删除这些标签的完整块（含标签内文字）
+        for (const tag of parseTagList(s.contextExcludeTags)) {
+            const esc = escapeRegExp(tag);
+            out = out.replace(new RegExp(`<\\s*${esc}(?:\\s[^>]*)?>[\\s\\S]*?<\\s*\\/\\s*${esc}\\s*>`, 'gi'), '');
+        }
+        // 后提取：只保留这些标签内的内容，标签外的文本一律不发送
+        const extractTags = parseTagList(s.contextExtractTags);
+        if (extractTags.length) {
+            const alt = extractTags.map(escapeRegExp).join('|');
+            const re = new RegExp(`<\\s*(${alt})(?:\\s[^>]*)?>([\\s\\S]*?)<\\s*\\/\\s*\\1\\s*>`, 'gi');
+            const picked = [];
+            let m;
+            while ((m = re.exec(out)) !== null) {
+                if (m[2] && m[2].trim()) picked.push(m[2].trim());
+            }
+            out = picked.join('\n');
+        }
+        return out;
     }
 
     // ========== LLM 调用 / 提示词 ==========
@@ -4058,21 +4114,10 @@
             '以下为当前场景与世界观的核心设定与专有名词，生成事件大纲与各轮纸条时必须严格遵循，严禁违背既定世界观、人物背景与阵营规则：',
             ''
         ];
-        let totalLen = 0;
+        // 勾选即注入：不做任何字数或条数截断，注入范围完全由世界书弹窗的勾选决定
         for (let i = 0; i < entries.length; i++) {
-            const entry = entries[i];
-            const title = entry.title || `设定条目 ${i + 1}`;
-            const text = `### 【${title}】\n${entry.content}`;
-            if (totalLen + text.length > 6000) {
-                lines.push('（其余世界书条目已按长度限制截断）');
-                break;
-            }
-            lines.push(text);
-            totalLen += text.length;
-            if (i >= 15) {
-                lines.push('（已达到最大 15 条条目上限）');
-                break;
-            }
+            const title = entries[i].title || `设定条目 ${i + 1}`;
+            lines.push(`### 【${title}】\n${entries[i].content}`);
         }
         return lines.join('\n\n');
     }
@@ -6784,7 +6829,7 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
 
         let contextContent = '';
         if (promptViewerState.contextMode === 'chat') {
-            contextContent = cleanRecentContext(buildRecentContext(s.recentRounds || 6));
+            contextContent = cleanRecentContext(applyCustomContextRules(buildRecentContext(s.recentRounds || 6), s));
             if (!contextContent) contextContent = '（当前聊天记录为空，建议在已有剧情对话的酒馆窗口查看效果）';
         } else if (promptViewerState.contextMode === 'demo') {
             contextContent = '玩家: 我们沿着石阶缓缓走向古宅地下室，空气中弥漫着潮湿的铁锈味。\n' +
