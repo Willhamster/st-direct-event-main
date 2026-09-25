@@ -776,28 +776,11 @@
         }
     }
 
-    // 点击外部空白区域自动关闭悬浮主面板与二级弹窗
-    function onDocumentClickUI(e) {
-        if (!root) return;
-        if (root.contains(e.target)) return;
-        if (e.target.closest && e.target.closest('#extensionsMenu, #extensionsMenuButton, #' + WAND_MENU_ITEM_ID + ', .extension_container, [id*="extensionsMenu"], .se-wand-item, .se-wand-container, #leftSendForm, #se-drawer-entry')) return;
-        const panel = root.querySelector('#se-panel');
-        if (panel && panel.style.display !== 'none') {
-            if (!isMobileView()) {
-                const rect = panel.getBoundingClientRect();
-                if (rect.width > 0 && rect.height > 0) {
-                    const s = getSettings();
-                    s.panelX = Math.round(rect.left);
-                    s.panelY = Math.round(rect.top);
-                    persistSettings(s);
-                }
-            }
-            panel.style.display = 'none';
-        }
-        const stageModal = root.querySelector('#se-stage-modal');
-        if (stageModal && stageModal.style.display !== 'none') {
-            stageModal.style.display = 'none';
-        }
+    // 关闭所有插件窗口（不含悬浮球与胶囊）。胶囊由 updateFloatingCapsule 依新聊天状态决定去留。
+    function closeAllUiWindows() {
+        root?.querySelectorAll('.se-panel, .se-settings, .se-events, .se-presets, .se-api-log, .se-sub-modal, .se-stage-modal, .se-prompt-viewer-modal, .se-world-info-modal').forEach(el => {
+            el.style.display = 'none';
+        });
     }
 
     function mountUI() {
@@ -1247,9 +1230,6 @@
 
         window.removeEventListener('resize', onWindowResizeUI);
         window.addEventListener('resize', onWindowResizeUI);
-
-        document.removeEventListener('click', onDocumentClickUI);
-        document.addEventListener('click', onDocumentClickUI);
     }
 
     let fabObserver = null;
@@ -7487,6 +7467,8 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
             activeInjectedEvent = null;
             lastInjectionDiagnostic = null;
             unregisterInjection();
+            // 切换/退出角色卡 = 上下文边界：所有窗口显示的都是旧聊天的数据，一律关闭
+            closeAllUiWindows();
             cleanHistoricalEventMessages();
             const active = resolveActiveEvent();
             if (active) EventInjectionTool.inject(active, active.currentTurn);

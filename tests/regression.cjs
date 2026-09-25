@@ -249,8 +249,15 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
         assert(src.includes("window.removeEventListener('resize', onWindowResizeUI)"));
         assert(src.includes("window.addEventListener('resize', onWindowResizeUI)"));
-        assert(src.includes("document.removeEventListener('click', onDocumentClickUI)"));
-        assert(src.includes("document.addEventListener('click', onDocumentClickUI)"));
+        assert(!src.includes('onDocumentClickUI'));
+    });
+    check('Chat switch closes all plugin windows',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        assert(src.includes('function closeAllUiWindows()'));
+        const start = src.indexOf('const chatChanged = () => {');
+        assert(start >= 0, 'chatChanged handler not found');
+        const end = src.indexOf('};', start);
+        assert(src.slice(start, end).includes('closeAllUiWindows()'), 'chatChanged does not call closeAllUiWindows');
     });
 
     check('Production source contains no pictographs',()=>{for(const file of ['index.js','style.css']) assert(!/\p{Extended_Pictographic}/u.test(fs.readFileSync(path.join(__dirname,'..',file),'utf8')));});
