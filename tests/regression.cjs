@@ -159,6 +159,100 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
     await assert.rejects(() => htmlH.api.askLLM(htmlH.api.EVENT_TYPES.combat, '测试', { ...htmlH.api.DEFAULT_SETTINGS, apiKey: 'test-only', baseUrl: 'https://example.invalid/v1' }, 'test'), /502/);
     check('HTML gateway error produces clear diagnostic', () => { assert.ok(true); });
 
+    // ===== 修复回归：生成中胶囊守卫 / 手动发送切聊防护 / 删除清理 / swipe 过滤 / 恢复保进度 / 设置位置保留 =====
+    const guard = harness();
+    seed(guard);
+    guard.ctx.chat.push({is_user:true, mes:'【突发事件】 推理事件（c 0 0 0 1）'});
+    await guard.emit('GENERATION_STARTED','normal',{},false);
+    await guard.emit('MESSAGE_SENT',0);
+    await guard.api.handleCapsuleAction('advance-turn');
+    await guard.api.handleCapsuleAction('climax');
+    check('Capsule advance and climax are blocked while the main model is replying',()=>{
+        assert.equal(guard.api.isMainGenerationBusy(), true);
+        assert.equal(guard.api.getChatState().activeEvent.currentTurn, 1);
+    });
+    await guard.emit('GENERATION_ENDED', guard.ctx.chat.length);
+    await guard.api.handleCapsuleAction('advance-turn');
+    check('Capsule advance works again once the reply lands',()=>{
+        assert.equal(guard.api.isMainGenerationBusy(), false);
+        assert.equal(guard.api.getChatState().activeEvent.currentTurn, 2);
+    });
+    const sm = harness();
+    await assert.rejects(() => sm.api.sendEventTrigger(seed(sm), 'other-chat'), /聊天已切换/);
+    check('Manual send honors the chat-switch guard',()=>{ assert.ok(true); });
+    check('Manual send carries current chat id through to sendEventTrigger',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        assert(src.includes('handleManualSend(event, getCtx()?.chatId)'));
+        assert(src.includes('async function handleManualSend(event, targetChatId = null)'));
+        assert(src.includes('await sendEventTrigger(event, targetChatId)'));
+    });
+    const del = harness();
+    seed(del);
+    del.ctx.chat.push({is_user:true, mes:'【突发事件】 推理事件（c 0 0 0 1）'});
+    await del.emit('MESSAGE_SENT',0);
+    assert(del.api.getChatState().activeEvent);
+    await del.api.deleteEventById('推理事件c0001');
+    check('Deleting the active event clears zombie state and injection',()=>{
+        assert.equal(del.api.getChatState().activeEvent, null);
+        assert.equal(del.ctx.injection, '');
+        assert.equal(del.api.getChatState().events.length, 0);
+    });
+    const sw = harness();
+    seed(sw);
+    await sw.api.setActiveEventById('推理事件c0001');
+    sw.ctx.chat.push({is_user:false, mes:'激活前就存在的回复'});
+    await sw.emit('GENERATION_STARTED','swipe',{},false);
+    await sw.emit('MESSAGE_RECEIVED', 0, 'swipe');
+    await sw.emit('GENERATION_ENDED', sw.ctx.chat.length);
+    check('Swipe on an unmarked floor never consumes a turn',()=>{
+        assert.equal(sw.api.getChatState().activeEvent.currentTurn, 1);
+    });
+    sw.ctx.chat.push({is_user:false, mes:'正常回复'});
+    await sw.emit('GENERATION_STARTED','normal',{},false);
+    await sw.emit('MESSAGE_RECEIVED', sw.ctx.chat.length - 1, 'normal');
+    check('Normal replies still advance after the swipe filter',()=>{
+        assert.equal(sw.api.getChatState().activeEvent.currentTurn, 2);
+    });
+    const rs = harness();
+    seed(rs);
+    rs.ctx.chat.push({is_user:true, mes:'【突发事件】 推理事件（c 0 0 0 1）'});
+    await rs.emit('GENERATION_STARTED','normal',{},false);
+    await rs.emit('MESSAGE_SENT',0);
+    rs.ctx.chat.push({is_user:false, mes:'第一轮回复'});
+    await rs.emit('MESSAGE_RECEIVED',1,'normal');
+    assert.equal(rs.api.getChatState().activeEvent.currentTurn, 2);
+    await rs.api.stopActiveEvent();
+    await rs.api.setActiveEventById('推理事件c0001');
+    check('Panel toggle resume keeps turn progress and reinjects current slip',()=>{
+        const active = rs.api.getChatState().activeEvent;
+        assert.equal(active.currentTurn, 2);
+        assert.equal(active.isActive, true);
+        assert(rs.ctx.injection.includes('ROUND_TWO_456'));
+        assert(!rs.ctx.injection.includes('ROUND_ONE_123'));
+    });
+    const pos = harness();
+    pos.api.persistSettings({model:'deepseek-chat', capsuleX: 120, capsuleY: 40, panelX: 55, panelY: 66, fabX: 11, fabY: 22});
+    const form = pos.api.collectSettingsForm();
+    check('Saving settings keeps capsule and panel positions',()=>{
+        assert.equal(form.capsuleX, 120);
+        assert.equal(form.capsuleY, 40);
+        assert.equal(form.panelX, 55);
+        assert.equal(form.panelY, 66);
+        assert.equal(form.fabX, 11);
+        assert.equal(form.fabY, 22);
+    });
+    check('Enemy profile in generation toast is HTML-escaped',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        assert(src.includes('${escapeHtml(event.enemyProfile)}'));
+    });
+    check('Global UI listeners are registered idempotently',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        assert(src.includes("window.removeEventListener('resize', onWindowResizeUI)"));
+        assert(src.includes("window.addEventListener('resize', onWindowResizeUI)"));
+        assert(src.includes("document.removeEventListener('click', onDocumentClickUI)"));
+        assert(src.includes("document.addEventListener('click', onDocumentClickUI)"));
+    });
+
     check('Production source contains no pictographs',()=>{for(const file of ['index.js','style.css']) assert(!/\p{Extended_Pictographic}/u.test(fs.readFileSync(path.join(__dirname,'..',file),'utf8')));});
     const report={checks,passed:true,date:new Date().toISOString()};fs.writeFileSync(path.join(__dirname,'regression-result.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));
 })().catch(err=>{console.error(err.stack);process.exitCode=1;});

@@ -331,6 +331,9 @@
     let activeGenerationController = null;
     let isGenerating = false;
     let currentGeneratingTypeKey = null;
+    // 主模型生成中标志：GENERATION_STARTED 置位，ENDED/STOPPED 复位。
+    // 当前 SillyTavern 的 getContext() 不暴露 isGenerating，不能依赖 ctx API 判定。
+    let mainGenerationActive = false;
 
     // 隐秘投递状态追踪
     let activeInjectedEvent = null;
@@ -751,6 +754,51 @@
     }
 
     // ========== UI ==========
+
+    // 全局级监听器必须幂等注册：observeFab 检测到 root 丢失后会重入 mountUI，
+    // 若每次都 addEventListener 匿名函数，监听器会随重挂载次数无界累积且永不释放。
+    function onWindowResizeUI() {
+        try {
+            if (isMobileView()) {
+                root?.querySelectorAll('.se-panel, .se-settings, .se-events, .se-presets, .se-api-log, .se-sub-modal, .se-stage-modal, .se-prompt-viewer-modal, .se-world-info-modal').forEach(el => {
+                    el.style.left = '';
+                    el.style.top = '';
+                    el.style.right = '';
+                    el.style.bottom = '';
+                    el.style.transform = '';
+                });
+            }
+            applyFabSettings();
+            adjustPanelPosition();
+            applyCapsulePosition();
+        } catch (e) {
+            console.warn('[ST Direct] 屏幕尺寸变化后修正位置失败:', e);
+        }
+    }
+
+    // 点击外部空白区域自动关闭悬浮主面板与二级弹窗
+    function onDocumentClickUI(e) {
+        if (!root) return;
+        if (root.contains(e.target)) return;
+        if (e.target.closest && e.target.closest('#extensionsMenu, #extensionsMenuButton, #' + WAND_MENU_ITEM_ID + ', .extension_container, [id*="extensionsMenu"], .se-wand-item, .se-wand-container, #leftSendForm, #se-drawer-entry')) return;
+        const panel = root.querySelector('#se-panel');
+        if (panel && panel.style.display !== 'none') {
+            if (!isMobileView()) {
+                const rect = panel.getBoundingClientRect();
+                if (rect.width > 0 && rect.height > 0) {
+                    const s = getSettings();
+                    s.panelX = Math.round(rect.left);
+                    s.panelY = Math.round(rect.top);
+                    persistSettings(s);
+                }
+            }
+            panel.style.display = 'none';
+        }
+        const stageModal = root.querySelector('#se-stage-modal');
+        if (stageModal && stageModal.style.display !== 'none') {
+            stageModal.style.display = 'none';
+        }
+    }
 
     function mountUI() {
         if (document.getElementById(ROOT_ID)) return;
@@ -1197,48 +1245,11 @@
         bindSubMenuTriggers();
         updateBadges();
 
-        window.addEventListener('resize', () => {
-            try {
-                if (isMobileView()) {
-                    root?.querySelectorAll('.se-panel, .se-settings, .se-events, .se-presets, .se-api-log, .se-sub-modal, .se-stage-modal, .se-prompt-viewer-modal, .se-world-info-modal').forEach(el => {
-                        el.style.left = '';
-                        el.style.top = '';
-                        el.style.right = '';
-                        el.style.bottom = '';
-                        el.style.transform = '';
-                    });
-                }
-                applyFabSettings();
-                adjustPanelPosition();
-                applyCapsulePosition();
-            } catch (e) {
-                console.warn('[ST Direct] 屏幕尺寸变化后修正位置失败:', e);
-            }
-        });
+        window.removeEventListener('resize', onWindowResizeUI);
+        window.addEventListener('resize', onWindowResizeUI);
 
-        // 点击外部空白区域自动关闭悬浮主面板与二级弹窗
-        document.addEventListener('click', (e) => {
-            if (!root) return;
-            if (root.contains(e.target)) return;
-            if (e.target.closest && e.target.closest('#extensionsMenu, #extensionsMenuButton, #' + WAND_MENU_ITEM_ID + ', .extension_container, [id*="extensionsMenu"], .se-wand-item, .se-wand-container, #leftSendForm, #se-drawer-entry')) return;
-            const panel = root.querySelector('#se-panel');
-            if (panel && panel.style.display !== 'none') {
-                if (!isMobileView()) {
-                    const rect = panel.getBoundingClientRect();
-                    if (rect.width > 0 && rect.height > 0) {
-                        const s = getSettings();
-                        s.panelX = Math.round(rect.left);
-                        s.panelY = Math.round(rect.top);
-                        persistSettings(s);
-                    }
-                }
-                panel.style.display = 'none';
-            }
-            const stageModal = root.querySelector('#se-stage-modal');
-            if (stageModal && stageModal.style.display !== 'none') {
-                stageModal.style.display = 'none';
-            }
-        });
+        document.removeEventListener('click', onDocumentClickUI);
+        document.addEventListener('click', onDocumentClickUI);
     }
 
     let fabObserver = null;
@@ -2856,7 +2867,7 @@
             const id = el.dataset.id;
             const state = getChatState();
             const event = state.events.find(x => x.id === id);
-            if (event) handleManualSend(event);
+            if (event) handleManualSend(event, getCtx()?.chatId);
             return;
         }
 
@@ -3176,6 +3187,11 @@
             fabIconUrl: String(val('se-fab-icon')).trim(),
             fabX: current.fabX ?? null,
             fabY: current.fabY ?? null,
+            // 位置类字段不在表单里，必须从当前设置回带，否则 persistSettings 会用默认 null 覆盖、重置拖动位置
+            capsuleX: current.capsuleX ?? null,
+            capsuleY: current.capsuleY ?? null,
+            panelX: current.panelX ?? null,
+            panelY: current.panelY ?? null,
             theme: root?.querySelector('#se-theme-select')?.value || root?.querySelector('.se-theme-card.active')?.dataset.themeId || current.theme || 'ocean',
             subConfig: current.subConfig || null,
             presets: current.presets || null,
@@ -3631,7 +3647,7 @@
 
         try {
             const event = await generateAndSave(type, settings, requestController.signal);
-            const enemyNotice = event.enemyProfile ? ` (遭遇对手: ${event.enemyProfile})` : '';
+            const enemyNotice = event.enemyProfile ? ` (遭遇对手: ${escapeHtml(event.enemyProfile)})` : '';
             const autoMode = settings.autoSendMode || (settings.autoSend === false ? 'none' : 'auto');
             const sendNotice = autoMode === 'auto' ? '已生成并发送 ' : (autoMode === 'fill' ? '已生成并填入对话框，可追加提示词后发送 ' : '已保存，可在事件列表发送 ');
             if (window.toastr) toastr.success(sendNotice + event.id + enemyNotice);
@@ -6075,6 +6091,7 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
         if (dryRun) return;
         const ctx = getCtx();
         generationRun = {type, chatId: ctx?.chatId, stopped: false, injected: false};
+        if (!['quiet', 'impersonate'].includes(type)) mainGenerationActive = true;
         if (['swipe', 'regenerate', 'continue'].includes(type)) {
             const last = ctx?.chat?.filter(m => !m.is_user && !m.is_system).at(-1);
             const mark = last?.extra?.st_direct;
@@ -6334,9 +6351,43 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
         `;
     }
 
+    // 主模型是否正在生成（含回复已落地但 onGenerationEnded 尚未处理完的窗口）。
+    // 主模型生成期间推进/终局/倒退/重启会与落地计数竞态，导致整轮纸条被跳过。
+    // processing 只在 onGenerationEnded 入口同步置位、finally 释放，不会卡死；
+    // 非生成期的 inject/markInjection 不会设置 processing，因此不影响胶囊操作。
+    function isMainGenerationBusy() {
+        if (mainGenerationActive) return true;
+        const run = generationRun;
+        return !!(run && run.injected && run.processing);
+    }
+
+    // 恢复推进的统一语义：保留回合进度，仅清除停止/计数标记后重新注入当前纸条。
+    // 胶囊「重新激活」与事件列表面板开关恢复共用，避免两条路径行为不一致。
+    async function resumeActiveEvent() {
+        const state = getChatState();
+        if (!state.activeEvent) return null;
+        generationRun = null;
+        state.activeEvent.manuallyStopped = false;
+        state.activeEvent.lastCountedUserMessageId = null;
+        state.activeEvent.isActive = true;
+        state.activeEvent.currentTurn = Math.min(Number(state.activeEvent.maxTurns) || 2, Number(state.activeEvent.currentTurn) || 1);
+        state.activeEvent.lastCountedMessageId = null;
+        EventInjectionTool.inject(state.activeEvent, state.activeEvent.currentTurn);
+        await saveChatState();
+        updateFloatingCapsule();
+        renderEventList();
+        return state.activeEvent;
+    }
+
     async function handleCapsuleAction(action) {
         const state = getChatState();
         if (!state.activeEvent) return;
+
+        // 生成期间禁止移动回合指针；end-event 不拦，保留「停止一切」出口
+        if (['advance-turn', 'climax', 'rewind-turn', 'reactivate'].includes(action) && isMainGenerationBusy()) {
+            if (window.toastr) toastr.warning('主模型正在回复，请等本轮结束后再操作');
+            return;
+        }
 
         if (action === 'advance-turn') {
             if (!state.activeEvent.isActive) {
@@ -6396,16 +6447,7 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
             renderEventList();
             if (window.toastr) toastr.info(`已回退至第 ${state.activeEvent.currentTurn} 轮推演`);
         } else if (action === 'reactivate') {
-            generationRun = null;
-            state.activeEvent.manuallyStopped = false;
-            state.activeEvent.lastCountedUserMessageId = null;
-            state.activeEvent.isActive = true;
-            state.activeEvent.currentTurn = Math.min(Number(state.activeEvent.maxTurns) || 2, Number(state.activeEvent.currentTurn) || 1);
-            state.activeEvent.lastCountedMessageId = null;
-            registerInjection(buildActiveStagePrompt(state.activeEvent));
-            await saveChatState();
-            updateFloatingCapsule();
-            renderEventList();
+            await resumeActiveEvent();
             if (window.toastr) toastr.success(`已重新激活事件《${state.activeEvent.title || state.activeEvent.id}》推演！`);
         } else if (action === 'climax') {
             state.activeEvent.currentTurn = Number(state.activeEvent.maxTurns) || 8;
@@ -7247,7 +7289,15 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
     }
 
     async function setActiveEventById(eventId) {
-        const event = getChatState().events.find(x => x.id === eventId);
+        const state = getChatState();
+        const event = state.events.find(x => x.id === eventId);
+        if (!event) throw new Error('找不到待激活事件');
+        // 暂停后的恢复：沿用现有 activeEvent 保留回合进度，与胶囊「重新激活」行为一致；
+        // 仅当恢复的不是当前 activeEvent 时才全新激活（currentTurn 从 1 开始）。
+        if (state.activeEvent?.id === eventId) {
+            await resumeActiveEvent();
+            return;
+        }
         const active = activateEvent(event, true);
         EventInjectionTool.inject(active, active.currentTurn);
         await saveChatState();
@@ -7275,9 +7325,15 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
         if (idx === -1) return;
         state.events.splice(idx, 1);
         if (state.activeEvent?.id === eventId) {
-            state.activeEvent.isActive = false;
+            // 彻底清理：只置 isActive=false 会留下僵尸 activeEvent，
+            // 「重启本事件推演」会把已删除的事件重新持久化，列表里不可见也无法再删除。
+            state.activeEvent = null;
+            generationRun = null;
+            runtimeEvent = null;
             unregisterInjection();
         }
+        if (pendingHiddenEvent?.id === eventId) pendingHiddenEvent = null;
+        if (activeInjectedEvent?.id === eventId) activeInjectedEvent = null;
         await saveChatState();
         updateFloatingCapsule();
         renderEventList();
@@ -7318,7 +7374,7 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
      * 因此用「最新 AI 楼层是否已被计数」作判据推进事件，绕开 generationRun 的时序依赖，
      * 与 onGenerationEnded 共用 active.lastCountedMessageId 幂等，两边不会重复推进。
      */
-    function tryAdvanceActiveEvent(messageId) {
+    function tryAdvanceActiveEvent(messageId, generationType) {
         try {
             const ctx = getCtx();
             const state = getChatState();
@@ -7327,6 +7383,10 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
             // 用户点击停止后产出的半截回复不算完整一轮，尊重「停止不消耗回合」语义；
             // 下一次正常生成会由 onGenerationStarted 重置 generationRun，不会误伤后续回合。
             if (generationRun?.stopped) return;
+            // 与 onGenerationEnded 保持同一过滤名单：swipe/regenerate 等重放不消耗回合。
+            // MESSAGE_RECEIVED 自带 type；GENERATION_ENDED 无类型参数，回退 generationRun.type。
+            const effectiveType = generationType || generationRun?.type;
+            if (['swipe', 'regenerate', 'continue', 'append', 'first_message', 'quiet', 'impersonate'].includes(effectiveType)) return;
             const chat = ctx?.chat || [];
             const idx = (typeof messageId === 'number' && messageId >= 0 && chat[messageId])
                 ? messageId
@@ -7391,7 +7451,14 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
             eventSource.on(eventTypes.GENERATION_ENDED, tryAdvanceActiveEvent);
         }
         if (eventTypes.GENERATION_STARTED) eventSource.on(eventTypes.GENERATION_STARTED, onGenerationStarted);
-        if (eventTypes.GENERATION_STOPPED) eventSource.on(eventTypes.GENERATION_STOPPED, () => { if (generationRun) generationRun.stopped = true; });
+        if (eventTypes.GENERATION_STOPPED) eventSource.on(eventTypes.GENERATION_STOPPED, () => {
+            mainGenerationActive = false;
+            if (generationRun) generationRun.stopped = true;
+        });
+        if (eventTypes.GENERATION_ENDED) eventSource.on(eventTypes.GENERATION_ENDED, () => {
+            // ST 的 GENERATION_ENDED 由 hideStopButton 触发（参数为 chat.length），此处只用于复位生成中标志
+            mainGenerationActive = false;
+        });
         if (eventTypes.MESSAGE_DELETED) eventSource.on(eventTypes.MESSAGE_DELETED, () => {
             const active = getChatState().activeEvent;
             if (!active?.activationToken || active.manuallyStopped) return;
@@ -7415,6 +7482,7 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
         const chatChanged = () => {
             runtimeEvent = null;
             generationRun = null;
+            mainGenerationActive = false;
             pendingHiddenEvent = null;
             activeInjectedEvent = null;
             lastInjectionDiagnostic = null;
@@ -7475,10 +7543,10 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
         if (!stEventsBound) bindSTEvents();
     }
 
-    async function handleManualSend(event) {
+    async function handleManualSend(event, targetChatId = null) {
         try {
             if (window.toastr) toastr.info('正在发送 ' + event.id + ' …');
-            await sendEventTrigger(event);
+            await sendEventTrigger(event, targetChatId);
             if (window.toastr) toastr.success('已发送 ' + event.id);
         } catch (err) {
             console.error('[ST Direct] 手动发送失败:', err);
@@ -7529,7 +7597,8 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
 
         ensureSTEventsBound();
         registerSlashCommands();
-        if (getCtx()?.isGenerating?.()) throw new Error('主模型正在回复，请等回复结束后发送事件');
+        // ST 的 getContext() 不暴露 isGenerating，改用扩展自维护的主模型生成标志
+        if (isMainGenerationBusy()) throw new Error('主模型正在回复，请等回复结束后发送事件');
         const previousActive = getChatState().activeEvent;
         activateEvent(event, true);
 
