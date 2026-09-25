@@ -4052,6 +4052,11 @@
             console.warn('[ST Direct] 读取世界书失败:', err);
         }
 
+        // 注入按条目 order 升序排列：ACU/WorkflowHelper 等状态栏书以跨条目标签接龙组织内容，
+        // order 值即文档顺序（包裹-上 < 内容 < 包裹-下）；ST 的 getSortedEntries 按 order 降序返回，
+        // 会把 </包裹> 排到 <包裹> 前面，必须在此翻回升序。稳定排序，同 order 保持 ST 原顺序。
+        rawEntries.sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
+
         const selections = s.worldInfoSelections || {};
         const overrides = s.worldInfoOverrides || {};
         const customEntries = Array.isArray(s.customWorldInfoEntries) ? s.customWorldInfoEntries : [];
@@ -6709,12 +6714,12 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
             html += `
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px;">
                     <div class="se-branch-card se-good-end">
-                        <div class="se-branch-title" style="color:#34d399; font-weight:700; font-size:12.5px; margin-bottom:4px;">Good End (破解成功/定情/真相大白)</div>
-                        <div style="font-size:11.5px; color:#d1fae5; line-height:1.5;">${escapeHtml(parsed.goodEnd || '无')}</div>
+                        <div class="se-branch-title" style="color:var(--se-good-title); font-weight:700; font-size:12.5px; margin-bottom:4px;">Good End (破解成功/定情/真相大白)</div>
+                        <div style="font-size:11.5px; color:var(--se-good-text); line-height:1.5;">${escapeHtml(parsed.goodEnd || '无')}</div>
                     </div>
                     <div class="se-branch-card se-bad-end">
-                        <div class="se-branch-title" style="color:#f87171; font-weight:700; font-size:12.5px; margin-bottom:4px;">Bad End (应对失误/受挫/真凶潜逃)</div>
-                        <div style="font-size:11.5px; color:#fee2e2; line-height:1.5;">${escapeHtml(parsed.badEnd || '无')}</div>
+                        <div class="se-branch-title" style="color:var(--se-danger-title); font-weight:700; font-size:12.5px; margin-bottom:4px;">Bad End (应对失误/受挫/真凶潜逃)</div>
+                        <div style="font-size:11.5px; color:var(--se-danger-text); line-height:1.5;">${escapeHtml(parsed.badEnd || '无')}</div>
                     </div>
                 </div>
             `;

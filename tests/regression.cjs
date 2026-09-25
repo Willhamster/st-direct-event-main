@@ -305,6 +305,24 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         const lum = h => [1,3,5].reduce((a,i)=>a+parseInt(h.slice(i,i+2),16),0)/3;
         assert(lum(title) < lum(panel), 'cream theme text darker than panel expected');
     });
+    check('World info injection sorts entries by order ascending',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        const start = src.indexOf('async function refreshWorldInfoCache');
+        const body = src.slice(start, src.indexOf('function buildWorldInfoSystemPrompt', start));
+        assert(body.includes('rawEntries.sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0))'), 'order-ascending sort missing');
+    });
+    check('Danger/good semantic colors are theme-aware',()=>{
+        const css = fs.readFileSync(path.join(__dirname,'..','style.css'),'utf8');
+        const creamBlock = css.slice(css.indexOf('[data-theme="cream"]'), css.indexOf('/* 极简极夜'));
+        for (const key of ['--se-danger-bg','--se-danger-border','--se-danger-title','--se-danger-text','--se-good-title','--se-good-text']) {
+            assert(css.includes(key), `semantic variable ${key} missing from base block`);
+            assert(creamBlock.includes(key), `cream override missing ${key}`);
+        }
+        assert(/\.se-secret-desc\s*{[^}]*color:\s*var\(--se-danger-text\)/.test(css), 'se-secret-desc not using semantic variable');
+        assert(/\.se-enemy-profile-desc\s*{[^}]*color:\s*var\(--se-danger-text\)/.test(css), 'se-enemy-profile-desc not using semantic variable');
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        assert(src.includes('color:var(--se-good-title)') && src.includes('color:var(--se-danger-title)'), 'Good/Bad End inline colors not theme-aware');
+    });
 
     check('Production source contains no pictographs',()=>{for(const file of ['index.js','style.css']) assert(!/\p{Extended_Pictographic}/u.test(fs.readFileSync(path.join(__dirname,'..',file),'utf8')));});
     const report={checks,passed:true,date:new Date().toISOString()};fs.writeFileSync(path.join(__dirname,'regression-result.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));

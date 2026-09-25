@@ -32,6 +32,12 @@
     --se-shadow: 0 14px 40px rgba(0, 0, 0, 0.85), 0 0 24px rgba(255, 117, 160, 0.25);
     --se-badge-bg: rgba(255, 117, 160, 0.25);
     --se-badge-color: #ffd6e4;
+    --se-danger-bg: rgba(239, 68, 68, 0.14);
+    --se-danger-border: rgba(239, 68, 68, 0.45);
+    --se-danger-title: #f87171;
+    --se-danger-text: #fecaca;
+    --se-good-title: #34d399;
+    --se-good-text: #d1fae5;
     --se-radius-sm: 6px;
     --se-radius-md: 10px;
     --se-radius-lg: 16px;
@@ -122,6 +128,12 @@
     --se-shadow: 0 14px 40px rgba(101, 79, 50, 0.3), 0 2px 8px rgba(101, 79, 50, 0.14);
     --se-badge-bg: rgba(150, 117, 78, 0.16);
     --se-badge-color: #6f5836;
+    --se-danger-bg: rgba(185, 29, 29, 0.10);
+    --se-danger-border: rgba(185, 29, 29, 0.4);
+    --se-danger-title: #b91c1c;
+    --se-danger-text: #7f1d1d;
+    --se-good-title: #15803d;
+    --se-good-text: #166534;
     --se-radius-sm: 8px;
     --se-radius-md: 12px;
     --se-radius-lg: 16px;
@@ -2109,7 +2121,7 @@
     padding: 2px 8px;
     border-radius: 999px;
     background: rgba(100, 116, 139, 0.3);
-    color: #94a3b8;
+    color: var(--se-text-sub);
 }
 
 .se-stage-status-badge.active {
@@ -2177,21 +2189,21 @@
     margin-top: 12px;
     padding: 12px 14px;
     border-radius: var(--se-radius-md);
-    background: rgba(239, 68, 68, 0.16);
-    border: 1.5px solid rgba(239, 68, 68, 0.45);
+    background: var(--se-danger-bg);
+    border: 1.5px solid var(--se-danger-border);
 }
 
 .se-secret-title {
     font-size: 12.5px;
     font-weight: 700;
-    color: #f87171;
+    color: var(--se-danger-title);
     margin-bottom: 4px;
 }
 
 .se-secret-desc {
     font-size: 12px;
     line-height: 1.5;
-    color: #fecaca;
+    color: var(--se-danger-text);
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
     font-weight: 500;
 }
@@ -4131,9 +4143,9 @@
 }
 
 .se-enemy-profile-tag {
-    background: rgba(239, 68, 68, 0.15) !important;
-    color: #fca5a5 !important;
-    border: 1px solid rgba(239, 68, 68, 0.3) !important;
+    background: var(--se-danger-bg) !important;
+    color: var(--se-danger-text) !important;
+    border: 1px solid var(--se-danger-border) !important;
     max-width: 220px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -4153,19 +4165,19 @@
 }
 
 .se-enemy-label {
-    color: #f87171;
+    color: var(--se-danger-title);
     font-weight: 600;
     flex-shrink: 0;
 }
 
 .se-enemy-val {
-    color: #fecaca;
+    color: var(--se-danger-text);
     word-break: break-all;
 }
 
 .se-enemy-profile-box {
-    background: rgba(239, 68, 68, 0.08);
-    border: 1px solid rgba(239, 68, 68, 0.25);
+    background: var(--se-danger-bg);
+    border: 1px solid var(--se-danger-border);
     border-radius: var(--se-radius-sm, 8px);
     padding: 10px 12px;
     margin-bottom: 12px;
@@ -4174,13 +4186,13 @@
 .se-enemy-profile-title {
     font-size: 12px;
     font-weight: 700;
-    color: #f87171;
+    color: var(--se-danger-title);
     margin-bottom: 4px;
 }
 
 .se-enemy-profile-desc {
     font-size: 11.5px;
-    color: #fee2e2;
+    color: var(--se-danger-text);
     line-height: 1.5;
     word-break: break-all;
 }
