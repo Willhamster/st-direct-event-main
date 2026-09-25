@@ -971,6 +971,28 @@
     padding-bottom: 6px;
     margin-bottom: 2px;
     border-bottom: 1px solid var(--se-border-subtle);
+    cursor: pointer;
+    user-select: none;
+}
+
+.se-settings-section-title .se-section-chevron {
+    display: inline-block;
+    margin-right: 4px;
+    transition: transform 0.15s ease;
+}
+
+.se-settings-section.se-section-collapsed > *:not(.se-settings-section-title) {
+    display: none !important;
+}
+
+.se-settings-section.se-section-collapsed .se-settings-section-title {
+    border-bottom: none;
+    padding-bottom: 0;
+    margin-bottom: 0;
+}
+
+.se-settings-section.se-section-collapsed .se-section-chevron {
+    transform: rotate(-90deg);
 }
 
 .se-settings-body input[type="text"],
@@ -1776,17 +1798,24 @@
 
 .se-preset-accordion-summary {
     padding: 10px 14px;
-    font-size: 13px;
+    font-size: 12.5px;
     font-weight: 700;
-    color: var(--se-text-title);
+    letter-spacing: 1px;
+    color: var(--se-accent);
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0) 100%);
     cursor: pointer;
     user-select: none;
     outline: none;
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: center;
+    text-align: center;
+    list-style: none;
     transition: background 0.18s ease, color 0.18s ease;
+}
+
+.se-preset-accordion-summary::-webkit-details-marker {
+    display: none;
 }
 
 .se-preset-accordion-summary:hover {
@@ -2302,26 +2331,27 @@
 }
 
 .se-stage-engine-actions {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    column-gap: 14px;
-    row-gap: 6px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
     margin-top: 6px;
 }
 
-/* 场景进度按钮分组：组内紧凑、组间以细分隔线区隔 */
+/* 场景进度按钮分组：每组一行两格，Bootstrap 等宽分段模式（flex:1 1 0 思路的 grid 版） */
 .se-engine-btn-group {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding-right: 12px;
-    border-right: 1px solid var(--se-border-subtle);
+    display: contents;
 }
 
-.se-engine-btn-group:last-child {
-    padding-right: 0;
-    border-right: none;
+#st-direct-event-root .se-stage-engine-actions .se-cap-btn {
+    width: 100%;
+    min-width: 0;
+    min-height: 28px;
+    justify-content: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 5px 8px;
+    font-size: 12px;
 }
 
 
@@ -3078,11 +3108,9 @@
     margin-top: 8px;
 }
 #st-direct-event-root .se-stage-engine-actions {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    column-gap: 14px;
-    row-gap: 6px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
     margin-top: 12px;
 }
 #st-direct-event-root .se-btn-group {
@@ -3789,8 +3817,7 @@
         #st-direct-event-root .se-panel { width: auto; max-width: min(420px, calc(100vw - 24px)); }
         #st-direct-event-root .se-panel-header { padding: 14px; }
         #st-direct-event-root .se-panel-content { padding: 10px; gap: 8px; }
-        #st-direct-event-root .se-stage-engine-actions .se-engine-btn-group { flex: 1; }
-        #st-direct-event-root .se-stage-engine-actions .se-cap-btn { flex: 1; margin-left: 0 !important; }
+        #st-direct-event-root .se-stage-engine-actions .se-cap-btn { width: 100%; margin-left: 0 !important; }
     }
 
 /* 敌方势力与战力基准卡片 / 核心女主锁定卡片 */

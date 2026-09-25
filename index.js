@@ -145,22 +145,25 @@
         presets: null,
         subPrompts: null,
     };
+    // 因果边界只保留在主类预设（第 1 条 system 消息）；v8 起流派/死线默认值不再内联该尾缀，
+    // 避免与主类重复发送。此常量用于 v8 迁移时识别并剥离用户已保存提示词中的旧尾缀。
+    const LEGACY_CAUSAL_TAIL = '因果边界：纸条是环境与NPC的可执行计划，不能推翻已经发生的事实。若玩家已离场、阻止触发条件或明确拒绝，依据现场实际条件取消、改写或收束该动作，禁止传送、复活道具或强制亲密。非终局只写客观推力与动作留钩，不假定回应；终局公正评估真实言行，出人意料的合理解法也可成功，沉默与拒绝本身不等于失败。';
     const DEFAULT_SUB_PROMPTS = {
-    "combat.dice_roll": "跑团检定：优先沿用上下文中的骰制。行动前明确客观目标、难度DC与失败代价；无既定骰制时使用叙事判定，绝不伪造玩家投骰结果。只描写NPC出招与客观阻碍，由玩家真实行动触发检定，失败推动局势演变而非卡死。\n因果边界：纸条是环境与NPC的可执行计划，不能推翻已经发生的事实。若玩家已离场、阻止触发条件或明确拒绝，依据现场实际条件取消、改写或收束该动作，禁止传送、复活道具或强制亲密。非终局只写客观推力与动作留钩，不假定回应；终局公正评估真实言行，出人意料的合理解法也可成功，沉默与拒绝本身不等于失败。",
-    "combat.tactical_mind": "智斗博弈：围绕客观目标冲突与信息差设计局面。对手判断受其现场见闻限制，不能读心。小纸条必须给出两处可观察的环境破绽或敌人资源限制，由NPC发起战术施压，允许玩家利用环境反制；不设唯一口令式解法。\n因果边界：纸条是环境与NPC的可执行计划，不能推翻已经发生的事实。若玩家已离场、阻止触发条件或明确拒绝，依据现场实际条件取消、改写或收束该动作，禁止传送、复活道具或强制亲密。非终局只写客观推力与动作留钩，不假定回应；终局公正评估真实言行，出人意料的合理解法也可成功，沉默与拒绝本身不等于失败。",
-    "combat.action_duel": "动作对决：明确双方距离、动作速度与环境障碍。每轮由NPC的主动进攻动作引发防守或位置变化，展现强烈力量感与压迫感，避免无限战力膨胀。受伤与消耗持续有效，绝不代写玩家受伤，收束于分出胜负、逼退或脱离接触。\n因果边界：纸条是环境与NPC的可执行计划，不能推翻已经发生的事实。若玩家已离场、阻止触发条件或明确拒绝，依据现场实际条件取消、改写或收束该动作，禁止传送、复活道具或强制亲密。非终局只写客观推力与动作留钩，不假定回应；终局公正评估真实言行，出人意料的合理解法也可成功，沉默与拒绝本身不等于失败。",
-    "combat.survival_escape": "突围潜行：明确脱离目标、巡逻规律、视野盲区与警报机制。保留两条成本不同的客观路径；由环境异动或追兵逼近推进紧迫感，暴露导致警戒度升级而非瞬间必死。纸条仅描写追兵动作与倒计时，留给玩家路线抉择。\n因果边界：纸条是环境与NPC的可执行计划，不能推翻已经发生的事实。若玩家已离场、阻止触发条件或明确拒绝，依据现场实际条件取消、改写或收束该动作，禁止传送、复活道具或强制亲密。非终局只写客观推力与动作留钩，不假定回应；终局公正评估真实言行，出人意料的合理解法也可成功，沉默与拒绝本身不等于失败。",
-    "combat.death_risk": "死亡危险已开启：重大致命后果必须由不可逆的客观杀局、悬殊能力差距与玩家实际冒险行为共同支持。NPC出招致命但提前展示前摇预兆，给出明确规避或撤离窗口，普通失败不自动死亡，绝不替玩家选择赴死。\n因果边界：纸条是环境与NPC的可执行计划，不能推翻已经发生的事实。若玩家已离场、阻止触发条件或明确拒绝，依据现场实际条件取消、改写或收束该动作，禁止传送、复活道具或强制亲密。非终局只写客观推力与动作留钩，不假定回应；终局公正评估真实言行，出人意料的合理解法也可成功，沉默与拒绝本身不等于失败。",
-    "reasoning.life_slice": "日常谜题：围绕寻物、误会、失约或物品错放构建生活疑点。仅描写1～2名相关人物的异常反应与两处可观察的生活细节；真相源于生活习惯或信息差，NPC主动表达困惑或试探，结局化解具体矛盾，不硬塞阴谋命案。\n因果边界：纸条是环境与NPC的可执行计划，不能推翻已经发生的事实。若玩家已离场、阻止触发条件或明确拒绝，依据现场实际条件取消、改写或收束该动作，禁止传送、复活道具或强制亲密。非终局只写客观推力与动作留钩，不假定回应；终局公正评估真实言行，出人意料的合理解法也可成功，沉默与拒绝本身不等于失败。",
-    "reasoning.classic_detective": "本格推理：在后台档案固定绝对严密的手法与时间线。前台纸条只描写客观物理痕迹、尸检/物证细节及现场NPC相互矛盾的可验言辞，不得让NPC或旁白提前剧透凶手与手法；留给玩家具体的质询与取证入口。\n因果边界：纸条是环境与NPC的可执行计划，不能推翻已经发生的事实。若玩家已离场、阻止触发条件或明确拒绝，依据现场实际条件取消、改写或收束该动作，禁止传送、复活道具或强制亲密。非终局只写客观推力与动作留钩，不假定回应；终局公正评估真实言行，出人意料的合理解法也可成功，沉默与拒绝本身不等于失败。",
-    "reasoning.social_realism": "社会派：用现实利益、身不由己的处境与人际羁绊解释隐瞒动机。纸条仅展现客观利益纠葛与角色言行不一的破绽，区分客观事实与主观态度，通过物证印证还原真相，允许案件告破但人际关系依然复杂留白。\n因果边界：纸条是环境与NPC的可执行计划，不能推翻已经发生的事实。若玩家已离场、阻止触发条件或明确拒绝，依据现场实际条件取消、改写或收束该动作，禁止传送、复活道具或强制亲密。非终局只写客观推力与动作留钩，不假定回应；终局公正评估真实言行，出人意料的合理解法也可成功，沉默与拒绝本身不等于失败。",
-    "reasoning.suspense_thriller": "悬疑惊悚：利用可验证的现场异常、视野受限、阴冷氛围与压迫感制造紧张。为每个异常预设合理解释与验证手段；纸条集中描写异样响动、阴影逼近或NPC的诡异反常举动，留出继续调查或暂避自保的操作钩子。\n因果边界：纸条是环境与NPC的可执行计划，不能推翻已经发生的事实。若玩家已离场、阻止触发条件或明确拒绝，依据现场实际条件取消、改写或收束该动作，禁止传送、复活道具或强制亲密。非终局只写客观推力与动作留钩，不假定回应；终局公正评估真实言行，出人意料的合理解法也可成功，沉默与拒绝本身不等于失败。",
-    "reasoning.random_mix": "随机推理：依据当前场景选择最契合的一种主流派别，保持单一稳定真相与严密证据链，不随机更换手法和嫌疑人。日常场景优先低风险谜题，由NPC的主动遮掩或突发异样推进调查。\n因果边界：纸条是环境与NPC的可执行计划，不能推翻已经发生的事实。若玩家已离场、阻止触发条件或明确拒绝，依据现场实际条件取消、改写或收束该动作，禁止传送、复活道具或强制亲密。非终局只写客观推力与动作留钩，不假定回应；终局公正评估真实言行，出人意料的合理解法也可成功，沉默与拒绝本身不等于失败。",
-    "romance.jealousy_field": "吃醋与多角互动：仅使用已有感情基础与在场关系，嫉妒源于具体的误解或被忽视的细节。纸条集中展现NPC的言语停顿、回避眼神、分寸变化与区别对待；给玩家提供澄清与回应的机会，不凭空空降爱慕者，不强迫玩家定情。\n因果边界：纸条是环境与NPC的可执行计划，不能推翻已经发生的事实。若玩家已离场、阻止触发条件或明确拒绝，依据现场实际条件取消、改写或收束该动作，禁止传送、复活道具或强制亲密。非终局只写客观推力与动作留钩，不假定回应；终局公正评估真实言行，出人意料的合理解法也可成功，沉默与拒绝本身不等于失败。",
-    "romance.sweet_daily": "日常温情：围绕一件具体的共同事务或体贴举动展开，描写NPC记住的细节偏好与自然情感流露。甜意来自互相理解与陪伴，纸条描写NPC的主动靠近或真诚关照，绝对禁止代写玩家心动，避免无铺垫告白与按头亲密。\n因果边界：纸条是环境与NPC的可执行计划，不能推翻已经发生的事实。若玩家已离场、阻止触发条件或明确拒绝，依据现场实际条件取消、改写或收束该动作，禁止传送、复活道具或强制亲密。非终局只写客观推力与动作留钩，不假定回应；终局公正评估真实言行，出人意料的合理解法也可成功，沉默与拒绝本身不等于失败。",
-    "romance.tension_pull": "暧昧试探：角色既有靠近动机，也有符合人设的克制顾虑。纸条描写NPC的一个具体微动作、别有深意的眼神或双重含义的邀约，结尾留出回应空间；试探带来新信息，不反复重置关系，不默认玩家接受接触。\n因果边界：纸条是环境与NPC的可执行计划，不能推翻已经发生的事实。若玩家已离场、阻止触发条件或明确拒绝，依据现场实际条件取消、改写或收束该动作，禁止传送、复活道具或强制亲密。非终局只写客观推力与动作留钩，不假定回应；终局公正评估真实言行，出人意料的合理解法也可成功，沉默与拒绝本身不等于失败。",
-    "romance.tsundere_charm": "傲娇反差：口是心非与实际体贴指向同一份关切，措辞符合人物原有性格底色。纸条描写NPC嘴硬的言辞与手上实际给予的照顾动作，允许玩家顺势接招、善意调侃或假装不知；不把羞辱与伤害包装成傲娇，不强求当场坦白。\n因果边界：纸条是环境与NPC的可执行计划，不能推翻已经发生的事实。若玩家已离场、阻止触发条件或明确拒绝，依据现场实际条件取消、改写或收束该动作，禁止传送、复活道具或强制亲密。非终局只写客观推力与动作留钩，不假定回应；终局公正评估真实言行，出人意料的合理解法也可成功，沉默与拒绝本身不等于失败。",
-    "romance.forbidden_love": "立场冲突：仅在上下文已有阵营、身份或职责障碍时展开；否则转化为现实观念顾虑。双方坚守底线原则，通过有限信任、私下妥协或克制靠近推进，纸条描写NPC在职责与情感间的拉扯举动，不用突发生死逼迫背弃立场。\n因果边界：纸条是环境与NPC的可执行计划，不能推翻已经发生的事实。若玩家已离场、阻止触发条件或明确拒绝，依据现场实际条件取消、改写或收束该动作，禁止传送、复活道具或强制亲密。非终局只写客观推力与动作留钩，不假定回应；终局公正评估真实言行，出人意料的合理解法也可成功，沉默与拒绝本身不等于失败。"
+    "combat.dice_roll": "跑团检定：优先沿用上下文中的骰制。行动前明确客观目标、难度DC与失败代价；无既定骰制时使用叙事判定，绝不伪造玩家投骰结果。只描写NPC出招与客观阻碍，由玩家真实行动触发检定，失败推动局势演变而非卡死。失败。",
+    "combat.tactical_mind": "智斗博弈：围绕客观目标冲突与信息差设计局面。对手判断受其现场见闻限制，不能读心。小纸条必须给出两处可观察的环境破绽或敌人资源限制，由NPC发起战术施压，允许玩家利用环境反制；不设唯一口令式解法。失败。",
+    "combat.action_duel": "动作对决：明确双方距离、动作速度与环境障碍。每轮由NPC的主动进攻动作引发防守或位置变化，展现强烈力量感与压迫感，避免无限战力膨胀。受伤与消耗持续有效，绝不代写玩家受伤，收束于分出胜负、逼退或脱离接触。失败。",
+    "combat.survival_escape": "突围潜行：明确脱离目标、巡逻规律、视野盲区与警报机制。保留两条成本不同的客观路径；由环境异动或追兵逼近推进紧迫感，暴露导致警戒度升级而非瞬间必死。纸条仅描写追兵动作与倒计时，留给玩家路线抉择。失败。",
+    "combat.death_risk": "死亡危险已开启：重大致命后果必须由不可逆的客观杀局、悬殊能力差距与玩家实际冒险行为共同支持。NPC出招致命但提前展示前摇预兆，给出明确规避或撤离窗口，普通失败不自动死亡，绝不替玩家选择赴死。失败。",
+    "reasoning.life_slice": "日常谜题：围绕寻物、误会、失约或物品错放构建生活疑点。仅描写1～2名相关人物的异常反应与两处可观察的生活细节；真相源于生活习惯或信息差，NPC主动表达困惑或试探，结局化解具体矛盾，不硬塞阴谋命案。失败。",
+    "reasoning.classic_detective": "本格推理：在后台档案固定绝对严密的手法与时间线。前台纸条只描写客观物理痕迹、尸检/物证细节及现场NPC相互矛盾的可验言辞，不得让NPC或旁白提前剧透凶手与手法；留给玩家具体的质询与取证入口。失败。",
+    "reasoning.social_realism": "社会派：用现实利益、身不由己的处境与人际羁绊解释隐瞒动机。纸条仅展现客观利益纠葛与角色言行不一的破绽，区分客观事实与主观态度，通过物证印证还原真相，允许案件告破但人际关系依然复杂留白。失败。",
+    "reasoning.suspense_thriller": "悬疑惊悚：利用可验证的现场异常、视野受限、阴冷氛围与压迫感制造紧张。为每个异常预设合理解释与验证手段；纸条集中描写异样响动、阴影逼近或NPC的诡异反常举动，留出继续调查或暂避自保的操作钩子。失败。",
+    "reasoning.random_mix": "随机推理：依据当前场景选择最契合的一种主流派别，保持单一稳定真相与严密证据链，不随机更换手法和嫌疑人。日常场景优先低风险谜题，由NPC的主动遮掩或突发异样推进调查。失败。",
+    "romance.jealousy_field": "吃醋与多角互动：仅使用已有感情基础与在场关系，嫉妒源于具体的误解或被忽视的细节。纸条集中展现NPC的言语停顿、回避眼神、分寸变化与区别对待；给玩家提供澄清与回应的机会，不凭空空降爱慕者，不强迫玩家定情。失败。",
+    "romance.sweet_daily": "日常温情：围绕一件具体的共同事务或体贴举动展开，描写NPC记住的细节偏好与自然情感流露。甜意来自互相理解与陪伴，纸条描写NPC的主动靠近或真诚关照，绝对禁止代写玩家心动，避免无铺垫告白与按头亲密。失败。",
+    "romance.tension_pull": "暧昧试探：角色既有靠近动机，也有符合人设的克制顾虑。纸条描写NPC的一个具体微动作、别有深意的眼神或双重含义的邀约，结尾留出回应空间；试探带来新信息，不反复重置关系，不默认玩家接受接触。失败。",
+    "romance.tsundere_charm": "傲娇反差：口是心非与实际体贴指向同一份关切，措辞符合人物原有性格底色。纸条描写NPC嘴硬的言辞与手上实际给予的照顾动作，允许玩家顺势接招、善意调侃或假装不知；不把羞辱与伤害包装成傲娇，不强求当场坦白。失败。",
+    "romance.forbidden_love": "立场冲突：仅在上下文已有阵营、身份或职责障碍时展开；否则转化为现实观念顾虑。双方坚守底线原则，通过有限信任、私下妥协或克制靠近推进，纸条描写NPC在职责与情感间的拉扯举动，不用突发生死逼迫背弃立场。"
 };
 
     const SUB_CONFIGS = {
@@ -382,7 +385,7 @@
         if (stored.baseUrl !== undefined) merged.baseUrl = stored.baseUrl;
         // 模型名空串视为未设置：绝不允许 localStorage 里的空值压过服务器端有效值或内置默认值
         if (!merged.model) merged.model = stored.model || DEFAULT_SETTINGS.model;
-        merged.configVersion = 7;
+        merged.configVersion = 8;
         // 自动发送模式：新字段 autoSendMode 优先；旧存档只有布尔 autoSend 时平滑迁移
         const rawMode = ls.autoSendMode ?? stored.autoSendMode;
         const legacyFlag = ls.autoSend !== undefined ? ls.autoSend : stored.autoSend;
@@ -405,6 +408,15 @@
             merged.subConfig[k] = Object.assign({}, DEFAULT_SETTINGS.subConfig[k], storedSub[k] || {});
         }
         merged.subPrompts = Object.assign({}, ls.subPrompts || stored.subPrompts || {});
+        // v8 迁移：因果边界只保留在主类预设，用户已保存的流派/死线提示词若原样内联旧尾缀则剥掉
+        if ((Number(stored.configVersion) || 0) < 8 || (Number(ls.configVersion) || 0) < 8) {
+            for (const k of Object.keys(merged.subPrompts)) {
+                const v = merged.subPrompts[k];
+                if (typeof v === 'string' && v.endsWith(LEGACY_CAUSAL_TAIL)) {
+                    merged.subPrompts[k] = v.slice(0, v.length - LEGACY_CAUSAL_TAIL.length).trim();
+                }
+            }
+        }
         merged.presets = ls.presets || stored.presets || null;
         merged.enableJailbreak = (ls.enableJailbreak ?? stored.enableJailbreak) !== false;
         merged.jailbreakPrompt = (ls.jailbreakPrompt ?? stored.jailbreakPrompt) || '';
@@ -447,7 +459,10 @@
         }
         const conf = SUB_CONFIGS[eventKey];
         const genre = conf?.genres?.find(g => g.key === genreOrFeatureKey);
-        return genre?.prompt || '';
+        if (genre?.prompt) return genre.prompt;
+        // 难度/情感浓度档位提示词（键形如 combat.diff_low），自定义通道与流派提示词一致
+        const diff = conf?.difficulties?.find(d => `diff_${d.key}` === genreOrFeatureKey);
+        return diff?.prompt || '';
     }
 
     function getPreset(typeKey, settings) {
@@ -507,7 +522,7 @@
 
     function persistSettings(settings) {
         const ctx = getCtx();
-        const clean = Object.assign({}, DEFAULT_SETTINGS, settings || {}, {configVersion: 7});
+        const clean = Object.assign({}, DEFAULT_SETTINGS, settings || {}, {configVersion: 8});
         // 模型名禁止落盘为空：空串会污染合并逻辑（localStorage 优先覆盖服务器值），导致生成永远提示配置不完整
         if (!clean.model) {
             const prev = (ctx?.extensionSettings?.[PLUGIN_ID] || window.extension_settings?.[PLUGIN_ID] || {}).model;
@@ -945,7 +960,7 @@
                         <div class="se-theme-grid" id="se-theme-grid"></div>
                     </div>
                     <div class="se-settings-section">
-                    <div class="se-settings-section-title">API 设置</div>
+                    <div class="se-settings-section-title" data-action="toggle-section" title="点击折叠/展开"><span class="se-section-chevron">▾</span>API 设置</div>
                     <label>API 地址（Base URL）</label>
                     <input id="se-base-url" type="text" placeholder="https://api.openai.com/v1" autocomplete="off" />
                     <label>请求方式</label>
@@ -985,7 +1000,7 @@
                     </div>
 
                     <div class="se-settings-section">
-                    <div class="se-settings-section-title">世界书与上下文设置</div>
+                    <div class="se-settings-section-title" data-action="toggle-section" title="点击折叠/展开"><span class="se-section-chevron">▾</span>世界书与上下文设置</div>
                     <label class="se-check-label">
                         <input id="se-enable-jailbreak" type="checkbox" />
                         启用全套缝合破限与创作约定（Dramatron 深度创作引擎）
@@ -1022,7 +1037,7 @@
                     </div>
 
                     <div class="se-settings-section">
-                    <div class="se-settings-section-title">通用</div>
+                    <div class="se-settings-section-title" data-action="toggle-section" title="点击折叠/展开"><span class="se-section-chevron">▾</span>通用</div>
                     <label>默认事件总回合数 (回合范围 1 ~ 30；一次有效回复算一回合)</label>
                     <input id="se-default-turns" type="number" min="1" max="30" step="1" value="8" />
 
@@ -1072,10 +1087,10 @@
 
             <div class="se-presets" id="se-presets" style="display:none">
                 <div class="se-modal-header">
-                    <span>事件与创作约定</span>
+                    <span>预设工坊</span>
                     <button data-action="close-presets">关闭</button>
                 </div>
-                <div class="se-presets-tip">可在此查看和修改创作约定、大事件基础提示词以及各个小事件细分流派提示词。</div>
+                <div class="se-presets-tip">可在此查看和修改创作约定、大事件基础提示词、各细分流派与难度提示词。</div>
                 <div class="se-preset-list" id="se-preset-list"></div>
                 <div class="se-settings-actions">
                     <button data-action="save-presets">保存所有预设</button>
@@ -1524,11 +1539,8 @@
         const turnsBadgeText = turnCfg.getBadgeText(curTurns);
 
         let html = `
-            <div class="se-sub-section se-sub-turns-section">
-                <div class="se-sub-section-title">
-                    <span>${turnCfg.title}</span>
-                    <span class="se-sub-turns-badge" id="se-sub-turns-badge">${turnsBadgeText}</span>
-                </div>
+            <div class="se-sub-section se-sub-turns-section se-settings-section">
+                <div class="se-settings-section-title" data-action="toggle-section" title="点击折叠/展开"><span class="se-section-chevron">▾</span>${turnCfg.title}<span class="se-sub-turns-badge" id="se-sub-turns-badge">${turnsBadgeText}</span></div>
                 <div class="se-sub-turn-modes">
                     <label class="se-sub-turn-card ${curTurns === 1 ? 'active' : ''}">
                         <input type="radio" name="se-sub-turns-${eventKey}" value="1" ${curTurns === 1 ? 'checked' : ''} />
@@ -1567,8 +1579,8 @@
                     </label>
                 </div>
             </div>
-            <div class="se-sub-section">
-                <div class="se-sub-section-title">选择流派 / 玩法风格（展开可直接微调预设提示词）</div>
+            <div class="se-sub-section se-settings-section">
+                <div class="se-settings-section-title" data-action="toggle-section" title="点击折叠/展开"><span class="se-section-chevron">▾</span>选择流派 / 玩法风格（展开可直接微调预设提示词）</div>
                 <div class="se-chip-list">
                     ${conf.genres.map(g => {
                         const checked = g.key === curGenre ? 'checked' : '';
@@ -1597,13 +1609,15 @@
                 </div>
             </div>
 
-            <div class="se-sub-section">
-                <div class="se-sub-section-title">${eventKey === 'romance' ? '情感浓度 / 互动深度' : '挑战难度'}</div>
+            <div class="se-sub-section se-settings-section">
+                <div class="se-settings-section-title" data-action="toggle-section" title="点击折叠/展开"><span class="se-section-chevron">▾</span>${eventKey === 'romance' ? '情感浓度 / 互动深度' : '挑战难度'}</div>
                 <div class="se-diff-grid">
                     ${conf.difficulties.map(d => {
                         const checked = d.key === curDiff ? 'checked' : '';
                         const activeClass = d.key === curDiff ? 'se-diff-active' : '';
                         const isCustom = d.key === 'custom';
+                        const diffPromptKey = `diff_${d.key}`;
+                        const currentDiffPrompt = getSubPrompt(eventKey, diffPromptKey, s);
                         return `
                             <label class="se-diff-card ${activeClass}" data-diff-key="${d.key}">
                                 <div class="se-diff-card-left">
@@ -1615,7 +1629,12 @@
                                     <div class="se-sub-custom-diff-wrap" style="margin-top:8px; width:100%; display:${d.key === curDiff ? 'block' : 'none'};">
                                         <textarea class="se-sub-inline-diff-textarea" id="se-sub-custom-diff-${eventKey}" rows="3" placeholder="在此自由编写自定义难度/挑战/情感阻碍提示词...">${escapeHtml(cur.customDiffPrompt || '')}</textarea>
                                     </div>
-                                ` : ''}
+                                ` : (d.prompt ? `
+                                    <details class="se-sub-prompt-details" style="margin-top:8px; width:100%;">
+                                        <summary class="se-sub-prompt-summary"><span>自定义此档提示词</span><span class="se-sub-prompt-hint">留空回退默认</span></summary>
+                                        <textarea class="se-sub-inline-textarea" data-sub-key="${eventKey}.${diffPromptKey}" rows="4" placeholder="留空回退默认提示词">${escapeHtml(currentDiffPrompt)}</textarea>
+                                    </details>
+                                ` : '')}
                             </label>
                         `;
                     }).join('')}
@@ -1626,7 +1645,8 @@
         if (conf.hasDeathRisk) {
             const currentDeathPrompt = getSubPrompt('combat', 'death_risk', s);
             html += `
-                <div class="se-sub-section">
+                <div class="se-sub-section se-settings-section">
+                    <div class="se-settings-section-title" data-action="toggle-section" title="点击折叠/展开"><span class="se-section-chevron">▾</span>死亡危险模式</div>
                     <div class="se-death-card ${deathRisk ? 'se-death-active' : ''}">
                         <div class="se-death-head">
                             <label class="se-death-check-label">
@@ -1655,8 +1675,8 @@
 
         if (eventKey === 'combat') {
             html += `
-                <div class="se-sub-section">
-                    <div class="se-sub-section-title">敌方势力与战力基准设定（势力库与自定义对手）</div>
+                <div class="se-sub-section se-settings-section">
+                    <div class="se-settings-section-title" data-action="toggle-section" title="点击折叠/展开"><span class="se-section-chevron">▾</span>敌方势力与战力基准设定（势力库与自定义对手）</div>
                     <div class="se-sub-faction-card">
                         <div style="margin-bottom:8px;">
                             <label class="se-check-label" style="font-weight:600; font-size:12px; cursor:pointer;" title="勾选后生成全新第三方势力，严禁从已有聊天NPC指派或擅自拔高已有角色战力">
@@ -1707,8 +1727,8 @@
 
         if (eventKey === 'romance') {
             html += `
-                <div class="se-sub-section">
-                    <div class="se-sub-section-title">核心互动女主锁定</div>
+                <div class="se-sub-section se-settings-section">
+                    <div class="se-settings-section-title" data-action="toggle-section" title="点击折叠/展开"><span class="se-section-chevron">▾</span>核心互动女主锁定</div>
                     <div class="se-sub-faction-card">
                         <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
                             <label style="font-size:12px; color:var(--se-text-title); white-space:nowrap;">锁定女主:</label>
@@ -2674,6 +2694,13 @@
             return;
         }
 
+        if (action === 'toggle-section') {
+            // 分区标题点击折叠/展开：设置弹窗与细分设置弹窗共用
+            const section = e.target.closest('.se-settings-section');
+            if (section) section.classList.toggle('se-section-collapsed');
+            return;
+        }
+
         if (action === 'save-presets') {
             savePresets();
             return;
@@ -3317,6 +3344,26 @@
                         </div>
                     `;
                 }).join('')}
+            </details>
+            <details class="se-preset-accordion">
+                <summary class="se-preset-accordion-summary">挑战难度 / 情感浓度与死亡死线预设（10 项）</summary>
+                ${Object.entries(SUB_CONFIGS).map(([pKey, conf]) => {
+                    const typeLabel = EVENT_TYPES[pKey]?.label || pKey;
+                    return conf.difficulties.filter(d => d.prompt).map(d => {
+                        const diffKey = `diff_${d.key}`;
+                        return `
+                            <div class="se-preset-card">
+                                <div class="se-preset-title">${escapeHtml(typeLabel)} · ${escapeHtml(d.label)}（${escapeHtml(d.desc)}）</div>
+                                <textarea data-sub-prompt-key="${pKey}.${diffKey}" rows="3">${escapeHtml(getSubPrompt(pKey, diffKey, s))}</textarea>
+                            </div>
+                        `;
+                    }).join('');
+                }).join('')}
+                <div class="se-preset-card">
+                    <div class="se-preset-title">战斗 · 死亡危险死线提示词</div>
+                    <div class="se-preset-desc">开启「极高死亡危险模式」时注入的死线与因果判定准则。</div>
+                    <textarea data-sub-prompt-key="combat.death_risk" rows="5">${escapeHtml(getSubPrompt('combat', 'death_risk', s))}</textarea>
+                </div>
             </details>
         `;
     }
@@ -4167,7 +4214,7 @@
                         subInstructions.push('【自定义挑战与情境规则】：\n玩家启用自定义模式。请根据当前情境自然设立充满戏剧张力与未知阻碍的挑战局面。');
                     }
                 } else if (activeDiff.prompt) {
-                    subInstructions.push(activeDiff.prompt);
+                    subInstructions.push(getSubPrompt(type.key, `diff_${activeDiff.key}`, settings) || activeDiff.prompt);
                 }
             }
 

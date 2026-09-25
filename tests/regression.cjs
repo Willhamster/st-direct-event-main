@@ -341,6 +341,49 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         assert(css.includes('[data-theme="cream"] .se-pill-gold'), 'cream pill text overrides missing');
         assert(css.includes('.se-engine-btn-group'), 'engine button group style missing');
     });
+    check('Section titles are collapsible in settings and sub modal',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        const css = fs.readFileSync(path.join(__dirname,'..','style.css'),'utf8');
+        assert((src.match(/data-action="toggle-section"/g) || []).length >= 9, 'toggle-section titles missing (3 settings + 6 sub)');
+        assert(src.includes("action === 'toggle-section'"), 'toggle-section handler missing');
+        assert(css.includes('.se-settings-section.se-section-collapsed > *:not(.se-settings-section-title)'), 'collapsed CSS missing');
+        assert(css.includes('.se-section-chevron'), 'chevron style missing');
+    });
+    check('Preset workshop renamed and offers difficulty presets',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        assert(src.includes('>预设工坊<'), 'workshop title not renamed');
+        assert(!src.includes('>事件与创作约定<'), 'old workshop title still present');
+        // 难度卡由 SUB_CONFIGS 动态生成：验证模板键与死线卡
+        assert(src.includes('data-sub-prompt-key="${pKey}.${diffKey}"'), 'workshop difficulty cards missing');
+        assert(src.includes('data-sub-prompt-key="combat.death_risk"'), 'workshop missing death_risk card');
+        assert(src.includes('挑战难度 / 情感浓度与死亡死线预设'), 'difficulty accordion group missing');
+        assert(src.includes('自定义此档提示词'), 'difficulty inline editor missing');
+    });
+    check('Difficulty prompts resolve through getSubPrompt fallback',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        const fn = src.slice(src.indexOf('function getSubPrompt'), src.indexOf('function getPreset'));
+        assert(fn.includes("diff_${d.key}") || fn.includes("'diff_' + d.key"), 'difficulty fallback missing in getSubPrompt');
+        assert(/getSubPrompt\(type\.key,\s*`diff_\$\{activeDiff\.key\}`,\s*settings\)\s*\|\|\s*activeDiff\.prompt/.test(src), 'buildEventPrompt not using difficulty override');
+    });
+    check('Causal boundary kept only in main-class presets',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        assert(src.includes('const LEGACY_CAUSAL_TAIL'), 'migration constant missing');
+        const presetsBlock = src.slice(src.indexOf('const DEFAULT_PRESETS'), src.indexOf('const LEGACY_CAUSAL_TAIL'));
+        assert((presetsBlock.match(/因果边界/g) || []).length >= 4, 'main presets should keep causal boundary copies');
+        const subBlock = src.slice(src.indexOf('const DEFAULT_SUB_PROMPTS'), src.indexOf('const SUB_CONFIGS'));
+        assert(!subBlock.includes('因果边界'), 'sub prompts still contain causal boundary');
+        const getSettings = src.slice(src.indexOf('function getSettings'), src.indexOf('function getJailbreakPrompt'));
+        assert(getSettings.includes('configVersion = 8') || getSettings.includes('configVersion: 8'), 'v8 migration version bump missing');
+        assert(getSettings.includes('endsWith(LEGACY_CAUSAL_TAIL)'), 'v8 migration strip missing');
+    });
+    check('Engine actions use uniform segmented grid',()=>{
+        const css = fs.readFileSync(path.join(__dirname,'..','style.css'),'utf8');
+        const idx = css.indexOf('.se-stage-engine-actions {');
+        const block = css.slice(idx, css.indexOf('}', idx));
+        assert(block.includes('grid'), 'engine actions not a grid');
+        assert(/\.se-engine-btn-group\s*{\s*display:\s*contents/.test(css), 'group display:contents missing');
+        assert(/#st-direct-event-root \.se-stage-engine-actions \.se-cap-btn\s*{[^}]*width:\s*100%/.test(css), 'uniform button sizing missing');
+    });
 
     check('Production source contains no pictographs',()=>{for(const file of ['index.js','style.css']) assert(!/\p{Extended_Pictographic}/u.test(fs.readFileSync(path.join(__dirname,'..',file),'utf8')));});
     const report={checks,passed:true,date:new Date().toISOString()};fs.writeFileSync(path.join(__dirname,'regression-result.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));
