@@ -6382,8 +6382,7 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
                 <span class="se-capsule-turns">第 <strong>${info.curTurn}</strong>/${info.maxTurns} 回合</span>
             </div>
             <div class="se-capsule-actions">
-                <button type="button" class="se-cap-btn" data-capsule-action="rewind-turn" title="退回上一轮，重新演绎上一张小纸条">倒退</button>
-                <button type="button" class="se-cap-btn" data-capsule-action="advance-turn" title="手动推进到下一轮">推进</button>
+                <button type="button" class="se-cap-btn se-cap-climax" data-capsule-action="climax" title="跳过剩余回合，直接切换到终局收束">${active.type === 'romance' ? '提前收束' : (active.type === 'reasoning' ? '提前结案' : '提前决胜')}</button>
                 <button type="button" class="se-cap-btn se-cap-close" data-capsule-action="end-event" title="结束当前事件">结束</button>
             </div>
         `;
@@ -6533,14 +6532,22 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
             descEl.innerHTML = `正在进行：<strong style="color:var(--se-accent)">${escapeHtml(active.id)}</strong><br>第 <strong>${info.curTurn}</strong>/${info.maxTurns} 回合 · ${info.isFinalStage ? '本轮收束' : '等待玩家行动'}。剧本内容默认隐藏。`;
             const climaxText = active.type === 'romance' ? '提前收束' : (active.type === 'reasoning' ? '提前结案' : '提前决胜');
             actionsEl.innerHTML = `
-                <button type="button" class="se-cap-btn" data-capsule-action="rewind-turn" title="退回上一轮，重新演绎上一张小纸条">倒退一轮</button>
-                <button type="button" class="se-cap-btn se-cap-advance" data-capsule-action="advance-turn" title="手动推进到下一轮">推进一轮</button>
-                <button type="button" class="se-cap-btn" data-capsule-action="add-turn" title="扩大总回合上限 1 轮">+1回合上限</button>
-                <button type="button" class="se-cap-btn" data-capsule-action="sub-turn" title="缩减总回合上限 1 轮">-1回合上限</button>
-                <button type="button" class="se-cap-btn se-cap-climax" data-capsule-action="climax">${climaxText}</button>
-                <button type="button" class="se-cap-btn" data-action="open-stage-overview">剧本小纸条</button>
-                <button type="button" class="se-cap-btn" data-action="open-last-raw-output">生成原文</button>
-                <button type="button" class="se-cap-btn" data-capsule-action="end-event">结束</button>
+                <span class="se-engine-btn-group">
+                    <button type="button" class="se-cap-btn" data-capsule-action="rewind-turn" title="退回上一轮，重新演绎上一张小纸条">倒退一轮</button>
+                    <button type="button" class="se-cap-btn se-cap-advance" data-capsule-action="advance-turn" title="手动推进到下一轮">推进一轮</button>
+                </span>
+                <span class="se-engine-btn-group">
+                    <button type="button" class="se-cap-btn" data-capsule-action="add-turn" title="扩大总回合上限 1 轮">+1回合上限</button>
+                    <button type="button" class="se-cap-btn" data-capsule-action="sub-turn" title="缩减总回合上限 1 轮">-1回合上限</button>
+                </span>
+                <span class="se-engine-btn-group">
+                    <button type="button" class="se-cap-btn se-cap-climax" data-capsule-action="climax">${climaxText}</button>
+                    <button type="button" class="se-cap-btn se-cap-close" data-capsule-action="end-event" title="结束当前事件">结束</button>
+                </span>
+                <span class="se-engine-btn-group">
+                    <button type="button" class="se-cap-btn" data-action="open-stage-overview">剧本小纸条</button>
+                    <button type="button" class="se-cap-btn" data-action="open-last-raw-output">生成原文</button>
+                </span>
             `;
         } else {
             const defaultTurns = (getSettings().defaultTurns || 8);
@@ -7031,7 +7038,7 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
                                 ${isNovelBypass ? `<button type="button" class="se-turn-save-btn" data-pv-action="save-global-novel" data-msg-idx="${idx}" style="padding:3px 8px; font-size:11px;" title="保存为所有事件主类统一生效的全局头部小说破限">保存为全局小说破限</button>` : ''}
                                 ${isSystemPresetCard ? `<button type="button" class="se-turn-save-btn" data-pv-action="save-to-preset" data-msg-idx="${idx}" style="padding:3px 8px; font-size:11px;" title="将修改直接保存为当前主类系统预设">保存为主类系统预设</button>` : ''}
                                 ${isSubPromptCard ? `<button type="button" class="se-turn-save-btn" data-pv-action="save-sub-prompt" data-msg-idx="${idx}" style="padding:3px 8px; font-size:11px;" title="保存当前修改的细分流派/难度提示词">保存为流派与难度设定</button>` : ''}
-                                <button type="button" class="se-turn-step-btn" data-pv-action="copy-part" data-msg-idx="${idx}" style="padding:3px 8px; font-size:11px;">复制此条</button>
+                                <button type="button" class="se-turn-step-btn" data-pv-action="copy-part" data-msg-idx="${idx}" style="width:auto; height:auto; padding:3px 8px; font-size:11px;">复制此条</button>
                             </div>
                         </div>
                         <textarea class="se-pv-msg-content" data-msg-idx="${idx}" rows="${Math.min(18, Math.max(5, Math.ceil(textContent.length / 90)))}">${escapeHtml(textContent)}</textarea>

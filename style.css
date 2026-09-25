@@ -2304,8 +2304,24 @@
 .se-stage-engine-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
+    align-items: center;
+    column-gap: 14px;
+    row-gap: 6px;
     margin-top: 6px;
+}
+
+/* 场景进度按钮分组：组内紧凑、组间以细分隔线区隔 */
+.se-engine-btn-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding-right: 12px;
+    border-right: 1px solid var(--se-border-subtle);
+}
+
+.se-engine-btn-group:last-child {
+    padding-right: 0;
+    border-right: none;
 }
 
 
@@ -2389,6 +2405,24 @@
     padding: 0 4px;
 }
 
+/* 窄数字框隐藏原生上下箭头：44px 宽度会被 spinner 遮住数字，步进由旁边按钮承担 */
+.se-event-turns-input::-webkit-inner-spin-button,
+.se-event-turns-input::-webkit-outer-spin-button,
+.se-modal-turns-input::-webkit-inner-spin-button,
+.se-modal-turns-input::-webkit-outer-spin-button,
+.se-sub-custom-turns-input::-webkit-inner-spin-button,
+.se-sub-custom-turns-input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.se-event-turns-input,
+.se-modal-turns-input,
+.se-sub-custom-turns-input {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
 .se-turn-save-btn {
     height: 24px;
     padding: 0 8px;
@@ -2434,16 +2468,31 @@
     font-size: 10.5px;
     font-weight: 700;
     cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
     border: 1.5px solid var(--se-border-subtle);
-    background: rgba(18, 12, 26, 0.95);
+    background: var(--se-bg-input);
     color: var(--se-text-sub);
     transition: all 0.2s ease;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 
+.se-switch-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: #64748b;
+    flex-shrink: 0;
+}
+
+.se-switch-dot.active {
+    background: #10b981;
+    box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+}
+
 .se-event-head-switch:hover {
     border-color: var(--se-accent);
-    color: #ffffff;
+    color: var(--se-text-title);
 }
 
 .se-event-head-switch.active {
@@ -2460,7 +2509,7 @@
     gap: 8px;
     padding: 8px 10px;
     border-radius: var(--se-radius-sm);
-    background: rgba(18, 12, 26, 0.95);
+    background: var(--se-bg-input);
     border: 1px solid var(--se-border-subtle);
     margin-bottom: 6px;
 }
@@ -2487,7 +2536,7 @@
 }
 
 .se-status-active-text {
-    color: #34d399 !important;
+    color: var(--se-good-title) !important;
     text-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
 }
 
@@ -2646,8 +2695,7 @@
 .se-sub-turn-num {
     font-size: 13px;
     font-weight: 700;
-    color: #ffffff !important;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+    color: var(--se-text-title) !important;
 }
 
 .se-sub-turn-pill {
@@ -2682,11 +2730,16 @@
     border: 1px solid rgba(16, 185, 129, 0.55);
 }
 
+/* 奶油白主题：为暗底设计的浅色徽章文字换深色版，浅色底上才可读 */
+#st-direct-event-root[data-theme="cream"] .se-pill-gold { color: #92600a; }
+#st-direct-event-root[data-theme="cream"] .se-pill-blue { color: #1d4ed8; }
+#st-direct-event-root[data-theme="cream"] .se-pill-purple { color: #7e22ce; }
+#st-direct-event-root[data-theme="cream"] .se-pill-green { color: #047857; }
+
 .se-sub-turn-card-desc {
     font-size: 11px;
     color: var(--se-text-sub);
     line-height: 1.4;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
     margin-top: 2px;
 }
 
@@ -3027,7 +3080,9 @@
 #st-direct-event-root .se-stage-engine-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
+    align-items: center;
+    column-gap: 14px;
+    row-gap: 6px;
     margin-top: 12px;
 }
 #st-direct-event-root .se-btn-group {
@@ -3734,6 +3789,7 @@
         #st-direct-event-root .se-panel { width: auto; max-width: min(420px, calc(100vw - 24px)); }
         #st-direct-event-root .se-panel-header { padding: 14px; }
         #st-direct-event-root .se-panel-content { padding: 10px; gap: 8px; }
+        #st-direct-event-root .se-stage-engine-actions .se-engine-btn-group { flex: 1; }
         #st-direct-event-root .se-stage-engine-actions .se-cap-btn { flex: 1; margin-left: 0 !important; }
     }
 

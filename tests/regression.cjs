@@ -323,6 +323,24 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
         assert(src.includes('color:var(--se-good-title)') && src.includes('color:var(--se-danger-title)'), 'Good/Bad End inline colors not theme-aware');
     });
+    check('Floating capsule offers climax instead of rewind/advance',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        const start = src.indexOf('function updateFloatingCapsule');
+        const body = src.slice(start, src.indexOf('function handleCapsuleAction', start));
+        assert(body.includes('data-capsule-action="climax"'), 'capsule missing climax button');
+        assert(!body.includes('rewind-turn') && !body.includes('advance-turn'), 'capsule still has rewind/advance buttons');
+        const engine = src.slice(src.indexOf('function updateEnginePanelCard'));
+        assert(engine.includes('data-capsule-action="rewind-turn"'), 'panel engine card lost rewind button');
+    });
+    check('Cream theme readability fixes are in place',()=>{
+        const css = fs.readFileSync(path.join(__dirname,'..','style.css'),'utf8');
+        assert(css.includes('.se-event-turns-input::-webkit-inner-spin-button'), 'number spinner hide rule missing');
+        assert(/\.se-event-head-switch\s*{[^}]*background:\s*var\(--se-bg-input\)/.test(css), 'event head switch still hardcoded dark');
+        assert(/\.se-event-head-switch\s*{[^}]*white-space:\s*nowrap/.test(css), 'event head switch nowrap missing');
+        assert(/\.se-sub-turn-num\s*{[^}]*color:\s*var\(--se-text-title\)/.test(css), 'sub turn number still hardcoded white');
+        assert(css.includes('[data-theme="cream"] .se-pill-gold'), 'cream pill text overrides missing');
+        assert(css.includes('.se-engine-btn-group'), 'engine button group style missing');
+    });
 
     check('Production source contains no pictographs',()=>{for(const file of ['index.js','style.css']) assert(!/\p{Extended_Pictographic}/u.test(fs.readFileSync(path.join(__dirname,'..',file),'utf8')));});
     const report={checks,passed:true,date:new Date().toISOString()};fs.writeFileSync(path.join(__dirname,'regression-result.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));
