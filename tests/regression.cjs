@@ -283,6 +283,27 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         assert(src.includes('>世界书与上下文设置<'));
         assert(src.includes('>通用<'));
         assert((src.match(/se-settings-section-title/g) || []).length >= 3, 'section titles missing');
+        assert((src.match(/class="se-settings-section"/g) || []).length >= 3, 'section wrapper cards missing');
+    });
+    check('Settings small tips have explicit theme color',()=>{
+        const css = fs.readFileSync(path.join(__dirname,'..','style.css'),'utf8');
+        assert(/\.se-settings-body small\s*{[^}]*color:\s*var\(--se-text-muted\)/.test(css), 'small tip color rule missing (dark-on-dark)');
+    });
+    check('Cream light theme is fully registered',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        const css = fs.readFileSync(path.join(__dirname,'..','style.css'),'utf8');
+        assert(src.includes("id: 'cream'"), 'THEMES entry missing');
+        assert(src.includes('value="cream"'), 'theme select option missing');
+        assert(css.includes('[data-theme="cream"]'), 'theme variable block missing');
+        const block = css.slice(css.indexOf('[data-theme="cream"]'), css.indexOf('/* 极简极夜'));
+        for (const key of ['--se-bg-panel','--se-bg-card','--se-bg-input','--se-accent','--se-text-title','--se-text-main','--se-text-sub','--se-text-muted','--se-btn-bg','--se-shadow','--se-badge-bg']) {
+            assert(block.includes(key), `cream theme missing ${key}`);
+        }
+        // 亮色主题：文字必须比背景暗
+        const title = block.match(/--se-text-title: *(#[0-9a-f]{6})/)[1];
+        const panel = block.match(/--se-bg-panel: *(#[0-9a-f]{6})/)[1];
+        const lum = h => [1,3,5].reduce((a,i)=>a+parseInt(h.slice(i,i+2),16),0)/3;
+        assert(lum(title) < lum(panel), 'cream theme text darker than panel expected');
     });
 
     check('Production source contains no pictographs',()=>{for(const file of ['index.js','style.css']) assert(!/\p{Extended_Pictographic}/u.test(fs.readFileSync(path.join(__dirname,'..',file),'utf8')));});

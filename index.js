@@ -94,6 +94,7 @@
         { id: 'sakura', name: '樱花梦境', color: '#ff75a0', desc: '柔美樱粉与间桐樱相伴，通透梦幻' },
         { id: 'cyberpunk', name: '未来科幻', color: '#00f0ff', desc: '霓虹赛博、全息青蓝与电子紫晶' },
         { id: 'parchment', name: '复古羊皮', color: '#d4a373', desc: '羊皮纸与古铜色调，沉浸跑团质感' },
+        { id: 'cream', name: '奶油白', color: '#f0e6d0', desc: '奶油白与暖棕点缀，明亮温润' },
         { id: 'minimal', name: '极简极夜', color: '#ffffff', desc: '高反差黑白极简，克制通透高级' },
         { id: 'ocean', name: '深海蔚蓝', color: '#38bdf8', desc: '幽邃深海蓝光，清澈冷冽' },
         { id: 'amethyst', name: '暮色紫晶', color: '#c084fc', desc: '暮光丝绒紫晶，神秘优雅张力' },
@@ -934,6 +935,7 @@
                                 <option value="sakura">樱花梦境</option>
                                 <option value="cyberpunk">未来科幻</option>
                                 <option value="parchment">复古羊皮</option>
+                                <option value="cream">奶油白</option>
                                 <option value="minimal">极简极夜</option>
                                 <option value="ocean">深海蔚蓝</option>
                                 <option value="amethyst">暮色紫晶</option>
@@ -942,6 +944,7 @@
                         </div>
                         <div class="se-theme-grid" id="se-theme-grid"></div>
                     </div>
+                    <div class="se-settings-section">
                     <div class="se-settings-section-title">API 设置</div>
                     <label>API 地址（Base URL）</label>
                     <input id="se-base-url" type="text" placeholder="https://api.openai.com/v1" autocomplete="off" />
@@ -979,7 +982,9 @@
 
                     <label>最大输出长度</label>
                     <input id="se-max-tokens" type="number" min="1" max="120000" />
+                    </div>
 
+                    <div class="se-settings-section">
                     <div class="se-settings-section-title">世界书与上下文设置</div>
                     <label class="se-check-label">
                         <input id="se-enable-jailbreak" type="checkbox" />
@@ -1009,12 +1014,14 @@
 
                     <label>自定义提取规则（逗号分隔标签名，留空不启用）</label>
                     <input id="se-context-extract-tags" type="text" placeholder="content,summary" autocomplete="off" />
-                    <small style="font-size:11px; color:var(--se-text-muted); line-height:1.4;">填写后，上下文只保留这些标签内的内容，标签外的文字（含无标签的普通消息）一律不发送。</small>
+                    <small>填写后，上下文只保留这些标签内的内容，标签外的文字（含无标签的普通消息）一律不发送。</small>
 
                     <label>自定义排除规则（逗号分隔标签名，留空不启用）</label>
                     <input id="se-context-exclude-tags" type="text" placeholder="thinking,内心" autocomplete="off" />
-                    <small style="font-size:11px; color:var(--se-text-muted); line-height:1.4;">这些标签的完整块（含标签内文字）将从上下文中删除；两者同时填写时先排除、后提取。</small>
+                    <small>这些标签的完整块（含标签内文字）将从上下文中删除；两者同时填写时先排除、后提取。</small>
+                    </div>
 
+                    <div class="se-settings-section">
                     <div class="se-settings-section-title">通用</div>
                     <label>默认事件总回合数 (回合范围 1 ~ 30；一次有效回复算一回合)</label>
                     <input id="se-default-turns" type="number" min="1" max="30" step="1" value="8" />
@@ -1042,6 +1049,7 @@
                             想追加自己的提示词再发送？选「仅填入对话框」，生成后事件编号会自动填好，你可以继续打字再手动发送。
                         </span>
                     </label>
+                    </div>
                 </div>
                 <div class="se-settings-actions">
                     <button data-action="save-settings">保存设置</button>

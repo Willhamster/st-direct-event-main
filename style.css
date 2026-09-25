@@ -1,6 +1,6 @@
 /* ==========================================================================
    ST Direct Event — 剧情导演引擎 · 超大杯审美主题系统与精致界面
-   7 款核心主题：樱花梦境 · 未来科幻 · 复古羊皮 · 极简极夜 · 深海蔚蓝 · 暮色紫晶 · 翡翠林境
+   8 款核心主题：樱花梦境 · 未来科幻 · 复古羊皮 · 奶油白 · 极简极夜 · 深海蔚蓝 · 暮色紫晶 · 翡翠林境
    悬浮窗：深海罗盘与紧凑回合状态条
    ========================================================================== */
 
@@ -95,6 +95,36 @@
     --se-radius-sm: 5px;
     --se-radius-md: 9px;
     --se-radius-lg: 14px;
+}
+
+/* 奶油白 (Cream Vanilla / Soft Warm Daylight) */
+#st-direct-event-root[data-theme="cream"] {
+    --se-theme-name: "奶油白";
+    --se-bg: #efe7d6;
+    --se-bg-panel: #f9f4ea;
+    --se-bg-card: #f3ecdd;
+    --se-bg-input: #ede4d2;
+    --se-bg-hover: rgba(150, 117, 78, 0.14);
+    --se-border: rgba(139, 110, 74, 0.5);
+    --se-border-subtle: rgba(139, 110, 74, 0.26);
+    --se-border-focus: #96754e;
+    --se-accent: #96754e;
+    --se-accent-alt: #b08547;
+    --se-accent-glow: rgba(150, 117, 78, 0.26);
+    --se-text-title: #3e3221;
+    --se-text-main: #4d4030;
+    --se-text-sub: #6b5a44;
+    --se-text-muted: #8f7c60;
+    --se-btn-bg: linear-gradient(135deg, rgba(150, 117, 78, 0.18), rgba(176, 133, 71, 0.16));
+    --se-btn-border: rgba(150, 117, 78, 0.5);
+    --se-btn-hover-bg: linear-gradient(135deg, rgba(150, 117, 78, 0.3), rgba(176, 133, 71, 0.28));
+    --se-btn-hover-border: #96754e;
+    --se-shadow: 0 14px 40px rgba(101, 79, 50, 0.3), 0 2px 8px rgba(101, 79, 50, 0.14);
+    --se-badge-bg: rgba(150, 117, 78, 0.16);
+    --se-badge-color: #6f5836;
+    --se-radius-sm: 8px;
+    --se-radius-md: 12px;
+    --se-radius-lg: 16px;
 }
 
 /* 极简极夜 (Minimalist Monochrome Noir) */
@@ -534,7 +564,7 @@
 .se-gen-banner span {
     font-size: 12px;
     font-weight: 600;
-    color: #fff;
+    color: var(--se-text-title);
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
     display: flex;
     align-items: center;
@@ -585,7 +615,7 @@
     background-image: var(--se-btn-bg) !important;
     border: 1.5px solid var(--se-btn-border) !important;
     border-radius: var(--se-radius-md);
-    color: #ffffff !important;
+    color: var(--se-text-title) !important;
     font-size: 13px;
     font-weight: 700;
     cursor: pointer;
@@ -891,6 +921,7 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
+    color: var(--se-text-main);
 }
 
 .se-settings-body label {
@@ -900,22 +931,34 @@
     margin-top: 4px;
 }
 
-/* 设置弹窗分区标题（API 设置 / 世界书与上下文设置 / 通用） */
+.se-settings-body small {
+    display: block;
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--se-text-muted);
+}
+
+/* 设置弹窗分区卡片（API 设置 / 世界书与上下文设置 / 通用） */
+.se-settings-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border: 1px solid var(--se-border-subtle);
+    border-radius: var(--se-radius-md);
+    background: var(--se-bg-card);
+    padding: 12px;
+    margin-top: 4px;
+}
+
 .se-settings-section-title {
     font-size: 12px;
     font-weight: 700;
     letter-spacing: 2px;
     color: var(--se-accent);
-    padding: 7px 10px;
-    margin-top: 10px;
-    border: 1px solid var(--se-border-subtle);
-    border-radius: var(--se-radius-sm);
-    background: var(--se-bg-input);
     text-align: center;
-}
-
-.se-settings-section-title:first-child {
-    margin-top: 0;
+    padding-bottom: 6px;
+    margin-bottom: 2px;
+    border-bottom: 1px solid var(--se-border-subtle);
 }
 
 .se-settings-body input[type="text"],
@@ -1916,7 +1959,7 @@
     align-items: center;
     gap: 8px;
     font-size: 12.5px;
-    color: #ffffff;
+    color: var(--se-text-main);
     white-space: nowrap;
 }
 
@@ -1941,16 +1984,16 @@
 }
 
 .se-capsule-stage {
-    color: #f8fafc;
+    color: var(--se-text-sub);
     font-weight: 600;
 }
 
 .se-capsule-turns {
-    color: #e2e8f0;
+    color: var(--se-text-sub);
 }
 
 .se-capsule-turns strong {
-    color: #ffffff;
+    color: var(--se-text-title);
     font-weight: 700;
 }
 
@@ -1968,7 +2011,7 @@
     border-radius: 999px;
     background: var(--se-btn-bg);
     border: 1px solid var(--se-btn-border);
-    color: #ffffff;
+    color: var(--se-text-title);
     cursor: pointer;
     transition: all 0.15s ease;
     white-space: nowrap;
@@ -1994,13 +2037,13 @@
 .se-cap-btn.se-cap-close {
     background: rgba(100, 116, 139, 0.3);
     border-color: rgba(148, 163, 184, 0.4);
-    color: #cbd5e1;
+    color: var(--se-text-sub);
 }
 
 .se-cap-btn.se-cap-close:hover {
     background: rgba(239, 68, 68, 0.35);
     border-color: #ef4444;
-    color: #ffffff;
+    color: var(--se-text-title);
 }
 
 /* ---------- 阶段大纲速查模态框 (Stage Modal) ---------- */
@@ -2228,7 +2271,7 @@
     padding: 1px 7px;
     border-radius: 999px;
     background: rgba(100, 116, 139, 0.3);
-    color: #cbd5e1;
+    color: var(--se-text-sub);
     border: 1px solid var(--se-border-subtle);
 }
 
@@ -2309,7 +2352,7 @@
     border-radius: var(--se-radius-sm);
     background: var(--se-btn-bg);
     border: 1px solid var(--se-btn-border);
-    color: #ffffff;
+    color: var(--se-text-title);
     cursor: pointer;
     transition: all 0.15s ease;
 }
@@ -2342,7 +2385,7 @@
     border-radius: var(--se-radius-sm);
     background: var(--se-btn-bg);
     border: 1px solid var(--se-btn-border);
-    color: #ffffff;
+    color: var(--se-text-title);
     cursor: pointer;
     transition: all 0.15s ease;
 }
@@ -2454,7 +2497,7 @@
 
 .se-event-toggle-btn:hover {
     border-color: var(--se-accent);
-    color: #ffffff;
+    color: var(--se-text-title);
     transform: translateY(-1px);
 }
 
@@ -2505,7 +2548,7 @@
     padding: 1px 5px;
     border-radius: 4px;
     background: rgba(100, 116, 139, 0.35);
-    color: #cbd5e1;
+    color: var(--se-text-sub);
     margin-left: 4px;
     font-weight: 600;
 }
@@ -2643,7 +2686,7 @@
     border-radius: 4px;
     border: 1px solid var(--se-border);
     background: var(--se-bg-input);
-    color: #ffffff;
+    color: var(--se-text-title);
     text-align: center;
 }
 
@@ -4034,7 +4077,7 @@
 }
 
 .se-btn-danger:hover {
-    color: #ffffff !important;
+    color: var(--se-text-title) !important;
     background: rgba(239, 68, 68, 0.25) !important;
     border-color: #ef4444 !important;
     box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3) !important;
