@@ -757,9 +757,9 @@
             injectWandMenuButton();
             installExtensionsDrawerEntry();
             setupSlashCommand();
-            console.log('[ST Direct] 剧情导演 v0.5.2 已启动（独立系统纸条 + 分轮暗箱）');
+            console.log('[ST Direct] 剧情导演 v0.6.0 已启动（独立系统纸条 + 分轮暗箱）');
             if (window.toastr) {
-                toastr.success('剧情导演 v0.5.2 已加载（独立系统纸条与分轮暗箱已就绪）', '', { timeOut: 2500 });
+                toastr.success('剧情导演 v0.6.0 已加载（独立系统纸条与分轮暗箱已就绪）', '', { timeOut: 2500 });
             }
             
         } catch (e) {
@@ -6927,7 +6927,7 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
         if (!modal || !body) return;
         if (panel) panel.style.display = 'none';
 
-        titleEl.textContent = '独立系统纸条与暗箱机制说明 (v0.5.2)';
+        titleEl.textContent = '独立系统纸条与暗箱机制说明 (v0.6.0)';
         body.innerHTML = `
             <div class="se-stage-status-bar">
                 <div>
