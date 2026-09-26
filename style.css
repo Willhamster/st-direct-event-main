@@ -1189,6 +1189,14 @@
     border-radius: var(--se-radius-md);
     background: var(--se-bg-card);
     border: 1px solid var(--se-border-subtle);
+    transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.se-preset-card:hover {
+    border-color: var(--se-border);
+    background: var(--se-bg-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px var(--se-shadow);
 }
 
 .se-preset-title {
@@ -1216,6 +1224,11 @@
 .se-preset-card textarea:focus {
     border-color: var(--se-border-focus);
     box-shadow: 0 0 8px var(--se-accent-glow);
+}
+
+/* 悬浮时边框加深（不覆盖聚焦态；带 root 前缀与 !important 压过尾部输入框边框锁定） */
+#st-direct-event-root .se-preset-card textarea:hover:not(:focus) {
+    border-color: var(--se-border) !important;
 }
 
 /* ---------- 10. API 日志与事件列表 (API Logs & Events) ---------- */
@@ -1427,12 +1440,13 @@
     margin: 0;
 }
 
-.se-chip-radio-label input[type="radio"] {
+/* 流派选中指示器：打勾样式。带 #root 前缀压过中部 :is(input) 基础覆盖块 */
+#st-direct-event-root .se-chip-radio-label input[type="radio"] {
     appearance: none;
     -webkit-appearance: none;
     width: 15px;
     height: 15px;
-    border-radius: 50%;
+    border-radius: 4px;
     border: 1.5px solid var(--se-border);
     background: var(--se-bg-input);
     outline: none;
@@ -1441,23 +1455,26 @@
     transition: all 0.18s ease;
     margin: 0;
     flex-shrink: 0;
+    padding: 0;
 }
 
-.se-chip-radio-label input[type="radio"]:checked {
+#st-direct-event-root .se-chip-radio-label input[type="radio"]:checked {
     border-color: var(--se-accent);
-    background: var(--se-accent);
+    background: var(--se-bg-input);
     box-shadow: 0 0 8px var(--se-accent-glow);
 }
 
-.se-chip-radio-label input[type="radio"]:checked::after {
+/* 选中态画对勾：勾色跟随主题强调色，与选中后的文字颜色一致（不再用白色圆点） */
+#st-direct-event-root .se-chip-radio-label input[type="radio"]:checked::after {
     content: '';
     position: absolute;
-    top: 3.5px;
-    left: 3.5px;
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: #ffffff;
+    top: 2px;
+    left: 4px;
+    width: 4px;
+    height: 8px;
+    border: solid var(--se-accent);
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
 }
 
 .se-chip-name {
@@ -1535,12 +1552,13 @@
     flex-shrink: 0;
 }
 
-.se-diff-card-left input[type="radio"] {
+/* 难度选中指示器：打勾样式。带 #root 前缀压过中部 :is(input) 基础覆盖块 */
+#st-direct-event-root .se-diff-card-left input[type="radio"] {
     appearance: none;
     -webkit-appearance: none;
     width: 14px;
     height: 14px;
-    border-radius: 50%;
+    border-radius: 4px;
     border: 1.5px solid var(--se-border);
     background: var(--se-bg-input);
     outline: none;
@@ -1549,23 +1567,26 @@
     transition: all 0.18s ease;
     margin: 0;
     flex-shrink: 0;
+    padding: 0;
 }
 
-.se-diff-card-left input[type="radio"]:checked {
+#st-direct-event-root .se-diff-card-left input[type="radio"]:checked {
     border-color: var(--se-accent);
-    background: var(--se-accent);
+    background: var(--se-bg-input);
     box-shadow: 0 0 8px var(--se-accent-glow);
 }
 
-.se-diff-card-left input[type="radio"]:checked::after {
+/* 选中态画对勾：勾色跟随主题强调色，与选中后的难度名称颜色一致 */
+#st-direct-event-root .se-diff-card-left input[type="radio"]:checked::after {
     content: '';
     position: absolute;
-    top: 3px;
-    left: 3px;
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: #ffffff;
+    top: 1.5px;
+    left: 3.5px;
+    width: 4px;
+    height: 8px;
+    border: solid var(--se-accent);
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
 }
 
 .se-diff-name {
@@ -1789,6 +1810,32 @@
     margin-bottom: 10px;
     overflow: hidden;
     transition: all 0.2s ease;
+}
+
+/* 手风琴内容区：卡片之间、卡片与边缘保持明确留白，避免边界粘连 */
+.se-preset-accordion-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 4px 10px 10px;
+}
+
+/* 抽屉内小节标题（大事件导演 / 小事件流派 / 难度）：区域间距比卡片间距略大 */
+.se-preset-group-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: var(--se-text-sub);
+    padding: 8px 2px 0;
+    margin-top: 6px;
+    border-top: 1px dashed var(--se-border-subtle);
+    user-select: none;
+}
+
+.se-preset-group-label:first-child {
+    margin-top: 0;
+    padding-top: 2px;
+    border-top: none;
 }
 
 .se-preset-accordion[open] {

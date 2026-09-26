@@ -6,6 +6,33 @@
     const ROOT_ID = 'st-direct-event-root';
     const INJECTION_NAME = 'st-direct-event-injection';
 
+    // UI 状态存档（折叠记忆等纯界面偏好）：独立于设置存档，只写本地不随设置上传
+    const UI_STATE_KEY = 'st_direct_event_ui_state_v1';
+    function readUiState() {
+        try { return JSON.parse(localStorage.getItem(UI_STATE_KEY) || '{}') || {}; } catch (e) { return {}; }
+    }
+    function writeUiState(state) {
+        try { localStorage.setItem(UI_STATE_KEY, JSON.stringify(state)); } catch (e) { /* 忽略写入失败 */ }
+    }
+    function isSectionCollapsed(key) { return !!readUiState().collapsed?.[key]; }
+    function setSectionCollapsed(key, collapsed) {
+        if (!key) return;
+        const state = readUiState();
+        state.collapsed = state.collapsed || {};
+        state.collapsed[key] = !!collapsed;
+        writeUiState(state);
+    }
+    function isAccordionOpen(key, defaultOpen) {
+        const saved = readUiState().collapsed?.[key];
+        return typeof saved === 'boolean' ? !saved : !!defaultOpen;
+    }
+    // 按存档恢复范围内所有可折叠分区的状态（全局设置 / 细分设置共用）
+    function applySavedCollapseStates(scope) {
+        (scope || root)?.querySelectorAll('.se-settings-section[data-section-key]').forEach(section => {
+            section.classList.toggle('se-section-collapsed', isSectionCollapsed(section.dataset.sectionKey));
+        });
+    }
+
     const INJ_POSITION = 1;
     const INJ_DEPTH = 0;
 
@@ -959,7 +986,7 @@
                         </div>
                         <div class="se-theme-grid" id="se-theme-grid"></div>
                     </div>
-                    <div class="se-settings-section">
+                    <div class="se-settings-section" data-section-key="settings-api">
                     <div class="se-settings-section-title" data-action="toggle-section" title="点击折叠/展开"><span class="se-section-chevron">▾</span>API 设置</div>
                     <label>API 地址（Base URL）</label>
                     <input id="se-base-url" type="text" placeholder="https://api.openai.com/v1" autocomplete="off" />
@@ -999,7 +1026,7 @@
                     <input id="se-max-tokens" type="number" min="1" max="120000" />
                     </div>
 
-                    <div class="se-settings-section">
+                    <div class="se-settings-section" data-section-key="settings-worldbook">
                     <div class="se-settings-section-title" data-action="toggle-section" title="点击折叠/展开"><span class="se-section-chevron">▾</span>世界书与上下文设置</div>
                     <label class="se-check-label">
                         <input id="se-enable-jailbreak" type="checkbox" />
@@ -1036,7 +1063,7 @@
                     <small>这些标签的完整块（含标签内文字）将从上下文中删除；两者同时填写时先排除、后提取。</small>
                     </div>
 
-                    <div class="se-settings-section">
+                    <div class="se-settings-section" data-section-key="settings-general">
                     <div class="se-settings-section-title" data-action="toggle-section" title="点击折叠/展开"><span class="se-section-chevron">▾</span>通用</div>
                     <label>默认事件总回合数 (回合范围 1 ~ 30；一次有效回复算一回合)</label>
                     <input id="se-default-turns" type="number" min="1" max="30" step="1" value="8" />
@@ -1179,6 +1206,9 @@
         try {
             applyTheme(getSettings().theme || 'ocean');
         } catch (e) { console.warn('[ST Direct] 初始化主题失败:', e); }
+        try {
+            applySavedCollapseStates();
+        } catch (e) { console.warn('[ST Direct] 恢复分区折叠记忆失败:', e); }
         root.addEventListener('click', onRootClick);
         root.addEventListener('change', (e) => {
             const pvActionEl = e.target.closest('[data-pv-action]');
@@ -1539,7 +1569,7 @@
         const turnsBadgeText = turnCfg.getBadgeText(curTurns);
 
         let html = `
-            <div class="se-sub-section se-sub-turns-section se-settings-section">
+            <div class="se-sub-section se-sub-turns-section se-settings-section" data-section-key="sub-${eventKey}-turns">
                 <div class="se-settings-section-title" data-action="toggle-section" title="点击折叠/展开"><span class="se-section-chevron">▾</span>${turnCfg.title}<span class="se-sub-turns-badge" id="se-sub-turns-badge">${turnsBadgeText}</span></div>
                 <div class="se-sub-turn-modes">
                     <label class="se-sub-turn-card ${curTurns === 1 ? 'active' : ''}">
@@ -1579,7 +1609,7 @@
                     </label>
                 </div>
             </div>
-            <div class="se-sub-section se-settings-section">
+            <div class="se-sub-section se-settings-section" data-section-key="sub-${eventKey}-genre">
                 <div class="se-settings-section-title" data-action="toggle-section" title="点击折叠/展开"><span class="se-section-chevron">▾</span>选择流派 / 玩法风格（展开可直接微调预设提示词）</div>
                 <div class="se-chip-list">
                     ${conf.genres.map(g => {
@@ -1609,7 +1639,7 @@
                 </div>
             </div>
 
-            <div class="se-sub-section se-settings-section">
+            <div class="se-sub-section se-settings-section" data-section-key="sub-${eventKey}-diff">
                 <div class="se-settings-section-title" data-action="toggle-section" title="点击折叠/展开"><span class="se-section-chevron">▾</span>${eventKey === 'romance' ? '情感浓度 / 互动深度' : '挑战难度'}</div>
                 <div class="se-diff-grid">
                     ${conf.difficulties.map(d => {
@@ -1645,7 +1675,7 @@
         if (conf.hasDeathRisk) {
             const currentDeathPrompt = getSubPrompt('combat', 'death_risk', s);
             html += `
-                <div class="se-sub-section se-settings-section">
+                <div class="se-sub-section se-settings-section" data-section-key="sub-${eventKey}-death">
                     <div class="se-settings-section-title" data-action="toggle-section" title="点击折叠/展开"><span class="se-section-chevron">▾</span>死亡危险模式</div>
                     <div class="se-death-card ${deathRisk ? 'se-death-active' : ''}">
                         <div class="se-death-head">
@@ -1675,7 +1705,7 @@
 
         if (eventKey === 'combat') {
             html += `
-                <div class="se-sub-section se-settings-section">
+                <div class="se-sub-section se-settings-section" data-section-key="sub-${eventKey}-faction">
                     <div class="se-settings-section-title" data-action="toggle-section" title="点击折叠/展开"><span class="se-section-chevron">▾</span>敌方势力与战力基准设定（势力库与自定义对手）</div>
                     <div class="se-sub-faction-card">
                         <div style="margin-bottom:8px;">
@@ -1727,7 +1757,7 @@
 
         if (eventKey === 'romance') {
             html += `
-                <div class="se-sub-section se-settings-section">
+                <div class="se-sub-section se-settings-section" data-section-key="sub-${eventKey}-heroine">
                     <div class="se-settings-section-title" data-action="toggle-section" title="点击折叠/展开"><span class="se-section-chevron">▾</span>核心互动女主锁定</div>
                     <div class="se-sub-faction-card">
                         <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
@@ -1745,6 +1775,11 @@
         }
 
         body.innerHTML = html;
+
+        // 恢复各分区的折叠记忆（每次重渲染后按本地 UI 存档回填）
+        body.querySelectorAll('.se-settings-section[data-section-key]').forEach(section => {
+            section.classList.toggle('se-section-collapsed', isSectionCollapsed(section.dataset.sectionKey));
+        });
 
         // 点击回合模式卡片交互
         body.querySelectorAll('.se-sub-turn-card').forEach(card => {
@@ -2695,9 +2730,12 @@
         }
 
         if (action === 'toggle-section') {
-            // 分区标题点击折叠/展开：设置弹窗与细分设置弹窗共用
+            // 分区标题点击折叠/展开：设置弹窗与细分设置弹窗共用，状态写入本地 UI 存档
             const section = e.target.closest('.se-settings-section');
-            if (section) section.classList.toggle('se-section-collapsed');
+            if (section) {
+                section.classList.toggle('se-section-collapsed');
+                setSectionCollapsed(section.dataset.sectionKey, section.classList.contains('se-section-collapsed'));
+            }
             return;
         }
 
@@ -3266,6 +3304,61 @@
             { key: 'romance.forbidden_love', label: '相爱相杀/禁忌暗涌', desc: '立场对立、致命吸引与宿命沉沦' },
         ];
 
+        const subCardHtml = (item) => {
+            const [pKey, cKey] = item.key.split('.');
+            const val = getSubPrompt(pKey, cKey, s);
+            return `
+                <div class="se-preset-card">
+                    <div class="se-preset-title">${escapeHtml(item.label)}</div>
+                    <div class="se-preset-desc">${escapeHtml(item.desc)}</div>
+                    <textarea data-sub-prompt-key="${item.key}" rows="5">${escapeHtml(val)}</textarea>
+                </div>
+            `;
+        };
+
+        const mainPresetCardHtml = (pKey) => {
+            const current = getPreset(pKey, s);
+            return `
+                <div class="se-preset-card" data-preset-key="${escapeHtml(pKey)}">
+                    <textarea data-preset-key="${escapeHtml(pKey)}" rows="7">${escapeHtml(current.systemPrompt || '')}</textarea>
+                </div>
+            `;
+        };
+
+        const diffCardsHtml = (pKey) => (SUB_CONFIGS[pKey]?.difficulties || []).filter(d => d.prompt).map(d => {
+            const diffKey = `diff_${d.key}`;
+            return `
+                <div class="se-preset-card">
+                    <div class="se-preset-title">${escapeHtml(d.label)}（${escapeHtml(d.desc)}）</div>
+                    <textarea data-sub-prompt-key="${pKey}.${diffKey}" rows="3">${escapeHtml(getSubPrompt(pKey, diffKey, s))}</textarea>
+                </div>
+            `;
+        }).join('');
+
+        // 题材抽屉：大事件导演 + 小事件流派 + 难度/浓度（战斗额外含死亡线），数据键不变
+        const genreAccordion = (key, title, subList, extraHtml = '') => `
+            <details class="se-preset-accordion" data-section-key="presets-${key}" ${isAccordionOpen(`presets-${key}`, false) ? 'open' : ''}>
+                <summary class="se-preset-accordion-summary">${title}</summary>
+                <div class="se-preset-accordion-body">
+                    <div class="se-preset-group-label">大事件基础导演预设</div>
+                    ${mainPresetCardHtml(key)}
+                    <div class="se-preset-group-label">小事件流派预设（${subList.length} 个细分）</div>
+                    ${subList.map(subCardHtml).join('')}
+                    <div class="se-preset-group-label">${key === 'romance' ? '情感浓度' : '挑战难度'}预设（${(SUB_CONFIGS[key]?.difficulties || []).filter(d => d.prompt).length} 档）</div>
+                    ${diffCardsHtml(key)}
+                    ${extraHtml}
+                </div>
+            </details>
+        `;
+
+        const combatExtraHtml = `
+                    <div class="se-preset-group-label">死亡危险死线提示词（极高死亡危险模式注入）</div>
+                    <div class="se-preset-card">
+                        <div class="se-preset-desc">开启「极高死亡危险模式」时注入的死线与因果判定准则。</div>
+                        <textarea data-sub-prompt-key="combat.death_risk" rows="5">${escapeHtml(getSubPrompt('combat', 'death_risk', s))}</textarea>
+                    </div>
+        `;
+
         list.innerHTML = `
             <div style="margin-bottom:14px;">
                 <button type="button" class="se-turn-save-btn" data-action="open-prompt-viewer" style="width:100%; padding:10px 14px; font-size:13px; font-weight:600; display:flex; align-items:center; justify-content:center; gap:8px;">
@@ -3273,99 +3366,39 @@
                     <span>查看副 API 完整提示词（实时预览与复制）</span>
                 </button>
             </div>
-            <details class="se-preset-accordion" open>
+            <details class="se-preset-accordion" data-section-key="presets-jailbreak" ${isAccordionOpen('presets-jailbreak', true) ? 'open' : ''}>
                 <summary class="se-preset-accordion-summary">破限与防审查提示词（置顶注入与外审破限）</summary>
-                <div class="se-preset-card">
-                    <div class="se-preset-title">头部小说破限（雪融雪降 · 过外审预填充）</div>
-                    <div class="se-preset-desc">针对 build、gcli、one-api 等严格外审渠道。在对话最前端以 User 身份预填充万字纯文学小说样本，由 Assistant 虚假确认承接，使模型在首轮审查时误判为文学品读分析，彻底瓦解拒答与道德过滤。留空自动回退内置《雪融雪降》全本。</div>
-                    <textarea data-preset-special="novel_bypass" rows="8" placeholder="留空使用内置默认雪融雪降小说破限">${escapeHtml(s.novelBypassPrompt || '')}</textarea>
+                <div class="se-preset-accordion-body">
+                    <div class="se-preset-card">
+                        <div class="se-preset-title">头部小说破限（雪融雪降 · 过外审预填充）</div>
+                        <div class="se-preset-desc">针对 build、gcli、one-api 等严格外审渠道。在对话最前端以 User 身份预填充万字纯文学小说样本，由 Assistant 虚假确认承接，使模型在首轮审查时误判为文学品读分析，彻底瓦解拒答与道德过滤。留空自动回退内置《雪融雪降》全本。</div>
+                        <textarea data-preset-special="novel_bypass" rows="8" placeholder="留空使用内置默认雪融雪降小说破限">${escapeHtml(s.novelBypassPrompt || '')}</textarea>
+                    </div>
+                    <div class="se-preset-card">
+                        <div class="se-preset-title">系统级破限与创作准则（Dramatron 深度缝合版）</div>
+                        <div class="se-preset-desc">源自 Kemini Dramatron 特化破限与私密沙盒豁免架构，深度缝合不媚USER去主角化、防机械化生活对白、防全知有限视角、防支配、叙事文风准则、禁词表与防断章留白。留空自动回退内置默认。</div>
+                        <textarea data-preset-special="jailbreak" rows="12" placeholder="留空使用内置默认缝合破限指令">${escapeHtml(s.jailbreakPrompt || '')}</textarea>
+                    </div>
                 </div>
-                <div class="se-preset-card">
-                    <div class="se-preset-title">系统级破限与创作准则（Dramatron 深度缝合版）</div>
-                    <div class="se-preset-desc">源自 Kemini Dramatron 特化破限与私密沙盒豁免架构，深度缝合不媚USER去主角化、防机械化生活对白、防全知有限视角、防支配、叙事文风准则、禁词表与防断章留白。留空自动回退内置默认。</div>
-                    <textarea data-preset-special="jailbreak" rows="12" placeholder="留空使用内置默认缝合破限指令">${escapeHtml(s.jailbreakPrompt || '')}</textarea>
-                </div>
             </details>
-
-            <details class="se-preset-accordion" open>
-                <summary class="se-preset-accordion-summary">大事件基础导演提示词（四大主类）</summary>
-                ${Object.entries(DEFAULT_PRESETS).map(([key, preset]) => {
-                    const type = EVENT_TYPES[key] || { label: key };
-                    const current = getPreset(key, s);
-                    return `
-                        <div class="se-preset-card" data-preset-key="${escapeHtml(key)}">
-                            <div class="se-preset-title">${escapeHtml(type.label)} 基础导演预设</div>
-                            <textarea data-preset-key="${escapeHtml(key)}" rows="7">${escapeHtml(current.systemPrompt || '')}</textarea>
-                        </div>
-                    `;
-                }).join('')}
-            </details>
-
-            <details class="se-preset-accordion">
-                <summary class="se-preset-accordion-summary">战斗小事件流派预设（5个细分）</summary>
-                ${combatSubList.map(item => {
-                    const [pKey, cKey] = item.key.split('.');
-                    const val = getSubPrompt(pKey, cKey, s);
-                    return `
-                        <div class="se-preset-card">
-                            <div class="se-preset-title">${escapeHtml(item.label)}</div>
-                            <div class="se-preset-desc">${escapeHtml(item.desc)}</div>
-                            <textarea data-sub-prompt-key="${item.key}" rows="5">${escapeHtml(val)}</textarea>
-                        </div>
-                    `;
-                }).join('')}
-            </details>
-
-            <details class="se-preset-accordion">
-                <summary class="se-preset-accordion-summary">推理小事件流派预设（5个细分）</summary>
-                ${reasoningSubList.map(item => {
-                    const [pKey, cKey] = item.key.split('.');
-                    const val = getSubPrompt(pKey, cKey, s);
-                    return `
-                        <div class="se-preset-card">
-                            <div class="se-preset-title">${escapeHtml(item.label)}</div>
-                            <div class="se-preset-desc">${escapeHtml(item.desc)}</div>
-                            <textarea data-sub-prompt-key="${item.key}" rows="5">${escapeHtml(val)}</textarea>
-                        </div>
-                    `;
-                }).join('')}
-            </details>
-
-            <details class="se-preset-accordion">
-                <summary class="se-preset-accordion-summary">恋爱小事件流派预设（5个细分）</summary>
-                ${romanceSubList.map(item => {
-                    const [pKey, cKey] = item.key.split('.');
-                    const val = getSubPrompt(pKey, cKey, s);
-                    return `
-                        <div class="se-preset-card">
-                            <div class="se-preset-title">${escapeHtml(item.label)}</div>
-                            <div class="se-preset-desc">${escapeHtml(item.desc)}</div>
-                            <textarea data-sub-prompt-key="${item.key}" rows="5">${escapeHtml(val)}</textarea>
-                        </div>
-                    `;
-                }).join('')}
-            </details>
-            <details class="se-preset-accordion">
-                <summary class="se-preset-accordion-summary">挑战难度 / 情感浓度与死亡死线预设（10 项）</summary>
-                ${Object.entries(SUB_CONFIGS).map(([pKey, conf]) => {
-                    const typeLabel = EVENT_TYPES[pKey]?.label || pKey;
-                    return conf.difficulties.filter(d => d.prompt).map(d => {
-                        const diffKey = `diff_${d.key}`;
-                        return `
-                            <div class="se-preset-card">
-                                <div class="se-preset-title">${escapeHtml(typeLabel)} · ${escapeHtml(d.label)}（${escapeHtml(d.desc)}）</div>
-                                <textarea data-sub-prompt-key="${pKey}.${diffKey}" rows="3">${escapeHtml(getSubPrompt(pKey, diffKey, s))}</textarea>
-                            </div>
-                        `;
-                    }).join('');
-                }).join('')}
-                <div class="se-preset-card">
-                    <div class="se-preset-title">战斗 · 死亡危险死线提示词</div>
-                    <div class="se-preset-desc">开启「极高死亡危险模式」时注入的死线与因果判定准则。</div>
-                    <textarea data-sub-prompt-key="combat.death_risk" rows="5">${escapeHtml(getSubPrompt('combat', 'death_risk', s))}</textarea>
+            ${genreAccordion('combat', '战斗预设（大事件导演 / 小事件流派 / 难度 / 死线）', combatSubList, combatExtraHtml)}
+            ${genreAccordion('reasoning', '推理预设（大事件导演 / 小事件流派 / 难度）', reasoningSubList)}
+            ${genreAccordion('romance', '恋爱预设（大事件导演 / 小事件流派 / 浓度）', romanceSubList)}
+            <details class="se-preset-accordion" data-section-key="presets-random" ${isAccordionOpen('presets-random', false) ? 'open' : ''}>
+                <summary class="se-preset-accordion-summary">随机事件预设（大事件导演）</summary>
+                <div class="se-preset-accordion-body">
+                    <div class="se-preset-group-label">大事件基础导演预设</div>
+                    ${mainPresetCardHtml('random')}
                 </div>
             </details>
         `;
+
+        // 折叠记忆：手风琴开合写入本地 UI 存档（保存后重渲染也会按存档恢复）
+        list.querySelectorAll('details.se-preset-accordion[data-section-key]').forEach(details => {
+            details.addEventListener('toggle', () => {
+                setSectionCollapsed(details.dataset.sectionKey, !details.open);
+            });
+        });
     }
 
     function savePresets() {
