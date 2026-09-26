@@ -16,6 +16,7 @@ World-master/
 scratch/
 .system_generated/
 st-direct-event-review/
+.zcode/
 
 # OS specific
 .DS_Store

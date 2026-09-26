@@ -3335,29 +3335,33 @@
             `;
         }).join('');
 
+        // 抽屉内小节：可折叠子手风琴，开合同样写入本地 UI 存档（默认展开）
+        const subSection = (key, title, innerHtml) => `
+            <details class="se-preset-sub-accordion" data-section-key="${key}" ${isAccordionOpen(key, true) ? 'open' : ''}>
+                <summary class="se-preset-sub-summary"><span class="se-preset-sub-chevron">▾</span>${title}</summary>
+                <div class="se-preset-sub-body">${innerHtml}</div>
+            </details>
+        `;
+
         // 题材抽屉：大事件导演 + 小事件流派 + 难度/浓度（战斗额外含死亡线），数据键不变
         const genreAccordion = (key, title, subList, extraHtml = '') => `
             <details class="se-preset-accordion" data-section-key="presets-${key}" ${isAccordionOpen(`presets-${key}`, false) ? 'open' : ''}>
                 <summary class="se-preset-accordion-summary">${title}</summary>
                 <div class="se-preset-accordion-body">
-                    <div class="se-preset-group-label">大事件基础导演预设</div>
-                    ${mainPresetCardHtml(key)}
-                    <div class="se-preset-group-label">小事件流派预设（${subList.length} 个细分）</div>
-                    ${subList.map(subCardHtml).join('')}
-                    <div class="se-preset-group-label">${key === 'romance' ? '情感浓度' : '挑战难度'}预设（${(SUB_CONFIGS[key]?.difficulties || []).filter(d => d.prompt).length} 档）</div>
-                    ${diffCardsHtml(key)}
+                    ${subSection(`presets-${key}-main`, '大事件基础导演预设', mainPresetCardHtml(key))}
+                    ${subSection(`presets-${key}-sub`, `小事件流派预设（${subList.length} 个细分）`, subList.map(subCardHtml).join(''))}
+                    ${subSection(`presets-${key}-diff`, `${key === 'romance' ? '情感浓度' : '挑战难度'}预设（${(SUB_CONFIGS[key]?.difficulties || []).filter(d => d.prompt).length} 档）`, diffCardsHtml(key))}
                     ${extraHtml}
                 </div>
             </details>
         `;
 
-        const combatExtraHtml = `
-                    <div class="se-preset-group-label">死亡危险死线提示词（极高死亡危险模式注入）</div>
+        const combatExtraHtml = subSection('presets-combat-death', '死亡危险死线提示词（极高死亡危险模式注入）', `
                     <div class="se-preset-card">
                         <div class="se-preset-desc">开启「极高死亡危险模式」时注入的死线与因果判定准则。</div>
                         <textarea data-sub-prompt-key="combat.death_risk" rows="5">${escapeHtml(getSubPrompt('combat', 'death_risk', s))}</textarea>
                     </div>
-        `;
+        `);
 
         list.innerHTML = `
             <div style="margin-bottom:14px;">
@@ -3387,14 +3391,13 @@
             <details class="se-preset-accordion" data-section-key="presets-random" ${isAccordionOpen('presets-random', false) ? 'open' : ''}>
                 <summary class="se-preset-accordion-summary">随机事件预设（大事件导演）</summary>
                 <div class="se-preset-accordion-body">
-                    <div class="se-preset-group-label">大事件基础导演预设</div>
-                    ${mainPresetCardHtml('random')}
+                    ${subSection('presets-random-main', '大事件基础导演预设', mainPresetCardHtml('random'))}
                 </div>
             </details>
         `;
 
         // 折叠记忆：手风琴开合写入本地 UI 存档（保存后重渲染也会按存档恢复）
-        list.querySelectorAll('details.se-preset-accordion[data-section-key]').forEach(details => {
+        list.querySelectorAll('details[data-section-key]').forEach(details => {
             details.addEventListener('toggle', () => {
                 setSectionCollapsed(details.dataset.sectionKey, !details.open);
             });
