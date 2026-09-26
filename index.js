@@ -813,11 +813,27 @@
                     el.style.right = '';
                     el.style.bottom = '';
                     el.style.transform = '';
+                    // 移动端不保留手动尺寸，交还自适应布局
+                    el.style.width = '';
+                    el.style.height = '';
+                    el.style.maxHeight = '';
+                    delete el.dataset.seSizeApplied;
+                });
+            } else {
+                // 桌面端窗口缩小后，把手动调整过的面板尺寸夹回视口内
+                RESIZE_PANEL_IDS.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el?.dataset.seSizeApplied && el.style.width) {
+                        el.style.width = clampPanelWidth(parseFloat(el.style.width)) + 'px';
+                        el.style.height = clampPanelHeight(parseFloat(el.style.height)) + 'px';
+                        el.style.maxHeight = el.style.height;
+                    }
                 });
             }
             applyFabSettings();
             adjustPanelPosition();
             applyCapsulePosition();
+            positionResizeHandle();
         } catch (e) {
             console.warn('[ST Direct] 屏幕尺寸变化后修正位置失败:', e);
         }
@@ -905,6 +921,7 @@
                         <button class="se-event-btn" data-action="generate" data-event="combat" title="点击生成 / 右键或长按设置细分">
                             <span class="se-btn-label">战斗</span>
                             <span class="se-badge" id="se-badge-combat">跑团</span>
+                            <span class="se-badge se-badge-turns" id="se-turns-combat">2回合</span>
                         </button>
                         <button class="se-sub-btn" data-action="open-sub" data-event="combat" title="战斗细分设置">
                             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
@@ -915,6 +932,7 @@
                         <button class="se-event-btn" data-action="generate" data-event="reasoning" title="点击生成 / 右键或长按设置细分">
                             <span class="se-btn-label">推理</span>
                             <span class="se-badge" id="se-badge-reasoning">生活流</span>
+                            <span class="se-badge se-badge-turns" id="se-turns-reasoning">2回合</span>
                         </button>
                         <button class="se-sub-btn" data-action="open-sub" data-event="reasoning" title="推理细分设置">
                             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
@@ -925,6 +943,7 @@
                         <button class="se-event-btn" data-action="generate" data-event="romance" title="点击生成 / 右键或长按设置细分">
                             <span class="se-btn-label">恋爱</span>
                             <span class="se-badge" id="se-badge-romance">修罗场</span>
+                            <span class="se-badge se-badge-turns" id="se-turns-romance">2回合</span>
                         </button>
                         <button class="se-sub-btn" data-action="open-sub" data-event="romance" title="恋爱细分设置">
                             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
@@ -1286,6 +1305,16 @@
         }
         enableDesktopWindowDragging(root);
 
+        // 面板右下角调整大小把手（全局唯一，JS 定位到当前可见面板右下角）
+        const resizeHandle = document.createElement('div');
+        resizeHandle.id = 'se-resize-handle';
+        resizeHandle.title = '拖动调整界面大小';
+        root.appendChild(resizeHandle);
+        enablePanelResizing();
+        setupResizePanelObserver();
+        setupResizePanelSizeObserver();
+        positionResizeHandle();
+
         try {
             applyFabSettings();
         } catch (e) {
@@ -1459,6 +1488,32 @@
         });
     }
 
+    // 按钮回合数取值链与 generateAndSave 完全同源：细分设置回合数优先，缺省回落全局默认（随机事件无细分，恒用全局默认）
+    function resolveEventTurns(typeKey, s) {
+        const userSub = s.subConfig?.[typeKey] || {};
+        const chosen = Number(userSub.turns) || Number(s.defaultTurns) || 2;
+        return Math.min(30, Math.max(1, chosen));
+    }
+
+    function updateTurnLabels(s) {
+        if (!root) return;
+        for (const typeKey of Object.keys(EVENT_TYPES)) {
+            const btn = root.querySelector(`[data-event="${typeKey}"]`);
+            if (!btn) continue;
+            const turns = resolveEventTurns(typeKey, s);
+            if (typeKey === 'random') {
+                const labelSpan = btn.querySelector('.se-btn-label');
+                if (labelSpan && !btn.classList.contains('se-btn-generating')) {
+                    labelSpan.textContent = `生成${turns}回合随机事件`;
+                }
+                btn.title = `随机生成 ${turns} 回合意外事件`;
+            } else {
+                const turnsEl = btn.querySelector('#se-turns-' + typeKey);
+                if (turnsEl) turnsEl.textContent = `${turns}回合`;
+            }
+        }
+    }
+
     function updateBadges() {
         if (!root) return;
         const s = getSettings();
@@ -1474,6 +1529,7 @@
             }
             badgeEl.textContent = badgeText;
         }
+        updateTurnLabels(s);
     }
 
     function openSubModal(eventKey) {
@@ -2428,6 +2484,169 @@
         });
     }
 
+    // ========== 面板右下角调整大小（全局唯一把手，对齐当前可见面板；悬浮胶囊与悬浮球不参与） ==========
+
+    const RESIZE_PANEL_IDS = ['se-panel', 'se-settings', 'se-events', 'se-presets', 'se-api-log', 'se-sub-modal', 'se-stage-modal', 'se-prompt-viewer-modal', 'se-world-info-modal'];
+    let resizePanelObserver = null;
+    let resizePanelSizeObserver = null;
+
+    function clampPanelWidth(w) {
+        return Math.min(window.innerWidth - 24, Math.max(280, w));
+    }
+
+    function clampPanelHeight(h) {
+        return Math.min(window.innerHeight - 24, Math.max(220, h));
+    }
+
+    function getVisibleResizePanel() {
+        if (!root) return null;
+        for (const id of RESIZE_PANEL_IDS) {
+            const el = document.getElementById(id);
+            if (el && el.style.display !== 'none' && el.getBoundingClientRect().width > 0) return el;
+        }
+        return null;
+    }
+
+    // 每个面板首次显示时恢复上次手动调整的尺寸；移动端视口差异大，不恢复也不持久化
+    function applySavedPanelSize(panel) {
+        if (!panel || panel.dataset.seSizeApplied || isMobileView()) return;
+        panel.dataset.seSizeApplied = '1';
+        const saved = readUiState().sizes?.[panel.id];
+        if (!saved) return;
+        panel.style.width = clampPanelWidth(saved.w) + 'px';
+        panel.style.height = clampPanelHeight(saved.h) + 'px';
+        panel.style.maxHeight = panel.style.height;
+    }
+
+    function savePanelSize(panel) {
+        if (!panel || isMobileView()) return;
+        const rect = panel.getBoundingClientRect();
+        const state = readUiState();
+        state.sizes = state.sizes || {};
+        state.sizes[panel.id] = { w: Math.round(rect.width), h: Math.round(rect.height) };
+        writeUiState(state);
+    }
+
+    function positionResizeHandle() {
+        const handle = root?.querySelector('#se-resize-handle');
+        if (!handle) return;
+        const panel = getVisibleResizePanel();
+        if (!panel) {
+            handle.style.display = 'none';
+            return;
+        }
+        applySavedPanelSize(panel);
+        const rect = panel.getBoundingClientRect();
+        if (rect.width < 60 || rect.height < 60) {
+            handle.style.display = 'none';
+            return;
+        }
+        const size = 16;
+        handle.style.display = 'block';
+        handle.style.left = Math.round(rect.right - size - 2) + 'px';
+        handle.style.top = Math.round(rect.bottom - size - 2) + 'px';
+        const z = parseFloat(getComputedStyle(panel).zIndex);
+        handle.style.zIndex = String((Number.isFinite(z) ? z : 10000) + 1);
+    }
+
+    // 面板的显隐（display）与拖动（left/top）都通过内联 style 修改，监听 style 变更即可集中跟随，无需在每个入口埋点
+    function setupResizePanelObserver() {
+        if (!root || resizePanelObserver) return;
+        resizePanelObserver = new MutationObserver(() => positionResizeHandle());
+        RESIZE_PANEL_IDS.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) resizePanelObserver.observe(el, { attributes: true, attributeFilter: ['style'] });
+        });
+    }
+
+    // 面板自身的尺寸变化（初始布局稳定、内容增减）不走 style，需 ResizeObserver 补充跟随
+    function setupResizePanelSizeObserver() {
+        if (!root || resizePanelSizeObserver) return;
+        resizePanelSizeObserver = new ResizeObserver(() => positionResizeHandle());
+        RESIZE_PANEL_IDS.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) resizePanelSizeObserver.observe(el);
+        });
+    }
+
+    function enablePanelResizing() {
+        const handle = root?.querySelector('#se-resize-handle');
+        if (!handle) return;
+        let target = null;
+        let startX = 0, startY = 0, startW = 0, startH = 0;
+
+        const applyResize = (clientX, clientY) => {
+            if (!target) return;
+            if (isMobileView()) {
+                // 移动端宽度被自适应布局锁定；高度需内联 !important 才能压过媒体查询，通过 max-height 收放
+                const h = Math.min(window.innerHeight - 20, Math.max(220, startH + (clientY - startY)));
+                target.style.setProperty('max-height', h + 'px', 'important');
+                return;
+            }
+            target.style.width = clampPanelWidth(startW + (clientX - startX)) + 'px';
+            const h = clampPanelHeight(startH + (clientY - startY));
+            target.style.height = h + 'px';
+            target.style.maxHeight = h + 'px';
+        };
+
+        const onDown = (clientX, clientY) => {
+            target = getVisibleResizePanel();
+            if (!target) return false;
+            // 拖拽期间关闭面板尺寸过渡：跟手且松手读取的尺寸精确
+            target.classList.add('se-panel-resizing');
+            startX = clientX;
+            startY = clientY;
+            const rect = target.getBoundingClientRect();
+            startW = rect.width;
+            startH = rect.height;
+            return true;
+        };
+
+        handle.addEventListener('mousedown', (e) => {
+            if (e.button !== 0) return;
+            e.preventDefault();
+            if (!onDown(e.clientX, e.clientY)) return;
+            document.body.style.userSelect = 'none';
+            const onMove = (ev) => applyResize(ev.clientX, ev.clientY);
+            const onUp = () => {
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+                document.body.style.userSelect = '';
+                if (target) {
+                    target.classList.remove('se-panel-resizing');
+                    savePanelSize(target);
+                }
+                target = null;
+            };
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+        });
+
+        handle.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const t = e.touches[0];
+            if (!t || !onDown(t.clientX, t.clientY)) return;
+            const onMove = (ev) => {
+                ev.preventDefault();
+                const tt = ev.touches[0];
+                if (tt) applyResize(tt.clientX, tt.clientY);
+            };
+            const onEnd = () => {
+                document.removeEventListener('touchmove', onMove);
+                document.removeEventListener('touchend', onEnd);
+                document.removeEventListener('touchcancel', onEnd);
+                if (target) {
+                    target.classList.remove('se-panel-resizing');
+                    savePanelSize(target);
+                }
+                target = null;
+            };
+            document.addEventListener('touchmove', onMove, { passive: false });
+            document.addEventListener('touchend', onEnd);
+            document.addEventListener('touchcancel', onEnd);
+        }, { passive: false });
+    }
+
     function onRootClick(e) {
         try {
             handleRootClick(e);
@@ -2673,6 +2892,7 @@
             try {
                 persistSettings(collectSettingsForm());
                 applyFabSettings();
+                updateBadges();
             } catch (err) { console.warn('[ST Direct] 自动保存设置失败:', err); }
             settings.style.display = 'none';
             if (panel) panel.style.display = 'flex';
@@ -2777,6 +2997,7 @@
         if (action === 'save-settings') {
             persistSettings(collectSettingsForm());
             applyFabSettings();
+            updateBadges();
             if (window.toastr) toastr.success('设置已保存');
             return;
         }
@@ -3325,8 +3546,18 @@
             `;
         };
 
-        const diffCardsHtml = (pKey) => (SUB_CONFIGS[pKey]?.difficulties || []).filter(d => d.prompt).map(d => {
+        const diffCardsHtml = (pKey) => (SUB_CONFIGS[pKey]?.difficulties || []).map(d => {
             const diffKey = `diff_${d.key}`;
+            // 自定义档：提示词存在 subConfig.customDiffPrompt（与细分设置弹窗同源），不走 subPrompts
+            if (d.key === 'custom') {
+                return `
+                    <div class="se-preset-card">
+                        <div class="se-preset-title">自定义${pKey === 'romance' ? '浓度' : '难度'}（${escapeHtml(d.desc)}）</div>
+                        <div class="se-preset-desc">细分设置选择「${escapeHtml(d.label)}」档时生效；留空使用内置兜底文案。与细分设置弹窗中的自定义文本框双向同源。</div>
+                        <textarea data-custom-diff-key="${pKey}" rows="3" placeholder="留空使用内置兜底文案">${escapeHtml(s.subConfig?.[pKey]?.customDiffPrompt || '')}</textarea>
+                    </div>
+                `;
+            }
             return `
                 <div class="se-preset-card">
                     <div class="se-preset-title">${escapeHtml(d.label)}（${escapeHtml(d.desc)}）</div>
@@ -3350,7 +3581,7 @@
                 <div class="se-preset-accordion-body">
                     ${subSection(`presets-${key}-main`, '大事件基础导演预设', mainPresetCardHtml(key))}
                     ${subSection(`presets-${key}-sub`, `小事件流派预设（${subList.length} 个细分）`, subList.map(subCardHtml).join(''))}
-                    ${subSection(`presets-${key}-diff`, `${key === 'romance' ? '情感浓度' : '挑战难度'}预设（${(SUB_CONFIGS[key]?.difficulties || []).filter(d => d.prompt).length} 档）`, diffCardsHtml(key))}
+                    ${subSection(`presets-${key}-diff`, `${key === 'romance' ? '情感浓度' : '挑战难度'}预设（${(SUB_CONFIGS[key]?.difficulties || []).filter(d => d.prompt).length} 档 + 自定义）`, diffCardsHtml(key))}
                     ${extraHtml}
                 </div>
             </details>
@@ -3433,6 +3664,20 @@
         values.subPrompts = subPrompts;
         values.jailbreakPrompt = jailbreakPrompt;
         values.novelBypassPrompt = novelBypassPrompt;
+
+        // 自定义难度/浓度提示词：写入 subConfig.customDiffPrompt（与细分设置弹窗同源）
+        const subConfigCopy = values.subConfig && typeof values.subConfig === 'object' ? JSON.parse(JSON.stringify(values.subConfig)) : {};
+        root?.querySelectorAll('#se-preset-list textarea[data-custom-diff-key]').forEach(textarea => {
+            const pKey = textarea.dataset.customDiffKey;
+            if (!pKey || !SUB_CONFIGS[pKey]) return;
+            const base = subConfigCopy[pKey] && typeof subConfigCopy[pKey] === 'object'
+                ? subConfigCopy[pKey]
+                : JSON.parse(JSON.stringify(DEFAULT_SETTINGS.subConfig[pKey] || {}));
+            base.customDiffPrompt = textarea.value;
+            subConfigCopy[pKey] = base;
+        });
+        values.subConfig = subConfigCopy;
+
         persistSettings(values);
         if (window.toastr) toastr.success('所有大事件、小事件与创作约定已保存');
         renderPresets();

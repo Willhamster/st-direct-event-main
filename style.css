@@ -666,7 +666,8 @@
     transform: translateY(0) scale(0.98);
 }
 
-.se-event-btn.generating {
+.se-event-btn.generating,
+.se-event-btn.se-btn-generating {
     border-color: var(--se-accent);
     animation: seBtnPulse 1.6s ease-in-out infinite;
     pointer-events: none;
@@ -3233,12 +3234,16 @@
     font-weight: 400;
     box-shadow: none !important;
 }
+#st-direct-event-root .se-badge.se-badge-turns {
+    opacity: 0.8;
+    font-size: 10.5px;
+}
 #st-direct-event-root .se-sub-btn {
     width: 44px;
     min-width: 44px;
     margin: 0;
     border: 0 !important;
-    border-left: 1px solid var(--se-border-subtle) !important;
+    border-left: 1px solid var(--se-border) !important;
     border-radius: 0;
     background: var(--se-bg-card) !important;
     color: var(--se-accent) !important;
@@ -3253,6 +3258,29 @@
     font-family: inherit;
     text-shadow: none;
     cursor: pointer;
+}
+
+/* 面板右下角手动调整大小把手（全局唯一，位置与 z-index 由 JS 内联写入） */
+#se-resize-handle {
+    position: fixed;
+    width: 16px;
+    height: 16px;
+    display: none;
+    cursor: nwse-resize;
+    touch-action: none;
+    opacity: 0.5;
+    border-radius: 0 0 6px 0;
+    background: repeating-linear-gradient(135deg, transparent 0, transparent 3px, var(--se-accent) 3px, var(--se-accent) 5px);
+    transition: opacity 0.15s ease;
+}
+
+#se-resize-handle:hover {
+    opacity: 1;
+}
+
+/* 拖拽调整大小期间关闭面板尺寸过渡：保证跟手，且松手读取的是精确尺寸 */
+.se-panel-resizing {
+    transition: none !important;
 }
 #st-direct-event-root :is(.se-nav-btn, .se-cap-btn, .se-close-btn, .se-settings-btn, .se-api-toggle, .se-stage-tab-btn, .se-quick-turn-btn) {
     color: var(--se-text-main) !important;
