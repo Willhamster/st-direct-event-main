@@ -1314,6 +1314,10 @@
         setupResizePanelObserver();
         setupResizePanelSizeObserver();
         positionResizeHandle();
+        // 入场动画结束的精确时刻立即校准把手（早于 300ms 防抖兜底）
+        root.addEventListener('animationend', (e) => {
+            if (e.target && RESIZE_PANEL_IDS.includes(e.target.id)) positionResizeHandle(false);
+        });
 
         try {
             applyFabSettings();
@@ -2527,7 +2531,9 @@
         writeUiState(state);
     }
 
-    function positionResizeHandle() {
+    let resizeHandleSettleTimer = null;
+
+    function positionResizeHandle(scheduleSettle = true) {
         const handle = root?.querySelector('#se-resize-handle');
         if (!handle) return;
         const panel = getVisibleResizePanel();
@@ -2547,6 +2553,17 @@
         handle.style.top = Math.round(rect.bottom - size - 2) + 'px';
         const z = parseFloat(getComputedStyle(panel).zIndex);
         handle.style.zIndex = String((Number.isFinite(z) ? z : 10000) + 1);
+        scheduleSettleResizeHandle();
+    }
+
+    // 面板重新显示会重放入场动画（sePanelSlideIn 含缩放位移），动画期间的矩形与落定位置有偏差，
+    // 把手会被钉在动画中间位置。防抖 300ms 待动画结束后按最终矩形二次校准。
+    function scheduleSettleResizeHandle() {
+        if (resizeHandleSettleTimer) clearTimeout(resizeHandleSettleTimer);
+        resizeHandleSettleTimer = setTimeout(() => {
+            resizeHandleSettleTimer = null;
+            positionResizeHandle(false);
+        }, 300);
     }
 
     // 面板的显隐（display）与拖动（left/top）都通过内联 style 修改，监听 style 变更即可集中跟随，无需在每个入口埋点
