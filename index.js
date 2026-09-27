@@ -1243,7 +1243,7 @@
                     <button data-action="close-world-info-modal">关闭</button>
                 </div>
                 <div class="se-presets-tip">
-                    勾选需要注入副 API 的世界书条目（默认自动勾选常驻蓝灯）。可直接修改条目内容或新增自定义世界观，副 API 仅注入已勾选条目。
+                    条目按世界书分组展示（来源：聊天绑定 / 角色卡 / 全局激活 / 附加），点击书名展开该书条目；展开后组头吸附在列表顶部，再次点击即可折叠。勾选需要注入副 API 的条目（默认自动勾选常驻蓝灯），可直接修改条目内容或新增自定义世界观，副 API 仅注入已勾选条目。
                 </div>
                 <div class="se-wi-search-row">
                     <div class="se-wi-search-box">
@@ -1320,6 +1320,7 @@
             if (wiCheckbox && wiCheckbox.dataset.wiUid) {
                 const item = cachedAllWorldInfoList.find(x => x.uid === wiCheckbox.dataset.wiUid);
                 if (item) item.enabled = wiCheckbox.checked;
+                updateWorldInfoGroupCount(wiCheckbox.closest('.se-wi-group'));
                 return;
             }
             if (e.target.id === 'se-pv-filter-match') {
@@ -3327,6 +3328,21 @@
             return;
         }
 
+        if (action === 'wi-toggle-group') {
+            toggleWorldInfoGroup(el.closest('.se-wi-group'));
+            return;
+        }
+
+        if (action === 'wi-group-select-all') {
+            setWorldInfoGroupEnabled(el.dataset.wiBook, true);
+            return;
+        }
+
+        if (action === 'wi-group-clear') {
+            setWorldInfoGroupEnabled(el.dataset.wiBook, false);
+            return;
+        }
+
         if (action === 'open-blueprint') {
             const id = el.dataset.id;
             openStageModalForEvent(id);
@@ -4456,6 +4472,46 @@
     let cachedWorldInfoEntries = [];
     let cachedAllWorldInfoList = [];
 
+    // 世界书分组常量：groupKey 特殊值与来源标签文案（渲染按聊天绑定 > 角色卡 > 全局激活 > 附加 > 自定义排组）
+    const WI_CUSTOM_GROUP_KEY = '__custom__';
+    const WI_UNNAMED_BOOK_KEY = '__unnamed__';
+    const WI_BOOK_SOURCE_LABELS = {
+        chat: '聊天绑定',
+        char: '角色卡',
+        global: '全局激活',
+        extra: '附加/其他',
+        custom: '自定义'
+    };
+
+    // 判定每本世界书的来源：聊天绑定 > 角色卡 > 全局激活，均未命中则为附加/其他。
+    // 酒馆 getSortedEntries 不带来源信息，需对照 context（聊天元数据/当前角色）与 world_info 设置反查。
+    function resolveWiBookSources(wiModule) {
+        const map = new Map();
+        const mark = (name, source) => {
+            const key = String(name || '').trim();
+            if (key && !map.has(key)) map.set(key, source);
+        };
+        try {
+            const ctx = getCtx();
+            mark(ctx?.chatMetadata?.world, 'chat');
+            const characters = Array.isArray(ctx?.characters) ? ctx.characters : [];
+            const character = characters[ctx?.characterId]
+                || (ctx?.name2 ? characters.find(c => c?.name === ctx.name2) : null)
+                || null;
+            if (character) {
+                String(character.world || '').split(',').forEach(name => mark(name, 'char'));
+                mark(character?.data?.character_book?.name, 'char');
+            }
+            const globalSelect = wiModule?.world_info?.globalSelect
+                ?? ctx?.worldInfoSettings?.globalSelect
+                ?? [];
+            if (Array.isArray(globalSelect)) globalSelect.forEach(name => mark(name, 'global'));
+        } catch (e) {
+            // 酒馆上下文缺失（浏览器外预览等）时静默降级：全部按附加/其他展示
+        }
+        return map;
+    }
+
     async function refreshWorldInfoCache(settings) {
         const s = settings || getSettings();
         if (s.enableWorldInfo === false) {
@@ -4494,6 +4550,7 @@
         const overrides = s.worldInfoOverrides || {};
         const customEntries = Array.isArray(s.customWorldInfoEntries) ? s.customWorldInfoEntries : [];
 
+        const bookSources = resolveWiBookSources(wiModule);
         const allList = [];
 
         if (Array.isArray(rawEntries)) {
@@ -4527,7 +4584,10 @@
                     constant: isConstant,
                     enabled,
                     isCustom: false,
-                    isModified
+                    isModified,
+                    world: worldKey,
+                    groupKey: worldKey || WI_UNNAMED_BOOK_KEY,
+                    source: bookSources.get(worldKey) || 'extra'
                 });
             }
         }
@@ -4544,7 +4604,10 @@
                 constant: false,
                 enabled: ce.enabled !== false,
                 isCustom: true,
-                isModified: false
+                isModified: false,
+                world: '',
+                groupKey: WI_CUSTOM_GROUP_KEY,
+                source: 'custom'
             });
         }
 
@@ -7655,10 +7718,60 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
             return;
         }
 
-        const html = cachedAllWorldInfoList.map(item => {
-            const badgeClass = item.constant ? 'se-wi-badge-blue' : (item.isCustom ? 'se-wi-badge-custom' : 'se-wi-badge-normal');
-            const badgeLabel = item.constant ? '常驻蓝灯' : (item.isCustom ? '自定义' : '普通条目');
+        // 按世界书分组（groupKey：书名 / __custom__ / __unnamed__），组间按来源优先级排序，
+        // 组内保持条目原顺序（refreshWorldInfoCache 已按 order 升序）
+        const SOURCE_ORDER = { chat: 0, char: 1, global: 2, extra: 3, custom: 4 };
+        const groups = new Map();
+        for (const item of cachedAllWorldInfoList) {
+            const key = item.groupKey || item.world || WI_UNNAMED_BOOK_KEY;
+            let group = groups.get(key);
+            if (!group) {
+                group = {
+                    key,
+                    bookName: item.source === 'custom' ? '自定义条目' : (item.world || '未命名世界书'),
+                    source: item.source || 'extra',
+                    items: []
+                };
+                groups.set(key, group);
+            }
+            group.items.push(item);
+        }
+        const groupList = Array.from(groups.values()).sort((a, b) =>
+            (SOURCE_ORDER[a.source] ?? SOURCE_ORDER.extra) - (SOURCE_ORDER[b.source] ?? SOURCE_ORDER.extra)
+        );
+
+        const html = groupList.map(group => {
+            // 默认折叠（与图定稿一致），展开状态持久化到 UI 折叠记忆
+            const open = isAccordionOpen(`wi-book::${group.key}`, false);
+            const sourceLabel = WI_BOOK_SOURCE_LABELS[group.source] || WI_BOOK_SOURCE_LABELS.extra;
+            const selectedCount = group.items.filter(item => item.enabled).length;
             return `
+                <div class="se-wi-group${open ? '' : ' se-wi-group-collapsed'}" data-wi-book="${escapeHtml(group.key)}">
+                    <div class="se-wi-group-header" data-action="wi-toggle-group" data-wi-book="${escapeHtml(group.key)}" title="${open ? '点击折叠该书条目' : '点击展开该书条目'}">
+                        <span class="se-wi-group-chevron">▾</span>
+                        <span class="se-wi-group-title" title="${escapeHtml(group.bookName)}">${escapeHtml(group.bookName)}</span>
+                        <span class="se-wi-group-source se-wi-source-${escapeHtml(group.source)}">${escapeHtml(sourceLabel)}</span>
+                        <span class="se-wi-group-count" data-wi-group-count>已选 ${selectedCount}/${group.items.length}</span>
+                        <span class="se-wi-group-ops">
+                            <button type="button" class="se-btn-action" data-action="wi-group-select-all" data-wi-book="${escapeHtml(group.key)}">全选</button>
+                            <button type="button" class="se-btn-action" data-action="wi-group-clear" data-wi-book="${escapeHtml(group.key)}">清空</button>
+                        </span>
+                    </div>
+                    <div class="se-wi-group-body">
+                        ${group.items.map(item => renderWorldInfoItemCard(item)).join('')}
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        listEl.innerHTML = html;
+        filterWorldInfoEntries();
+    }
+
+    function renderWorldInfoItemCard(item) {
+        const badgeClass = item.constant ? 'se-wi-badge-blue' : (item.isCustom ? 'se-wi-badge-custom' : 'se-wi-badge-normal');
+        const badgeLabel = item.constant ? '常驻蓝灯' : (item.isCustom ? '自定义' : '普通条目');
+        return `
                 <div class="se-wi-item-card" data-wi-uid="${escapeHtml(item.uid)}">
                     <div class="se-wi-item-header">
                         <label class="se-wi-checkbox-label" title="${item.enabled ? '已勾选注入副 API' : '未勾选，不注入'}">
@@ -7680,10 +7793,6 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
                     </div>
                 </div>
             `;
-        }).join('');
-
-        listEl.innerHTML = html;
-        filterWorldInfoEntries();
     }
 
     function filterWorldInfoEntries() {
@@ -7706,6 +7815,20 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
             if (matches) matchCount++;
         });
 
+        // 分组联动：搜索时自动展开含匹配条目的组并隐藏无匹配组；清空搜索后按折叠记忆还原
+        modal.querySelectorAll('.se-wi-group').forEach(group => {
+            if (query) {
+                const visibleCount = Array.from(group.querySelectorAll('.se-wi-item-card'))
+                    .filter(card => card.style.display !== 'none').length;
+                group.style.display = visibleCount > 0 ? '' : 'none';
+                group.classList.remove('se-wi-group-collapsed');
+            } else {
+                group.style.display = '';
+                const key = group.dataset.wiBook || '';
+                group.classList.toggle('se-wi-group-collapsed', !isAccordionOpen(`wi-book::${key}`, false));
+            }
+        });
+
         if (counterEl) {
             if (query) {
                 counterEl.textContent = `共 ${total} 条，匹配 ${matchCount} 条`;
@@ -7713,6 +7836,36 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
                 counterEl.textContent = `共 ${total} 条条目`;
             }
         }
+    }
+
+    function toggleWorldInfoGroup(groupEl) {
+        if (!groupEl) return;
+        const key = groupEl.dataset.wiBook;
+        if (!key) return;
+        const collapsed = groupEl.classList.toggle('se-wi-group-collapsed');
+        setSectionCollapsed(`wi-book::${key}`, collapsed);
+    }
+
+    function updateWorldInfoGroupCount(groupEl) {
+        const key = groupEl?.dataset.wiBook;
+        if (!key) return;
+        const items = cachedAllWorldInfoList.filter(item => (item.groupKey || item.world || WI_UNNAMED_BOOK_KEY) === key);
+        const countEl = groupEl.querySelector('[data-wi-group-count]');
+        if (countEl) countEl.textContent = `已选 ${items.filter(item => item.enabled).length}/${items.length}`;
+    }
+
+    function setWorldInfoGroupEnabled(bookKey, enabled) {
+        if (!bookKey) return;
+        const modal = root?.querySelector('#se-world-info-modal');
+        const groupEl = modal?.querySelector(`.se-wi-group[data-wi-book="${CSS.escape(bookKey)}"]`);
+        if (!groupEl) return;
+        for (const item of cachedAllWorldInfoList) {
+            if ((item.groupKey || item.world || WI_UNNAMED_BOOK_KEY) === bookKey) {
+                item.enabled = enabled;
+            }
+        }
+        groupEl.querySelectorAll('.se-wi-checkbox').forEach(cb => { cb.checked = enabled; });
+        updateWorldInfoGroupCount(groupEl);
     }
 
     function selectWorldInfoBlueOnly() {
@@ -7753,7 +7906,11 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
             isCustom: true,
             isModified: false
         });
+        // 自定义条目归入末尾的「自定义条目」分组：新增时强制展开并滚动到位，避免被折叠状态藏住
+        setSectionCollapsed(`wi-book::${WI_CUSTOM_GROUP_KEY}`, false);
         renderWorldInfoModal();
+        const newCard = root?.querySelector(`#se-wi-list .se-wi-item-card[data-wi-uid="${CSS.escape(newUid)}"]`);
+        newCard?.scrollIntoView({ block: 'center', behavior: 'smooth' });
     }
 
     function deleteCustomWorldInfoEntry(uid) {

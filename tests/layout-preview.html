@@ -364,7 +364,7 @@ button{font:inherit}
                     <button data-action="close-world-info-modal">关闭</button>
                 </div>
                 <div class="se-presets-tip">
-                    勾选需要注入副 API 的世界书条目（默认自动勾选常驻蓝灯）。可直接修改条目内容或新增自定义世界观，副 API 仅注入已勾选条目。
+                    条目按世界书分组展示（来源：聊天绑定 / 角色卡 / 全局激活 / 附加），点击书名展开该书条目；展开后组头吸附在列表顶部，再次点击即可折叠。勾选需要注入副 API 的条目（默认自动勾选常驻蓝灯），可直接修改条目内容或新增自定义世界观，副 API 仅注入已勾选条目。
                 </div>
                 <div class="se-wi-search-row">
                     <div class="se-wi-search-box">
@@ -400,10 +400,22 @@ const genreBody = (label) =>
   subSec('main', '大事件基础导演预设', pcard('', '', 7, longText(14))) +
   subSec('sub', '小事件流派预设（5 个细分）', [1, 2, 3, 4, 5].map(i => pcard(label + '流派 ' + i, '说明：' + label + '流派 ' + i + ' 的玩法与反噬描述。', 5, longText(8))).join('')) +
   subSec('diff', '挑战难度预设（5 档 + 自定义）', ['轻松', '标准', '困难', '噩梦', '自定义'].map(t => pcard(t, '难度「' + t + '」档提示词。', 3, longText(4))).join(''));
-['se-api-log-list', 'se-event-list', 'se-sub-body', 'se-stage-modal-body', 'se-wi-list'].forEach(id => {
+// 世界书弹窗用与 renderWorldInfoModal 相同的分组结构（组头 sticky 吸顶 + 折叠 body），
+// 用于验证组头吸附、点组头折叠与「.se-wi-list > * flex-shrink:0」下组块不被压缩
+const wiCard = (n) => '<div class="se-wi-item-card" data-wi-uid="demo-' + n + '"><div class="se-wi-item-header"><label class="se-wi-checkbox-label"><input type="checkbox" class="se-wi-checkbox"' + (n % 3 === 0 ? ' checked' : '') + '><span style="font-size:12px; font-weight:600; margin-left:6px;">注入</span></label><span class="se-wi-badge se-wi-badge-normal">普通条目</span><div class="se-wi-item-title-wrap"><input type="text" class="se-wi-item-title-input" value="示例条目 ' + n + '"></div></div><div class="se-wi-item-body"><textarea class="se-wi-item-textarea" rows="3">示例条目正文 ' + n + '：撑高度用，验证组头吸顶时卡片可从其下方滚过。</textarea></div></div>';
+const wiGroup = (book, sourceClass, sourceLabel, count, open) => '<div class="se-wi-group' + (open ? '' : ' se-wi-group-collapsed') + '" data-wi-book="' + book + '"><div class="se-wi-group-header" data-action="wi-toggle-group" data-wi-book="' + book + '"><span class="se-wi-group-chevron">▾</span><span class="se-wi-group-title">' + book + '</span><span class="se-wi-group-source ' + sourceClass + '">' + sourceLabel + '</span><span class="se-wi-group-count" data-wi-group-count>已选 ' + count + '</span><span class="se-wi-group-ops"><button type="button" class="se-btn-action" data-action="wi-group-select-all" data-wi-book="' + book + '">全选</button><button type="button" class="se-btn-action" data-action="wi-group-clear" data-wi-book="' + book + '">清空</button></span></div><div class="se-wi-group-body">' + Array.from({ length: 8 }, (_, i) => wiCard(i + 1)).join('') + '</div></div>';
+['se-api-log-list', 'se-event-list', 'se-sub-body', 'se-stage-modal-body'].forEach(id => {
   const el = document.getElementById(id);
   if (el && !el.children.length) { let h = ''; for (let i = 1; i <= 10; i++) h += card(i); el.innerHTML = h; }
 });
+const wiList = document.getElementById('se-wi-list');
+if (wiList && !wiList.children.length) {
+  wiList.innerHTML =
+    wiGroup('海津岛（示例）', 'se-wi-source-char', '角色卡', '3/8', true) +
+    wiGroup('[示例附加书 小鸟游六花]', 'se-wi-source-extra', '附加/其他', '1/8', false) +
+    wiGroup('全局示例书', 'se-wi-source-global', '全局激活', '2/8', false) +
+    wiGroup('自定义条目', 'se-wi-source-custom', '自定义', '1/1', false);
+}
 const pl = document.getElementById('se-preset-list');
 if (pl && !pl.children.length) {
   pl.innerHTML =
@@ -428,5 +440,12 @@ function show(id) {
   document.querySelectorAll('[data-show]').forEach(b => b.classList.toggle('on', b.dataset.show === id));
 }
 document.querySelector('.se-preview-bar').addEventListener('click', e => { const b = e.target.closest('[data-show]'); if (b) show(b.dataset.show); });
+// 预览页模拟世界书组头折叠交互（真实实现见 index.js 的 wi-toggle-group / wi-group-* 委托）
+document.getElementById('st-direct-event-root').addEventListener('click', e => {
+  const header = e.target.closest('.se-wi-group-header');
+  if (!header) return;
+  if (e.target.closest('[data-action="wi-group-select-all"], [data-action="wi-group-clear"]')) return;
+  header.closest('.se-wi-group').classList.toggle('se-wi-group-collapsed');
+});
 show('se-settings');
 </script></body></html>

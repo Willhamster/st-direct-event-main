@@ -4282,6 +4282,128 @@
     background: rgba(255, 255, 255, 0.02);
 }
 
+/* 世界书分组：组头 sticky 吸附在 .se-wi-list 滚动容器顶部，点击组头折叠/展开该书条目。
+   注意：组容器禁止设置 overflow（非 visible 的祖先 overflow 会吞掉 sticky 的滚动参照） */
+.se-wi-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.se-wi-group-header {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 8px;
+    padding: 10px 12px;
+    background: var(--se-bg-panel);
+    border: 1.5px solid var(--se-border);
+    border-radius: var(--se-radius-md);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.se-wi-group-header:hover {
+    border-color: var(--se-accent);
+}
+
+.se-wi-group-chevron {
+    flex-shrink: 0;
+    font-size: 12px;
+    line-height: 1;
+    color: var(--se-text-sub);
+    transition: transform 0.2s ease;
+}
+
+.se-wi-group-collapsed .se-wi-group-chevron {
+    transform: rotate(-90deg);
+}
+
+.se-wi-group-title {
+    flex: 0 1 auto;
+    min-width: 48px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--se-text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.se-wi-group-source {
+    flex-shrink: 0;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+
+.se-wi-source-chat {
+    background: rgba(56, 189, 248, 0.18);
+    color: #38bdf8;
+    border: 1px solid rgba(56, 189, 248, 0.4);
+}
+
+.se-wi-source-char {
+    background: rgba(168, 85, 247, 0.18);
+    color: #c084fc;
+    border: 1px solid rgba(168, 85, 247, 0.4);
+}
+
+.se-wi-source-global {
+    background: rgba(52, 211, 153, 0.16);
+    color: #34d399;
+    border: 1px solid rgba(52, 211, 153, 0.4);
+}
+
+.se-wi-source-extra {
+    background: rgba(245, 158, 11, 0.16);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.se-wi-source-custom {
+    background: rgba(236, 72, 153, 0.16);
+    color: #f472b6;
+    border: 1px solid rgba(236, 72, 153, 0.4);
+}
+
+.se-wi-group-count {
+    flex-shrink: 0;
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--se-text-sub);
+    white-space: nowrap;
+}
+
+.se-wi-group-ops {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.se-wi-group-ops .se-btn-action {
+    padding: 2px 9px !important;
+    min-height: 24px !important;
+}
+
+.se-wi-group-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-top: 10px;
+}
+
+.se-wi-group-collapsed .se-wi-group-body {
+    display: none;
+}
+
 @media (max-width: 600px) {
     .se-world-info-modal {
         width: calc(100vw - 16px);
@@ -4297,6 +4419,18 @@
     }
     .se-wi-item-ctrls {
         margin-left: auto;
+    }
+    .se-wi-group-header {
+        padding: 8px 10px;
+        gap: 4px 6px;
+    }
+    .se-wi-group-title {
+        flex: 1 1 100%;
+        order: -1;
+        white-space: normal;
+    }
+    .se-wi-group-count {
+        margin-left: 0;
     }
 }
 
