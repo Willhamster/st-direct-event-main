@@ -155,6 +155,8 @@
         theme: 'ocean',
         enableWorldInfo: true,
         enableVarInjection: true,
+        varInjectionSelections: null,
+        varPruneEmpty: true,
         worldInfoSelections: null,
         worldInfoOverrides: null,
         customWorldInfoEntries: [],
@@ -430,6 +432,8 @@
         merged.customWorldInfoEntries = Array.isArray(ls.customWorldInfoEntries)
             ? ls.customWorldInfoEntries
             : (Array.isArray(stored.customWorldInfoEntries) ? stored.customWorldInfoEntries : []);
+        merged.varInjectionSelections = ls.varInjectionSelections != null ? ls.varInjectionSelections : (stored.varInjectionSelections != null ? stored.varInjectionSelections : null);
+        merged.varPruneEmpty = (ls.varPruneEmpty ?? stored.varPruneEmpty) !== false;
         merged.factions = Array.isArray(ls.factions) ? ls.factions : (Array.isArray(stored.factions) ? stored.factions : []);
         merged.defaultTurns = Math.min(30, Math.max(1, Math.floor(Number(merged.defaultTurns) || DEFAULT_SETTINGS.defaultTurns)));
         merged.subConfig = Object.assign({}, DEFAULT_SETTINGS.subConfig);
@@ -1112,12 +1116,18 @@
                         </div>
                     </div>
                     <div class="se-setting-card-item">
-                        <label class="se-check-label" style="margin:0; cursor:pointer;">
-                            <input id="se-enable-var-injection" type="checkbox" />
-                            <span style="font-weight:600; color:var(--se-text-title);">启用酒馆变量注入</span>
-                        </label>
+                        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                            <label class="se-check-label" style="margin:0; flex:1; cursor:pointer;">
+                                <input id="se-enable-var-injection" type="checkbox" />
+                                <span style="font-weight:600; color:var(--se-text-title);">启用酒馆变量注入</span>
+                            </label>
+                            <button type="button" class="se-btn-action" data-action="open-variable-modal" title="按分支勾选需要注入副 API 的酒馆变量，或取消不需要的内容">
+                                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M3 6h18M3 12h18M3 18h12"/></svg>
+                                <span>分支选择与排除管理</span>
+                            </button>
+                        </div>
                         <div style="font-size:11px; color:var(--se-text-muted); margin-top:4px; padding-left:24px; line-height:1.4;">
-                            将酒馆变量（角色卡变量 / 聊天变量，含 MVU 等框架的数值状态）作为独立 System 注入副 API。检测到酒馆助手时读取角色卡与聊天变量；未安装时读取酒馆核心聊天变量。每次生成时实时读取，以 $ 开头的隐藏变量不注入。
+                            默认仅注入 stat_data（MVU 等框架的角色状态与数值表），其余变量一律不注入。点击右侧按钮可按分支勾选更多内容或排除 stat_data 内的子分支；空值剪枝等规则也在弹窗中调整。检测到酒馆助手时读取角色卡与聊天变量，未安装时读取酒馆核心聊天变量；每次生成实时读取，以 $ 开头的隐藏变量不注入。
                         </div>
                     </div>
                     <label>发送最近 N 轮聊天内容</label>
@@ -1276,6 +1286,36 @@
                     <button data-action="reset-world-info-modal">恢复默认蓝灯</button>
                 </div>
             </div>
+
+            <div class="se-world-info-modal" id="se-variable-modal" style="display:none">
+                <div class="se-modal-header">
+                    <span id="se-var-modal-title">酒馆变量注入分支选择与排除</span>
+                    <button data-action="close-variable-modal">关闭</button>
+                </div>
+                <div class="se-presets-tip">
+                    变量按来源分组（角色卡变量 / 聊天变量），以分支树逐级展示。勾选即注入该分支，取消即不注入；未勾选过的顶层键默认仅注入 stat_data（MVU 等框架的状态表）。带「疑似脚本片段」角标的键通常是主模型框架的提示词指令，建议保持不勾选。剪枝开关只影响注入副本：每次生成实时执行，变量本体不受影响，当前为空的键日后有值时自然恢复注入。
+                </div>
+                <div class="se-wi-search-row">
+                    <div class="se-wi-search-box">
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input type="text" class="se-wi-search-input" id="se-var-search-input" placeholder="搜索变量键名..." />
+                    </div>
+                    <span class="se-wi-counter" id="se-var-counter">共 0 个分支</span>
+                </div>
+                <div class="se-wi-toolbar">
+                    <button type="button" class="se-btn-action" data-action="var-select-all">全选所有</button>
+                    <button type="button" class="se-btn-action" data-action="var-select-none">清空所有</button>
+                    <button type="button" class="se-btn-action" data-action="var-reset-default">恢复默认勾选</button>
+                    <label class="se-wi-checkbox-label" style="margin-left:auto; cursor:pointer;" title="开启后注入副本剪除空字符串、空对象、空数组（0 与 false 保留）；变量本体不受影响">
+                        <input type="checkbox" id="se-var-prune-empty" />
+                        <span style="font-size:12px; margin-left:4px;">剪除空值</span>
+                    </label>
+                </div>
+                <div class="se-wi-list" id="se-var-list"></div>
+                <div class="se-settings-actions">
+                    <button data-action="save-variable-modal" class="se-sub-save-btn">保存变量注入配置</button>
+                </div>
+            </div>
         `;
         document.body.appendChild(root);
         try {
@@ -1339,6 +1379,16 @@
                 updateWorldInfoGroupCount(wiCheckbox.closest('.se-wi-group'));
                 return;
             }
+            const varCheckbox = e.target.closest('.se-var-checkbox');
+            if (varCheckbox && varCheckbox.dataset.varPath) {
+                setVarSelection(varCheckbox.dataset.varGroup || '聊天变量', varCheckbox.dataset.varPath, varCheckbox.checked);
+                rerenderVariableModalPreservingScroll();
+                return;
+            }
+            if (e.target.id === 'se-var-prune-empty') {
+                rerenderVariableModalPreservingScroll();
+                return;
+            }
             if (e.target.id === 'se-pv-filter-match') {
                 filterPromptViewerMessages();
                 return;
@@ -1350,6 +1400,9 @@
             }
             if (e.target.id === 'se-wi-search-input') {
                 filterWorldInfoEntries();
+            }
+            if (e.target.id === 'se-var-search-input') {
+                rerenderVariableModalPreservingScroll();
             }
         });
         root.addEventListener('keydown', e => { if (e.target.matches('.se-fab') && ['Enter', ' '].includes(e.key)) { e.preventDefault(); togglePanel(); } });
@@ -3359,6 +3412,71 @@
             return;
         }
 
+        if (action === 'open-variable-modal') {
+            const m = root?.querySelector('#se-variable-modal');
+            if (m && m.style.display !== 'none') {
+                m.style.display = 'none';
+                showPanelAfterModalClose();
+                return;
+            }
+            openVariableModal();
+            return;
+        }
+
+        if (action === 'close-variable-modal') {
+            closeVariableModal();
+            return;
+        }
+
+        if (action === 'save-variable-modal') {
+            saveVariableModal();
+            return;
+        }
+
+        if (action === 'var-select-all') {
+            setAllVarSelections(true);
+            rerenderVariableModalPreservingScroll();
+            return;
+        }
+
+        if (action === 'var-select-none') {
+            setAllVarSelections(false);
+            rerenderVariableModalPreservingScroll();
+            return;
+        }
+
+        if (action === 'var-reset-default') {
+            varModalSelections = {};
+            rerenderVariableModalPreservingScroll();
+            return;
+        }
+
+        if (action === 'var-toggle-group') {
+            toggleVariableGroup(el.closest('.se-wi-group'));
+            return;
+        }
+
+        if (action === 'var-group-select-all') {
+            setVarGroupSelection(el.dataset.varGroup, true);
+            rerenderVariableModalPreservingScroll();
+            return;
+        }
+
+        if (action === 'var-group-clear') {
+            setVarGroupSelection(el.dataset.varGroup, false);
+            rerenderVariableModalPreservingScroll();
+            return;
+        }
+
+        if (action === 'var-toggle-node') {
+            const path = el.dataset.varPath;
+            if (!path) return;
+            if (varModalExpanded.has(path)) varModalExpanded.delete(path);
+            else varModalExpanded.add(path);
+            rerenderVariableModalPreservingScroll();
+            return;
+        }
+
         if (action === 'open-blueprint') {
             const id = el.dataset.id;
             openStageModalForEvent(id);
@@ -3587,6 +3705,8 @@
             worldInfoSelections: current.worldInfoSelections || null,
             worldInfoOverrides: current.worldInfoOverrides || null,
             customWorldInfoEntries: current.customWorldInfoEntries || [],
+            varInjectionSelections: current.varInjectionSelections || null,
+            varPruneEmpty: current.varPruneEmpty !== false,
             factions: Array.isArray(current.factions) ? current.factions : [],
             fabIconUrl: String(val('se-fab-icon')).trim(),
             fabX: current.fabX ?? null,
@@ -4663,31 +4783,83 @@
         return value;
     }
 
+    // 未被玩家显式勾选/取消过的顶层键的默认注入规则：仅 MVU 惯例状态表 stat_data 默认注入，其余默认不注入
+    const DEFAULT_VAR_SELECTED_KEY = 'stat_data';
+
+    // 有效勾选判定：显式标记优先；未标记的顶层键回落默认规则（仅 stat_data），深层键被遍历到即说明父级已勾选，默认继承选中
+    function varNodeEffectiveSelected(selections, path, isTopLevel) {
+        const explicit = selections ? selections[path] : undefined;
+        if (explicit === true) return true;
+        if (explicit === false) return false;
+        return isTopLevel ? path === DEFAULT_VAR_SELECTED_KEY : true;
+    }
+
+    // 按勾选结果过滤变量树（selections: path -> true/false；父级不勾选时整棵子树不注入，子级标记忽略）
+    function filterVariablesBySelection(variables, selections, prefix) {
+        if (!variables || typeof variables !== 'object' || Array.isArray(variables)) return {};
+        const out = {};
+        for (const key of Object.keys(variables)) {
+            const path = prefix ? `${prefix}.${key}` : key;
+            if (!varNodeEffectiveSelected(selections, path, !prefix)) continue;
+            const value = variables[key];
+            if (value && typeof value === 'object' && !Array.isArray(value)) {
+                out[key] = filterVariablesBySelection(value, selections, path);
+            } else {
+                out[key] = value;
+            }
+        }
+        return out;
+    }
+
+    // 空值剪枝：空字符串 / null / 空对象 / 空数组对副模型无信息量，递归剔除。
+    // 每次生成实时执行，变量本体不受影响——当前为空的键日后有值时自然恢复注入；0 与 false 是有效状态，保留。
+    function pruneEmptyVariableLeaves(value) {
+        if (Array.isArray(value)) {
+            const arr = value.map(item => pruneEmptyVariableLeaves(item)).filter(item => item !== undefined);
+            return arr.length ? arr : undefined;
+        }
+        if (value && typeof value === 'object') {
+            const out = {};
+            for (const key of Object.keys(value)) {
+                const child = pruneEmptyVariableLeaves(value[key]);
+                if (child !== undefined) out[key] = child;
+            }
+            return Object.keys(out).length ? out : undefined;
+        }
+        if (value === null || value === undefined) return undefined;
+        if (typeof value === 'string' && value.trim() === '') return undefined;
+        return value;
+    }
+
     // 收集酒馆变量：优先走酒馆助手(TavernHelper)导出到页面的全局接口读取角色卡/聊天变量；
-    // 未安装酒馆助手时降级读取酒馆核心聊天变量（chat_metadata.variables，角色卡变量为核心所无，直接省略）
-    function collectTavernVariables() {
+    // 未安装酒馆助手时降级读取酒馆核心聊天变量（chat_metadata.variables，角色卡变量为核心所无，直接省略）。
+    // 读取后按 varInjectionSelections 勾选过滤（未勾选过的回落"仅 stat_data"默认），再按 varPruneEmpty 开关剪除空值。
+    function collectTavernVariables(settings) {
+        const s = settings || getSettings();
+        const pruneEmpty = s?.varPruneEmpty !== false;
         const groups = [];
-        const pushGroup = (label, variables) => {
-            if (!variables || typeof variables !== 'object') return;
-            const cleaned = stripHiddenVariableKeys(variables);
-            if (!cleaned || typeof cleaned !== 'object') return;
-            if (Array.isArray(cleaned) ? cleaned.length === 0 : Object.keys(cleaned).length === 0) return;
+        const handle = (label, variables) => {
+            if (!variables || typeof variables !== 'object' || Array.isArray(variables)) return;
+            let cleaned = filterVariablesBySelection(stripHiddenVariableKeys(variables), s?.varInjectionSelections?.[label] || null);
+            if (pruneEmpty) cleaned = pruneEmptyVariableLeaves(cleaned);
+            if (!cleaned || typeof cleaned !== 'object' || Array.isArray(cleaned)) return;
+            if (!Object.keys(cleaned).length) return;
             groups.push({ label, variables: cleaned });
         };
         try {
             const th = window.TavernHelper;
             if (th && typeof th.getVariables === 'function') {
                 try {
-                    pushGroup('角色卡变量', th.getVariables({ type: 'character' }));
+                    handle('角色卡变量', th.getVariables({ type: 'character' }));
                 } catch (e) { /* 未打开角色卡时酒馆助手会抛错，跳过该组 */ }
                 try {
-                    pushGroup('聊天变量', th.getVariables({ type: 'chat' }));
+                    handle('聊天变量', th.getVariables({ type: 'chat' }));
                 } catch (e) { /* 静默降级 */ }
                 return groups;
             }
         } catch (e) { /* 浏览器酒馆之外环境静默忽略 */ }
         try {
-            pushGroup('聊天变量', getCtx()?.chatMetadata?.variables);
+            handle('聊天变量', getCtx()?.chatMetadata?.variables);
         } catch (e) { /* 静默降级 */ }
         return groups;
     }
@@ -4863,9 +5035,9 @@
             ? buildWorldInfoSystemPrompt(wiEntries)
             : '';
 
-        // 酒馆变量注入（角色状态与数值实时快照，无变量时自动省略）
+        // 酒馆变量注入（角色状态与数值实时快照，按弹窗勾选过滤，无内容时自动省略）
         const variableContent = (settings?.enableVarInjection !== false)
-            ? buildVariablesSystemPrompt(collectTavernVariables())
+            ? buildVariablesSystemPrompt(collectTavernVariables(settings))
             : '';
 
         // 破限与创作豁免指令
@@ -7793,6 +7965,281 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
                 }
             }
         });
+    }
+
+    // ========== 酒馆变量注入选择弹窗 ==========
+    let cachedVariableGroups = [];
+    let varModalSelections = {};
+    let varModalExpanded = new Set();
+    let varModalPreviousView = null;
+
+    // 读取原始变量表（仅剥 $ 隐藏键，不做勾选过滤与空值剪枝），供弹窗展示全部分支
+    function loadVariableGroupsRaw() {
+        const groups = [];
+        const grab = (label, variables) => {
+            if (!variables || typeof variables !== 'object' || Array.isArray(variables)) return;
+            const cleaned = stripHiddenVariableKeys(variables);
+            if (!cleaned || typeof cleaned !== 'object' || Array.isArray(cleaned)) return;
+            if (!Object.keys(cleaned).length) return;
+            groups.push({ label, variables: cleaned });
+        };
+        try {
+            const th = window.TavernHelper;
+            if (th && typeof th.getVariables === 'function') {
+                try {
+                    grab('角色卡变量', th.getVariables({ type: 'character' }));
+                } catch (e) { /* 未打开角色卡时酒馆助手会抛错，跳过该组 */ }
+                try {
+                    grab('聊天变量', th.getVariables({ type: 'chat' }));
+                } catch (e) { /* 静默降级 */ }
+            }
+        } catch (e) { /* 浏览器酒馆之外环境静默忽略 */ }
+        if (!groups.length) {
+            try {
+                grab('聊天变量', getCtx()?.chatMetadata?.variables);
+            } catch (e) { /* 静默降级 */ }
+        }
+        return groups;
+    }
+
+    function openVariableModal() {
+        const modal = root?.querySelector('#se-variable-modal');
+        if (!modal) return;
+        modalReturnPanelId = recordModalReturnPanel();
+        const settings = root?.querySelector('#se-settings');
+        const promptViewer = root?.querySelector('#se-prompt-viewer-modal');
+        const panel = root?.querySelector('#se-panel');
+        const presets = root?.querySelector('#se-presets');
+        const events = root?.querySelector('#se-events');
+        const apiLog = root?.querySelector('#se-api-log');
+        const subModal = root?.querySelector('#se-sub-modal');
+
+        if (settings && settings.style.display !== 'none') {
+            varModalPreviousView = 'settings';
+            settings.style.display = 'none';
+        } else if (promptViewer && promptViewer.style.display !== 'none') {
+            varModalPreviousView = 'prompt-viewer';
+            promptViewer.style.display = 'none';
+        } else {
+            varModalPreviousView = 'panel';
+        }
+
+        if (panel) panel.style.display = 'none';
+        if (presets) presets.style.display = 'none';
+        if (events) events.style.display = 'none';
+        if (apiLog) apiLog.style.display = 'none';
+        if (subModal) subModal.style.display = 'none';
+
+        modal.style.display = 'flex';
+        const searchInput = modal.querySelector('#se-var-search-input');
+        if (searchInput) searchInput.value = '';
+        varModalExpanded = new Set();
+        cachedVariableGroups = loadVariableGroupsRaw();
+        const pruneCheckbox = modal.querySelector('#se-var-prune-empty');
+        if (pruneCheckbox) pruneCheckbox.checked = getSettings().varPruneEmpty !== false;
+        try {
+            varModalSelections = JSON.parse(JSON.stringify(getSettings().varInjectionSelections || {}));
+        } catch (e) {
+            varModalSelections = {};
+        }
+        renderVariableModal();
+    }
+
+    function closeVariableModal() {
+        const modal = root?.querySelector('#se-variable-modal');
+        if (modal) modal.style.display = 'none';
+        if (varModalPreviousView === 'settings') {
+            const settings = root?.querySelector('#se-settings');
+            if (settings) settings.style.display = 'flex';
+        } else if (varModalPreviousView === 'prompt-viewer') {
+            const promptViewer = root?.querySelector('#se-prompt-viewer-modal');
+            if (promptViewer) {
+                promptViewer.style.display = 'flex';
+                renderPromptViewerContent();
+            }
+        } else {
+            showPanelAfterModalClose();
+        }
+        varModalPreviousView = null;
+        modalReturnPanelId = null;
+    }
+
+    function varNodeSize(value, pruneEmpty) {
+        let payload = value;
+        if (pruneEmpty) payload = pruneEmptyVariableLeaves(value);
+        if (payload === undefined) return 0;
+        try {
+            return String(typeof payload === 'string' ? payload : JSON.stringify(payload)).length;
+        } catch (e) {
+            return 0;
+        }
+    }
+
+    // 疑似脚本片段启发式：内容形如提示词指令（"- " 开头）或脚本模板（<% / {{ / <think）的字符串
+    function isSuspiciousVarValue(value) {
+        if (typeof value !== 'string') return false;
+        return value.includes('<%') || value.includes('<think') || value.includes('{{') || /^\s*[-·]\s/.test(value);
+    }
+
+    function varSubtreeMatchesQuery(key, value, query) {
+        if (!query) return true;
+        if (String(key).toLowerCase().includes(query)) return true;
+        if (value && typeof value === 'object') {
+            for (const childKey of Object.keys(value)) {
+                if (varSubtreeMatchesQuery(childKey, value[childKey], query)) return true;
+            }
+        }
+        return false;
+    }
+
+    function renderVarNodeRow(label, path, key, value, depth, query, pruneEmpty) {
+        const selMap = varModalSelections[label] || (varModalSelections[label] = {});
+        const selected = varNodeEffectiveSelected(selMap, path, depth === 0);
+        const isObj = value && typeof value === 'object' && !Array.isArray(value);
+        const childKeys = isObj ? Object.keys(value) : [];
+        if (query && !varSubtreeMatchesQuery(key, value, query)) return '';
+        // 搜索时自动展开全部命中分支；正常模式下按展开记忆，且父级未勾选时不展示子分支
+        const expanded = childKeys.length > 0 && selected && (!!query || varModalExpanded.has(path));
+        let childrenHtml = '';
+        if (expanded) {
+            const childRows = childKeys
+                .map(childKey => renderVarNodeRow(label, `${path}.${childKey}`, childKey, value[childKey], depth + 1, query, pruneEmpty))
+                .filter(Boolean).join('');
+            childrenHtml = `<div class="se-var-children">${childRows || '<div class="se-wi-empty-tip">（无匹配的子分支）</div>'}</div>`;
+        }
+        const size = varNodeSize(value, pruneEmpty);
+        const suspicious = isSuspiciousVarValue(value);
+        const indent = depth * 16;
+        return `
+            <div class="se-var-node" data-var-path="${escapeHtml(path)}">
+                <div class="se-var-node-head" style="margin-left:${indent}px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:3px 0;">
+                    <label class="se-wi-checkbox-label" style="margin:0; cursor:pointer;" title="${selected ? '已勾选：该分支将注入副 API' : '未勾选：该分支不注入'}">
+                        <input type="checkbox" class="se-var-checkbox" data-var-group="${escapeHtml(label)}" data-var-path="${escapeHtml(path)}" ${selected ? 'checked' : ''} />
+                        <span style="font-size:12px; font-weight:600; margin-left:4px;" title="${escapeHtml(path)}">${escapeHtml(key)}</span>
+                    </label>
+                    <span style="font-size:11px; color:var(--se-text-muted); white-space:nowrap;">~${size} 字</span>
+                    ${path === DEFAULT_VAR_SELECTED_KEY && selMap[path] === undefined ? '<span class="se-wi-badge se-wi-badge-blue" title="未被显式取消时默认注入的顶层键">默认勾选</span>' : ''}
+                    ${suspicious ? '<span class="se-wi-badge se-wi-badge-mod" title="内容形如提示词指令或脚本模板，通常供主模型框架使用，建议保持不勾选">疑似脚本片段</span>' : ''}
+                    ${childKeys.length && selected ? `<button type="button" class="se-btn-action" data-action="var-toggle-node" data-var-group="${escapeHtml(label)}" data-var-path="${escapeHtml(path)}">${expanded ? '折叠子分支' : `子分支 (${childKeys.length})`}</button>` : ''}
+                </div>
+                ${childrenHtml}
+            </div>
+        `;
+    }
+
+    function renderVariableModal() {
+        const listEl = root?.querySelector('#se-var-list');
+        if (!listEl) return;
+        if (!cachedVariableGroups.length) {
+            listEl.innerHTML = `<div class="se-wi-empty-tip">当前未读取到酒馆变量。安装酒馆助手并让角色卡或脚本写入变量后重新打开本窗口；未安装酒馆助手时也可使用酒馆核心聊天变量（/setvar 写入的数据）。</div>`;
+            updateVarModalCounter();
+            return;
+        }
+        const query = (root?.querySelector('#se-var-search-input')?.value || '').trim().toLowerCase();
+        const pruneEmpty = root?.querySelector('#se-var-prune-empty')?.checked !== false;
+        const html = cachedVariableGroups.map(group => {
+            const selMap = varModalSelections[group.label] || (varModalSelections[group.label] = {});
+            const topKeys = Object.keys(group.variables);
+            const selectedCount = topKeys.filter(key => varNodeEffectiveSelected(selMap, key, true)).length;
+            const rows = topKeys
+                .map(key => renderVarNodeRow(group.label, key, key, group.variables[key], 0, query, pruneEmpty))
+                .filter(Boolean).join('');
+            const open = isAccordionOpen(`var-group::${group.label}`, false);
+            return `
+                <div class="se-wi-group${open ? '' : ' se-wi-group-collapsed'}" data-var-group="${escapeHtml(group.label)}">
+                    <div class="se-wi-group-header" data-action="var-toggle-group" data-var-group="${escapeHtml(group.label)}" title="${open ? '点击折叠该组' : '点击展开该组'}">
+                        <span class="se-wi-group-chevron">▾</span>
+                        <span class="se-wi-group-title">${escapeHtml(group.label)}</span>
+                        <span class="se-wi-group-count" data-var-group-count>已选 ${selectedCount}/${topKeys.length}</span>
+                        <span class="se-wi-group-ops">
+                            <button type="button" class="se-btn-action" data-action="var-group-select-all" data-var-group="${escapeHtml(group.label)}">全选</button>
+                            <button type="button" class="se-btn-action" data-action="var-group-clear" data-var-group="${escapeHtml(group.label)}">清空</button>
+                        </span>
+                    </div>
+                    <div class="se-wi-group-body">${rows || '<div class="se-wi-empty-tip">该组没有匹配的变量分支。</div>'}</div>
+                </div>
+            `;
+        }).join('');
+        listEl.innerHTML = html;
+        updateVarModalCounter();
+    }
+
+    function rerenderVariableModalPreservingScroll() {
+        const listEl = root?.querySelector('#se-var-list');
+        const scrollTop = listEl ? listEl.scrollTop : 0;
+        renderVariableModal();
+        const newListEl = root?.querySelector('#se-var-list');
+        if (newListEl) newListEl.scrollTop = scrollTop;
+    }
+
+    function computeVarInjectionStats() {
+        const pruneEmpty = root?.querySelector('#se-var-prune-empty')?.checked !== false;
+        let selectedTop = 0;
+        let chars = 0;
+        for (const group of cachedVariableGroups) {
+            const selMap = varModalSelections[group.label] || {};
+            const keys = Object.keys(group.variables);
+            selectedTop += keys.filter(key => varNodeEffectiveSelected(selMap, key, true)).length;
+            let effective = filterVariablesBySelection(group.variables, selMap);
+            if (pruneEmpty) effective = pruneEmptyVariableLeaves(effective);
+            if (effective && typeof effective === 'object') {
+                for (const key of Object.keys(effective)) {
+                    chars += varNodeSize(effective[key], false);
+                }
+            }
+        }
+        return { selectedTop, chars };
+    }
+
+    function updateVarModalCounter() {
+        const counterEl = root?.querySelector('#se-var-counter');
+        if (!counterEl) return;
+        const { selectedTop, chars } = computeVarInjectionStats();
+        counterEl.textContent = `已选 ${selectedTop} 个顶层分支 · 约注入 ${chars} 字`;
+    }
+
+    // 设置某节点勾选标记，并清除其全部后代标记（重新勾选父级后子级回落继承规则）
+    function setVarSelection(label, path, value) {
+        const map = varModalSelections[label] || (varModalSelections[label] = {});
+        map[path] = value;
+        const prefix = `${path}.`;
+        for (const key of Object.keys(map)) {
+            if (key !== path && key.startsWith(prefix)) delete map[key];
+        }
+    }
+
+    function setVarGroupSelection(label, value) {
+        const group = cachedVariableGroups.find(g => g.label === label);
+        if (!group) return;
+        const map = {};
+        for (const key of Object.keys(group.variables)) map[key] = value;
+        varModalSelections[label] = map;
+    }
+
+    function setAllVarSelections(value) {
+        for (const group of cachedVariableGroups) setVarGroupSelection(group.label, value);
+    }
+
+    async function saveVariableModal() {
+        const pruneCheckbox = root?.querySelector('#se-var-prune-empty');
+        const s = getSettings();
+        const selections = {};
+        for (const [label, map] of Object.entries(varModalSelections)) {
+            if (map && typeof map === 'object' && Object.keys(map).length) selections[label] = map;
+        }
+        s.varInjectionSelections = selections;
+        s.varPruneEmpty = pruneCheckbox ? !!pruneCheckbox.checked : true;
+        persistSettings(s);
+        if (window.toastr) toastr.success('酒馆变量注入配置已保存');
+        closeVariableModal();
+    }
+
+    function toggleVariableGroup(groupEl) {
+        if (!groupEl) return;
+        const key = groupEl.dataset.varGroup;
+        if (!key) return;
+        const collapsed = groupEl.classList.toggle('se-wi-group-collapsed');
+        setSectionCollapsed(`var-group::${key}`, collapsed);
     }
 
     async function openWorldInfoModal() {

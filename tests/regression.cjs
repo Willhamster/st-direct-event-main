@@ -396,6 +396,12 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         assert(src.includes("enableVarInjection: checked('se-enable-var-injection')"), 'form collect missing');
         assert(src.includes('data-pv-action="toggle-variables"'), 'prompt viewer toggle missing');
         assert(src.includes('promptViewerState.variables = s.enableVarInjection !== false;'), 'prompt viewer state sync missing');
+        assert(src.includes('id="se-variable-modal"'), 'variable modal shell missing');
+        assert(src.includes('data-action="open-variable-modal"'), 'variable modal open button missing');
+        assert(src.includes('merged.varInjectionSelections = ls.varInjectionSelections != null ? ls.varInjectionSelections : (stored.varInjectionSelections != null ? stored.varInjectionSelections : null);'), 'selections merge missing');
+        assert(src.includes('merged.varPruneEmpty = (ls.varPruneEmpty ?? stored.varPruneEmpty) !== false;'), 'prune merge missing');
+        assert(src.includes('varInjectionSelections: current.varInjectionSelections || null,'), 'form preserve selections missing');
+        assert(src.includes('varPruneEmpty: current.varPruneEmpty !== false,'), 'form preserve prune missing');
     });
     check('Variable section is injected between world info and sub-prompt',()=>{
         const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
@@ -405,7 +411,7 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         const tn = src.indexOf('// 5. 独立注入：回合推进规约与XML大纲结构');
         assert(wi >= 0 && va > wi && sp > va && tn > sp, 'variable push not between world info and sub prompt');
         const body = src.slice(src.indexOf('function buildEventPrompt'), src.indexOf('function pushApiLog'));
-        assert(body.includes('buildVariablesSystemPrompt(collectTavernVariables())'), 'buildEventPrompt does not build variable content');
+        assert(body.includes('buildVariablesSystemPrompt(collectTavernVariables(settings))'), 'buildEventPrompt does not build variable content with settings');
         assert(body.includes('enableVarInjection !== false'), 'variable content not gated on setting');
     });
     check('Variable prompt builder renders YAML groups and hides $ keys',()=>{
@@ -425,12 +431,49 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         assert.equal(h.api.buildVariablesSystemPrompt([{label:'聊天变量', variables:{}}]), '');
         assert(h.api.buildVariablesSystemPrompt([{label:'聊天变量', variables:{a:{$secret:1}, $b:2}}]).includes('a: {}'), 'nested $ keys not stripped');
     });
-    check('Variable collection falls back to core chat variables without TavernHelper',()=>{
-        const h4 = harness({ctx:{chatMetadata:{variables:{gold:9}}}});
+    check('Variable selection defaults to stat_data and honors explicit branches',()=>{
+        // 默认规则：未显式标记的顶层键仅 stat_data 注入，其余一律不注入；深层节点继承父级有效状态
+        const vars = { stat_data: { hp: 1, NPC: { name: '陈' } }, gold: 9, duihua: '- 对白主导' };
+        assert.equal(JSON.stringify(Object.keys(h.api.filterVariablesBySelection(vars, null))), JSON.stringify(['stat_data']));
+        // 显式放开顶层键
+        const opened = h.api.filterVariablesBySelection(vars, { gold: true, duihua: true });
+        assert.equal(JSON.stringify(Object.keys(opened).sort()), JSON.stringify(['duihua','gold','stat_data']));
+        // 显式取消 stat_data 整体
+        assert.equal(h.api.filterVariablesBySelection(vars, { stat_data: false }).stat_data, undefined);
+        // 仅取消 stat_data 子分支，兄弟键保留
+        const trimmed = h.api.filterVariablesBySelection(vars, { 'stat_data.NPC': false });
+        assert.equal(trimmed.stat_data.hp, 1);
+        assert.equal(trimmed.stat_data.NPC, undefined);
+        // 父级取消时子级标记被压制：stat_data 整体关闭后，NPC 上的 true 无效
+        assert.equal(h.api.filterVariablesBySelection(vars, { stat_data: false, 'stat_data.NPC': true }).stat_data, undefined);
+    });
+    check('Empty-value pruning is real-time, non-destructive and toggleable',()=>{
+        const messy = { a: '', b: {}, c: [], d: null, e: 0, f: false, g: 'x', h: { i: '', j: 'v' } };
+        const pruned = h.api.pruneEmptyVariableLeaves(messy);
+        assert.equal(JSON.stringify(pruned), JSON.stringify({ e: 0, f: false, g: 'x', h: { j: 'v' } }));
+        // 剪枝只作用于注入副本，原变量对象不被修改
+        assert.equal(messy.a, '');
+        assert.equal(messy.h.i, '');
+        // 空容器经剪枝后整体消失
+        assert.equal(h.api.pruneEmptyVariableLeaves({ k: { l: [] } }), undefined);
+    });
+    check('Variable collection honors default stat_data, selections and prune toggle',()=>{
+        const fixture = { stat_data: { hp: 110, gold: 9, memo: '' }, gold2: 1, schema: '没有用别管这个', duihua: '- 对白主导' };
+        const h4 = harness({ ctx: { chatMetadata: { variables: fixture } } });
+        // 默认仅 stat_data，且其中空值被剪除；schema/duihua/gold2 默认不注入
         const groups = h4.api.collectTavernVariables();
         assert.equal(groups.length, 1);
         assert.equal(groups[0].label, '聊天变量');
-        assert.equal(groups[0].variables.gold, 9);
+        assert.equal(JSON.stringify(groups[0].variables), JSON.stringify({ stat_data: { hp: 110, gold: 9 } }));
+        // 显式放开顶层键
+        const opened = h4.api.collectTavernVariables({ varInjectionSelections: { '聊天变量': { gold2: true, duihua: true } } });
+        assert.equal(JSON.stringify(Object.keys(opened[0].variables).sort()), JSON.stringify(['duihua','gold2','stat_data']));
+        // 显式取消 stat_data → 整组为空 → 不注入
+        assert.equal(h4.api.collectTavernVariables({ varInjectionSelections: { '聊天变量': { stat_data: false } } }).length, 0);
+        // 关闭剪枝后空值保留
+        const kept = h4.api.collectTavernVariables({ varInjectionSelections: { '聊天变量': { 'stat_data.memo': true } }, varPruneEmpty: false });
+        assert.equal(kept[0].variables.stat_data.memo, '');
+        // 完全无变量时不注入小节
         const h5 = harness();
         assert.equal(h5.api.collectTavernVariables().length, 0);
         assert(!h5.api.buildEventPrompt(h5.api.EVENT_TYPES.combat, '玩家: 你好', h5.api.DEFAULT_SETTINGS, []).some(m => String(m.content).includes('【酒馆变量注入')), 'empty variables must not push a section');

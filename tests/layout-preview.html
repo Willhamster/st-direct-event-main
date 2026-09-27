@@ -231,12 +231,18 @@ button{font:inherit}
                         </div>
                     </div>
                     <div class="se-setting-card-item">
-                        <label class="se-check-label" style="margin:0; cursor:pointer;">
-                            <input id="se-enable-var-injection" type="checkbox" />
-                            <span style="font-weight:600; color:var(--se-text-title);">启用酒馆变量注入</span>
-                        </label>
+                        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                            <label class="se-check-label" style="margin:0; flex:1; cursor:pointer;">
+                                <input id="se-enable-var-injection" type="checkbox" />
+                                <span style="font-weight:600; color:var(--se-text-title);">启用酒馆变量注入</span>
+                            </label>
+                            <button type="button" class="se-btn-action" data-action="open-variable-modal" title="按分支勾选需要注入副 API 的酒馆变量，或取消不需要的内容">
+                                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M3 6h18M3 12h18M3 18h12"/></svg>
+                                <span>分支选择与排除管理</span>
+                            </button>
+                        </div>
                         <div style="font-size:11px; color:var(--se-text-muted); margin-top:4px; padding-left:24px; line-height:1.4;">
-                            将酒馆变量（角色卡变量 / 聊天变量，含 MVU 等框架的数值状态）作为独立 System 注入副 API。检测到酒馆助手时读取角色卡与聊天变量；未安装时读取酒馆核心聊天变量。每次生成时实时读取，以 $ 开头的隐藏变量不注入。
+                            默认仅注入 stat_data（MVU 等框架的角色状态与数值表），其余变量一律不注入。点击右侧按钮可按分支勾选更多内容或排除 stat_data 内的子分支；空值剪枝等规则也在弹窗中调整。检测到酒馆助手时读取角色卡与聊天变量，未安装时读取酒馆核心聊天变量；每次生成实时读取，以 $ 开头的隐藏变量不注入。
                         </div>
                     </div>
                     <label>发送最近 N 轮聊天内容</label>
@@ -393,6 +399,36 @@ button{font:inherit}
                 <div class="se-settings-actions">
                     <button data-action="save-world-info-modal" class="se-sub-save-btn">保存世界书配置</button>
                     <button data-action="reset-world-info-modal">恢复默认蓝灯</button>
+                </div>
+            </div>
+
+            <div class="se-world-info-modal" id="se-variable-modal" style="display:none">
+                <div class="se-modal-header">
+                    <span id="se-var-modal-title">酒馆变量注入分支选择与排除</span>
+                    <button data-action="close-variable-modal">关闭</button>
+                </div>
+                <div class="se-presets-tip">
+                    变量按来源分组（角色卡变量 / 聊天变量），以分支树逐级展示。勾选即注入该分支，取消即不注入；未勾选过的顶层键默认仅注入 stat_data（MVU 等框架的状态表）。带「疑似脚本片段」角标的键通常是主模型框架的提示词指令，建议保持不勾选。剪枝开关只影响注入副本：每次生成实时执行，变量本体不受影响，当前为空的键日后有值时自然恢复注入。
+                </div>
+                <div class="se-wi-search-row">
+                    <div class="se-wi-search-box">
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input type="text" class="se-wi-search-input" id="se-var-search-input" placeholder="搜索变量键名..." />
+                    </div>
+                    <span class="se-wi-counter" id="se-var-counter">共 0 个分支</span>
+                </div>
+                <div class="se-wi-toolbar">
+                    <button type="button" class="se-btn-action" data-action="var-select-all">全选所有</button>
+                    <button type="button" class="se-btn-action" data-action="var-select-none">清空所有</button>
+                    <button type="button" class="se-btn-action" data-action="var-reset-default">恢复默认勾选</button>
+                    <label class="se-wi-checkbox-label" style="margin-left:auto; cursor:pointer;" title="开启后注入副本剪除空字符串、空对象、空数组（0 与 false 保留）；变量本体不受影响">
+                        <input type="checkbox" id="se-var-prune-empty" />
+                        <span style="font-size:12px; margin-left:4px;">剪除空值</span>
+                    </label>
+                </div>
+                <div class="se-wi-list" id="se-var-list"></div>
+                <div class="se-settings-actions">
+                    <button data-action="save-variable-modal" class="se-sub-save-btn">保存变量注入配置</button>
                 </div>
             </div>
         </div>
