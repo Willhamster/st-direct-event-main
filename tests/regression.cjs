@@ -515,7 +515,8 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         assert(src.includes('data-action="create-custom"'), 'create button missing');
         assert(src.includes('data-action="save-custom-template"'), 'save button missing');
         assert(src.includes('data-action="delete-custom"'), 'delete button missing');
-        assert(src.includes('data-action="ct-copy-genre-template"') && src.includes('data-action="ct-copy-depth-template"') && src.includes('data-action="ct-copy-main-template"'), 'copy template buttons missing');
+        assert(src.includes("sectionToolbar('ct-copy-genre-template'") && src.includes("sectionToolbar('ct-copy-depth-template'") && src.includes("sectionToolbar('ct-copy-extra-template'") && src.includes('data-action="ct-copy-main-template"'), 'copy template buttons missing');
+        assert(src.includes("if (action === 'ct-add-genre')") && src.includes("if (action === 'ct-add-depth')") && src.includes("if (action === 'ct-add-extra')"), 'add item actions missing');
         assert(src.includes('function isCustomTemplateComplete'), 'completeness check missing');
         assert(src.includes('function syncCustomEventTypes'), 'event types sync missing');
         assert(src.includes('function saveCustomTemplate'), 'save missing');
@@ -625,6 +626,44 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         const msgs20 = h9.api.buildEventPrompt(type20, '玩家: 你好', { ...h9.api.DEFAULT_SETTINGS, customTemplates: [tpl20] }, []);
         assert(msgs20.some(m => String(m.content).includes('总计 20 回合')), 'custom 20 turns not honored in prompt');
         assert(msgs20.some(m => String(m.content).includes('长线流派内容')), 'genre prompt missing at 20 turns');
+    });
+    check('Custom template extras are multi-select and presets workshop covers customs',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        // 数据模型与完成度
+        assert(src.includes('extras: arr(src.extras)') && src.includes('selectedExtraIds: Array.isArray(src.selectedExtraIds)'), 'extras model missing in normalize');
+        assert(src.includes('if (!extras.every(isCustomTemplateItemValid)) return false;'), 'completeness ignores extras');
+        assert(src.includes('DEFAULT_CUSTOM_EXTRA_PROMPT'), 'extra example constant missing');
+        // 生成链路
+        assert(src.includes('`extra_${ex.id}`'), 'extra subPrompt override key missing');
+        assert(src.includes('selExtraIds.includes(ex.id)'), 'extras injection not gated on selection');
+        // 编辑器
+        assert(src.includes('ct-add-extra') && src.includes('ct-del-extra') && src.includes('se-ct-extra-check'), 'editor extra section missing');
+        // 查看器
+        assert(src.includes('extraKeys: []') && src.includes("pvAction === 'toggle-extra'"), 'viewer extra multi-select missing');
+        // 预设工坊：自定义模板组 + 主提示词同源写回
+        assert(src.includes('const customPresetsHtml = getCustomTemplates(s).map') && src.includes('data-ct-main-prompt'), 'presets workshop custom groups missing');
+        assert(src.includes("textarea.dataset.ctMainPrompt") && src.includes('mainPrompt: String(textarea.value'), 'presets workshop main prompt source missing');
+        // 行为：多选注入、工坊覆盖层、完成后门判定
+        const hx = harness();
+        const tplX = { id: 'ct_x1', prefix: 'e', name: '额外模板', mainPrompt: '', turns: 2, genres: [{ id: 'g1', label: '流', badge: '', desc: '', prompt: '流派内容' }], depths: [], extras: [{ id: 'x1', label: '死亡危险', badge: '', desc: '', prompt: '高危死线规则' }, { id: 'x2', label: '恋爱目标', badge: '', desc: '', prompt: '目标锁定规则' }], selectedGenreId: 'g1', selectedDepthId: '', selectedExtraIds: ['x1'], createdAt: 1, updatedAt: 1 };
+        const typeX = { key: 'ct_x1', prefix: 'e', label: '额外模板', title: '额外模板' };
+        const baseS = { ...hx.api.DEFAULT_SETTINGS, customTemplates: [tplX] };
+        const textX = hx.api.buildEventPrompt(typeX, '玩家: x', baseS, []).map(m => m.content).join('\n');
+        assert(textX.includes('高危死线规则'), 'selected extra not injected');
+        assert(!textX.includes('目标锁定规则'), 'unselected extra leaked');
+        const both = hx.api.buildEventPrompt(typeX, 'x', { ...baseS, customTemplates: [{ ...tplX, selectedExtraIds: ['x1', 'x2'] }] }, []).map(m => m.content).join('\n');
+        assert(both.includes('高危死线规则') && both.includes('目标锁定规则'), 'multi-select extras not both injected');
+        assert(both.indexOf('高危死线规则') < both.indexOf('目标锁定规则'), 'extras order not preserved');
+        // 工坊覆盖层：subPrompts["ct_x1.extra_x1"] 优先于条目值
+        const over = hx.api.buildEventPrompt(typeX, 'x', { ...baseS, subPrompts: { 'ct_x1.extra_x1': '覆盖版死线' } }, []).map(m => m.content).join('\n');
+        assert(over.includes('覆盖版死线') && !over.includes('高危死线规则'), 'workshop override not honored for extras');
+        // 完成度：额外半填不通过 / 悬空勾选不通过
+        const baseC = { id: 'ct_xt', prefix: 'e', name: 'n', mainPrompt: '', turns: 2, genres: [{ id: 'g', label: 'g', badge: '', desc: '', prompt: 'p' }], depths: [], selectedGenreId: 'g', selectedDepthId: '', createdAt: 1, updatedAt: 1 };
+        assert.equal(hx.api.isCustomTemplateComplete(baseC), true, 'base must be complete');
+        assert.equal(hx.api.isCustomTemplateComplete({ ...baseC, extras: [{ id: 'e1', label: '死亡危险', badge: '', desc: '', prompt: '' }] }), false, 'half-filled extra must fail');
+        const validExtra = { id: 'e1', label: '死亡危险', badge: '', desc: '', prompt: '规则' };
+        assert.equal(hx.api.isCustomTemplateComplete({ ...baseC, extras: [validExtra], selectedExtraIds: ['e1'] }), true, 'valid selected extra must pass');
+        assert.equal(hx.api.isCustomTemplateComplete({ ...baseC, extras: [validExtra], selectedExtraIds: ['nope'] }), false, 'dangling extra selection must fail');
     });
     check('Production source contains no pictographs',()=>{for(const file of ['index.js','style.css']) assert(!/\p{Extended_Pictographic}/u.test(fs.readFileSync(path.join(__dirname,'..',file),'utf8')));});
     const report={checks,passed:true,date:new Date().toISOString()};fs.writeFileSync(path.join(__dirname,'regression-result.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));

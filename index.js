@@ -128,6 +128,9 @@
     // 深度提示词范例：编辑器深度区「复制模板」按钮的复制源，展示单档深度的标准写法（强度定位/具体表现/边界）
     const DEFAULT_CUSTOM_DEPTH_PROMPT = "浅层试探：冲突烈度与信息密度整体收敛，NPC的施压以试探、口头警告与一次性阻碍为主，环境变化缓慢且大多可逆；纸条留出的应对窗口宽松，普通失误只造成可挽回的小代价，不出现致命危机与不可逆损失，为更深的档位保留升级空间。";
 
+    // 额外提示词范例：编辑器额外区「复制模板」按钮的复制源（额外条目可多选，用于死亡危险/敌方势力/恋爱目标类附加规则）
+    const DEFAULT_CUSTOM_EXTRA_PROMPT = "高危死线：重大失败将带来不可逆的严重后果（重伤、被俘、关键物资永久损失或重要同伴死亡）；NPC的杀招必须提前展示前摇与规避窗口，普通失误只造成可挽回的代价，绝不自动触发最坏结局，是否冒死由玩家亲自决断。";
+
     // 自定义模板事件计数前缀池：a-d 已被固定模板占用，创建模板时从空闲字母中分配并持久化，保证事件编号稳定
     const CUSTOM_PREFIX_POOL = ['e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'];
 
@@ -567,8 +570,10 @@
             turns: Math.min(30, Math.max(1, Math.floor(Number(src.turns)) || 2)),
             genres: arr(src.genres),
             depths: arr(src.depths),
+            extras: arr(src.extras),
             selectedGenreId: str(src.selectedGenreId),
             selectedDepthId: str(src.selectedDepthId),
+            selectedExtraIds: Array.isArray(src.selectedExtraIds) ? src.selectedExtraIds.filter(v => typeof v === 'string') : [],
             createdAt: Number(src.createdAt) || 0,
             updatedAt: Number(src.updatedAt) || 0,
         };
@@ -589,7 +594,7 @@
         return !!(item && String(item.label || '').trim() && String(item.prompt || '').trim());
     }
 
-    // 完成度判定：必填项全部满足才允许生成；深度可选 0 条，但已列出的每条都必须有效
+    // 完成度判定：必填项全部满足才允许生成；深度与额外可选 0 条，但已列出的每条都必须有效（额外为多选，勾选 id 必须存在）
     function isCustomTemplateComplete(t) {
         if (!t || typeof t !== 'object') return false;
         if (!String(t.name || '').trim()) return false;
@@ -597,8 +602,12 @@
         if (!genres.length || !genres.every(isCustomTemplateItemValid)) return false;
         const depths = Array.isArray(t.depths) ? t.depths : [];
         if (!depths.every(isCustomTemplateItemValid)) return false;
+        const extras = Array.isArray(t.extras) ? t.extras : [];
+        if (!extras.every(isCustomTemplateItemValid)) return false;
         if (!genres.some(g => g.id === t.selectedGenreId)) return false;
         if (depths.length && !depths.some(d => d.id === t.selectedDepthId)) return false;
+        const selExtraIds = Array.isArray(t.selectedExtraIds) ? t.selectedExtraIds : [];
+        if (!selExtraIds.every(id => extras.some(e => e.id === id))) return false;
         return true;
     }
 
@@ -615,6 +624,8 @@
         const depths = Array.isArray(t?.depths) ? t.depths : [];
         if (!depths.every(isCustomTemplateItemValid)) missing.push('深度名称与提示词须填完整');
         if (depths.length && !depths.some(d => d.id === t.selectedDepthId)) missing.push('默认深度选择');
+        const extras = Array.isArray(t?.extras) ? t.extras : [];
+        if (!extras.every(isCustomTemplateItemValid)) missing.push('额外名称与提示词须填完整');
         return missing.join('、') || '无';
     }
 
@@ -1572,6 +1583,17 @@
                 renderPromptViewerContent();
                 return;
             }
+            if (pvAction === 'toggle-extra') {
+                const exId = pvActionEl.dataset.extraId;
+                if (exId) {
+                    const set = new Set(promptViewerState.extraKeys || []);
+                    if (pvActionEl.checked) set.add(exId);
+                    else set.delete(exId);
+                    promptViewerState.extraKeys = [...set];
+                }
+                renderPromptViewerContent();
+                return;
+            }
             if (pvAction === 'toggle-wi') {
                 promptViewerState.worldInfo = pvActionEl.checked;
                 renderPromptViewerContent();
@@ -2488,7 +2510,7 @@
         customTemplateEditorId = existing ? existing.id : null;
         customTemplateDraft = existing
             ? normalizeCustomTemplate(JSON.parse(JSON.stringify(existing)))
-            : { id: '', prefix: '', name: '', mainPrompt: '', turns: 2, genres: [], depths: [], selectedGenreId: '', selectedDepthId: '', createdAt: 0, updatedAt: 0 };
+            : { id: '', prefix: '', name: '', mainPrompt: '', turns: 2, genres: [], depths: [], extras: [], selectedGenreId: '', selectedDepthId: '', selectedExtraIds: [], createdAt: 0, updatedAt: 0 };
         // 新建草稿预置一张空白流派卡片，降低上手成本
         if (!customTemplateDraft.genres.length) {
             const g = newCustomTemplateItem();
@@ -2609,6 +2631,43 @@
                         <textarea class="se-sub-inline-textarea se-ct-depth-prompt" rows="4" placeholder="点击上方「复制模板」获取范例，可直接使用或照此改写为该深度专属提示词">${escapeHtml(d.prompt)}</textarea>
                     </div>
                 </div>`;
+        const extraCard = (e) => `
+                <div class="se-ct-item-card ${(t.selectedExtraIds || []).includes(e.id) ? 'se-ct-item-selected' : ''}" data-ct-kind="extra">
+                    <div class="se-ct-item-head">
+                        <label class="se-chip-radio-label" title="勾选后该额外提示词随每次生成注入（可同时勾选多条）">
+                            <input type="checkbox" class="se-ct-extra-check" value="${escapeHtml(e.id)}" ${(t.selectedExtraIds || []).includes(e.id) ? 'checked' : ''} />
+                            <span class="se-ct-item-index">额外</span>
+                        </label>
+                        <button type="button" class="se-ct-item-del" data-action="ct-del-extra" data-ct-id="${escapeHtml(e.id)}" title="删除该额外条目">删除</button>
+                    </div>
+                    <div class="se-ct-item-grid">
+                        <div>
+                            <label class="se-ct-field-label">名称（必填，如：死亡危险 / 敌方势力 / 恋爱目标）</label>
+                            <input type="text" class="se-sub-input se-ct-extra-name" placeholder="例如：恋爱目标锁定" value="${escapeHtml(e.label)}" />
+                        </div>
+                        <div>
+                            <label class="se-ct-field-label">备注（可选）</label>
+                            <input type="text" class="se-sub-input se-ct-extra-desc" placeholder="一句话说明该条目的用途" value="${escapeHtml(e.desc)}" />
+                        </div>
+                    </div>
+                    <div>
+                        <label class="se-ct-field-label">提示词内容（必填）</label>
+                        <textarea class="se-sub-inline-textarea se-ct-extra-prompt" rows="4" placeholder="点击上方「复制模板」获取范例，可直接使用或照此改写为该条目专属提示词">${escapeHtml(e.prompt)}</textarea>
+                    </div>
+                </div>`;
+
+        // 分区工具栏：复制范例（虚线次级）+ 添加条目（描边主动作）等宽并排
+        const sectionToolbar = (copyAction, addLabel, addAction) => `
+                <div class="se-ct-section-toolbar">
+                    <button type="button" class="se-btn-action se-ct-btn-copy" data-action="${copyAction}" title="复制该区提示词范例，可直接使用或照此改写">
+                        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                        复制模板
+                    </button>
+                    <button type="button" class="se-btn-action se-ct-btn-add" data-action="${addAction}">
+                        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        ${addLabel}
+                    </button>
+                </div>`;
 
         const headHtml = `
             <div class="se-sub-section se-settings-section" data-section-key="ct-basic">
@@ -2621,7 +2680,7 @@
                     <div>
                         <div class="se-ct-field-label-row">
                             <label class="se-ct-field-label">模板主提示词（可选，留空使用内置通用导演预设）</label>
-                            <button type="button" class="se-btn-action" data-action="ct-copy-main-template" title="复制模板主提示词范例（可直接使用）">复制模板</button>
+                            <button type="button" class="se-btn-action se-ct-btn-copy" data-action="ct-copy-main-template" title="复制模板主提示词范例（可直接使用）">复制模板</button>
                         </div>
                         <textarea id="se-ct-main-prompt" class="se-sub-inline-textarea" rows="5" placeholder="写明这类事件整体怎么推演：主题基调、推进方式与铁律。留空则使用内置通用自定义导演预设。">${escapeHtml(t.mainPrompt)}</textarea>
                     </div>
@@ -2631,24 +2690,25 @@
         const genresHtml = `
             <div class="se-sub-section se-settings-section" data-section-key="ct-genres">
                 <div class="se-settings-section-title" data-action="toggle-section" title="点击折叠/展开"><span class="se-section-chevron">▾</span>流派 / 风格（至少一条，生成时单选其一）</div>
-                <div class="se-ct-section-toolbar">
-                    <button type="button" class="se-btn-action" data-action="ct-copy-genre-template" title="复制流派提示词范例，可直接使用或照此改写">复制模板</button>
-                    <button type="button" class="se-btn-action" data-action="ct-add-genre">添加流派</button>
-                </div>
+                ${sectionToolbar('ct-copy-genre-template', '添加流派', 'ct-add-genre')}
                 ${t.genres.length ? t.genres.map(genreCard).join('') : '<div class="se-wi-empty-tip">还没有流派，点击「添加流派」开始。</div>'}
             </div>`;
 
         const depthsHtml = `
             <div class="se-sub-section se-settings-section" data-section-key="ct-depths">
                 <div class="se-settings-section-title" data-action="toggle-section" title="点击折叠/展开"><span class="se-section-chevron">▾</span>深度（可选，生成时单选其一，不添加则不注入深度设定）</div>
-                <div class="se-ct-section-toolbar">
-                    <button type="button" class="se-btn-action" data-action="ct-copy-depth-template" title="复制深度提示词范例，可直接使用或照此改写">复制模板</button>
-                    <button type="button" class="se-btn-action" data-action="ct-add-depth">添加深度</button>
-                </div>
+                ${sectionToolbar('ct-copy-depth-template', '添加深度', 'ct-add-depth')}
                 ${t.depths.length ? t.depths.map(depthCard).join('') : '<div class="se-wi-empty-tip">还没有深度档位，不需要可不添加。</div>'}
             </div>`;
 
-        body.innerHTML = headHtml + turnsHtml + genresHtml + depthsHtml;
+        const extrasHtml = `
+            <div class="se-sub-section se-settings-section" data-section-key="ct-extras">
+                <div class="se-settings-section-title" data-action="toggle-section" title="点击折叠/展开"><span class="se-section-chevron">▾</span>额外（可选，可多选，勾选的全部同时注入）</div>
+                ${sectionToolbar('ct-copy-extra-template', '添加额外', 'ct-add-extra')}
+                ${t.extras.length ? t.extras.map(extraCard).join('') : '<div class="se-wi-empty-tip">还没有额外条目。可用于死亡危险、敌方势力、恋爱目标等附加规则，勾选后随每次生成同时注入。</div>'}
+            </div>`;
+
+        body.innerHTML = headHtml + turnsHtml + genresHtml + depthsHtml + extrasHtml;
 
         // 恢复各分区折叠记忆（与细分设置弹窗共用 UI 存档）
         body.querySelectorAll('.se-settings-section[data-section-key]').forEach(section => {
@@ -2690,6 +2750,12 @@
         };
         bindSelHighlight('se-ct-genre-sel', 'genre');
         bindSelHighlight('se-ct-depth-sel', 'depth');
+        // 额外条目为多选：勾选态直接联动卡片高亮
+        body.querySelectorAll('.se-ct-extra-check').forEach(chk => {
+            chk.addEventListener('change', () => {
+                chk.closest('.se-ct-item-card')?.classList.toggle('se-ct-item-selected', chk.checked);
+            });
+        });
     }
 
     // 增删条目后整段重绘但保持滚动位置（参照变量弹窗的重绘保滚模式）
@@ -2732,6 +2798,16 @@
             d.prompt = card.querySelector('.se-ct-depth-prompt')?.value ?? d.prompt;
             if (card.querySelector('input[type="radio"]')?.checked) t.selectedDepthId = d.id;
         });
+        // 额外条目按勾选值精确回填（多选），勾选状态整体重读入 selectedExtraIds
+        body.querySelectorAll('.se-ct-item-card[data-ct-kind="extra"]').forEach(card => {
+            const id = card.querySelector('.se-ct-extra-check')?.value;
+            const e = t.extras.find(x => x.id === id);
+            if (!e) return;
+            e.label = card.querySelector('.se-ct-extra-name')?.value ?? e.label;
+            e.desc = card.querySelector('.se-ct-extra-desc')?.value ?? e.desc;
+            e.prompt = card.querySelector('.se-ct-extra-prompt')?.value ?? e.prompt;
+        });
+        t.selectedExtraIds = [...body.querySelectorAll('.se-ct-extra-check:checked')].map(c => c.value);
     }
 
     function addCustomTemplateItem(kind) {
@@ -2739,6 +2815,7 @@
         syncCustomTemplateDraftFromDom();
         const item = newCustomTemplateItem();
         if (kind === 'depth') customTemplateDraft.depths.push(item);
+        else if (kind === 'extra') customTemplateDraft.extras.push(item);
         else customTemplateDraft.genres.push(item);
         rerenderCustomTemplatePreservingScroll();
     }
@@ -2751,6 +2828,10 @@
             if (customTemplateDraft.selectedDepthId === itemId) {
                 customTemplateDraft.selectedDepthId = customTemplateDraft.depths[0]?.id || '';
             }
+        } else if (kind === 'extra') {
+            customTemplateDraft.extras = customTemplateDraft.extras.filter(e => e.id !== itemId);
+            // 多选集合同步剪枝，避免悬空勾选 id
+            customTemplateDraft.selectedExtraIds = (customTemplateDraft.selectedExtraIds || []).filter(id => id !== itemId);
         } else {
             customTemplateDraft.genres = customTemplateDraft.genres.filter(g => g.id !== itemId);
             if (customTemplateDraft.selectedGenreId === itemId) {
@@ -2769,6 +2850,7 @@
         t.mainPrompt = String(t.mainPrompt || '').trim();
         t.genres.forEach(g => { g.label = trimStr(g.label); g.badge = trimStr(g.badge); g.desc = trimStr(g.desc); g.prompt = String(g.prompt || '').trim(); });
         t.depths.forEach(d => { d.label = trimStr(d.label); d.desc = trimStr(d.desc); d.prompt = String(d.prompt || '').trim(); });
+        t.extras.forEach(e => { e.label = trimStr(e.label); e.desc = trimStr(e.desc); e.prompt = String(e.prompt || '').trim(); });
 
         const s = getSettings();
         const list = getCustomTemplates(s);
@@ -2784,13 +2866,14 @@
         }
         t.updatedAt = Date.now();
 
-        // 选择兜底：默认选择指向无效条目时回退到第一条有效条目
+        // 选择兜底：默认选择指向无效条目时回退到第一条有效条目；额外多选集剪除已删除的悬空 id
         if (!t.genres.some(g => g.id === t.selectedGenreId)) {
             t.selectedGenreId = t.genres.find(isCustomTemplateItemValid)?.id || '';
         }
         if (!t.depths.some(d => d.id === t.selectedDepthId)) {
             t.selectedDepthId = t.depths.find(isCustomTemplateItemValid)?.id || '';
         }
+        t.selectedExtraIds = (t.selectedExtraIds || []).filter(id => t.extras.some(e => e.id === id));
 
         const record = normalizeCustomTemplate(JSON.parse(JSON.stringify(t)));
         const idx = list.findIndex(x => x.id === record.id);
@@ -3644,6 +3727,11 @@
             return;
         }
 
+        if (action === 'ct-add-extra') {
+            addCustomTemplateItem('extra');
+            return;
+        }
+
         if (action === 'ct-del-genre') {
             removeCustomTemplateItem('genre', el.dataset.ctId);
             return;
@@ -3651,6 +3739,11 @@
 
         if (action === 'ct-del-depth') {
             removeCustomTemplateItem('depth', el.dataset.ctId);
+            return;
+        }
+
+        if (action === 'ct-del-extra') {
+            removeCustomTemplateItem('extra', el.dataset.ctId);
             return;
         }
 
@@ -3666,6 +3759,11 @@
 
         if (action === 'ct-copy-depth-template') {
             copyTextWithToast(DEFAULT_CUSTOM_DEPTH_PROMPT, '已复制深度提示词范例');
+            return;
+        }
+
+        if (action === 'ct-copy-extra-template') {
+            copyTextWithToast(DEFAULT_CUSTOM_EXTRA_PROMPT, '已复制额外提示词范例');
             return;
         }
 
@@ -4498,6 +4596,46 @@
                     </div>
         `);
 
+        // 自定义模板预设组：主提示词与模板编辑器同源（写回 template.mainPrompt，不走 presets 覆盖层避免双改打架）；
+        // 流派/深度/额外提示词走 subPrompts 覆盖层（生成链 getSubPrompt||条目值兜底），此处修改优先于模板编辑器
+        const customPresetsHtml = getCustomTemplates(s).map(t => {
+            const genres = Array.isArray(t.genres) ? t.genres : [];
+            const depths = Array.isArray(t.depths) ? t.depths : [];
+            const extras = Array.isArray(t.extras) ? t.extras : [];
+            const mainCard = `
+                <div class="se-preset-card" data-preset-key="${escapeHtml(t.id)}">
+                    <div class="se-preset-desc">与模板编辑器中的「模板主提示词」同源：此处修改保存后写入模板本身，留空使用内置通用导演预设。</div>
+                    <textarea data-ct-main-prompt="${escapeHtml(t.id)}" rows="7">${escapeHtml(String(t.mainPrompt || '').trim())}</textarea>
+                </div>`;
+            const genreCards = genres.map(g => `
+                <div class="se-preset-card">
+                    <div class="se-preset-title">流派：${escapeHtml(g.label || '未命名流派')}${g.badge ? `（${escapeHtml(g.badge)}）` : ''}</div>
+                    ${g.desc ? `<div class="se-preset-desc">${escapeHtml(g.desc)}</div>` : ''}
+                    <textarea data-sub-prompt-key="${escapeHtml(t.id)}.${escapeHtml(g.id)}" rows="5">${escapeHtml(getSubPrompt(t.id, g.id, s) || g.prompt || '')}</textarea>
+                </div>`).join('');
+            const depthCards = depths.map(d => `
+                <div class="se-preset-card">
+                    <div class="se-preset-title">深度：${escapeHtml(d.label || '未命名深度')}${d.desc ? `（${escapeHtml(d.desc)}）` : ''}</div>
+                    <textarea data-sub-prompt-key="${escapeHtml(t.id)}.diff_${escapeHtml(d.id)}" rows="3">${escapeHtml(getSubPrompt(t.id, `diff_${d.id}`, s) || d.prompt || '')}</textarea>
+                </div>`).join('');
+            const extraCards = extras.map(e => `
+                <div class="se-preset-card">
+                    <div class="se-preset-title">额外：${escapeHtml(e.label || '未命名条目')}${e.desc ? `（${escapeHtml(e.desc)}）` : ''}</div>
+                    <div class="se-preset-desc">该条仅在模板编辑器中勾选后随生成注入；此处修改为该条目提示词（优先于模板编辑器版本）。</div>
+                    <textarea data-sub-prompt-key="${escapeHtml(t.id)}.extra_${escapeHtml(e.id)}" rows="3">${escapeHtml(getSubPrompt(t.id, `extra_${e.id}`, s) || e.prompt || '')}</textarea>
+                </div>`).join('');
+            return `
+            <details class="se-preset-accordion" data-section-key="presets-${escapeHtml(t.id)}" ${isAccordionOpen(`presets-${t.id}`, false) ? 'open' : ''}>
+                <summary class="se-preset-accordion-summary">自定义模板预设：${escapeHtml(t.name || '未命名模板')}（主提示词 / 流派 / 深度 / 额外）</summary>
+                <div class="se-preset-accordion-body">
+                    ${subSection(`presets-${t.id}-main`, '模板主提示词（留空使用内置通用导演预设）', mainCard)}
+                    ${genres.length ? subSection(`presets-${t.id}-sub`, `流派预设（${genres.length} 条）`, genreCards) : ''}
+                    ${depths.length ? subSection(`presets-${t.id}-diff`, `深度预设（${depths.length} 档）`, depthCards) : ''}
+                    ${extras.length ? subSection(`presets-${t.id}-extra`, `额外预设（${extras.length} 条）`, extraCards) : ''}
+                </div>
+            </details>`;
+        }).join('');
+
         list.innerHTML = `
             <details class="se-preset-accordion" data-section-key="presets-jailbreak" ${isAccordionOpen('presets-jailbreak', true) ? 'open' : ''}>
                 <summary class="se-preset-accordion-summary">破限与防审查提示词（置顶注入与外审破限）</summary>
@@ -4517,6 +4655,7 @@
             ${genreAccordion('combat', '战斗预设（大事件导演 / 小事件流派 / 难度 / 死线）', combatSubList, combatExtraHtml)}
             ${genreAccordion('reasoning', '推理预设（大事件导演 / 小事件流派 / 难度）', reasoningSubList)}
             ${genreAccordion('romance', '恋爱预设（大事件导演 / 小事件流派 / 浓度）', romanceSubList)}
+            ${customPresetsHtml}
             <details class="se-preset-accordion" data-section-key="presets-random" ${isAccordionOpen('presets-random', false) ? 'open' : ''}>
                 <summary class="se-preset-accordion-summary">随机事件预设（大事件导演）</summary>
                 <div class="se-preset-accordion-body">
@@ -4562,6 +4701,17 @@
         values.subPrompts = subPrompts;
         values.jailbreakPrompt = jailbreakPrompt;
         values.novelBypassPrompt = novelBypassPrompt;
+
+        // 自定义模板主提示词与模板编辑器同源：预设工坊的修改直接写回 template.mainPrompt（不落 presets 覆盖层，避免双改打架）
+        const ctList = Array.isArray(values.customTemplates) ? values.customTemplates.slice() : [];
+        root?.querySelectorAll('#se-preset-list textarea[data-ct-main-prompt]').forEach(textarea => {
+            const tid = textarea.dataset.ctMainPrompt;
+            const idx = ctList.findIndex(t => t.id === tid);
+            if (idx >= 0) {
+                ctList[idx] = { ...ctList[idx], mainPrompt: String(textarea.value || '').trim() };
+            }
+        });
+        values.customTemplates = ctList;
 
         // 自定义难度/浓度提示词：写入 subConfig.customDiffPrompt（与细分设置弹窗同源）
         const subConfigCopy = values.subConfig && typeof values.subConfig === 'object' ? JSON.parse(JSON.stringify(values.subConfig)) : {};
@@ -5705,6 +5855,18 @@
                         '3. 【聚焦核心情感对手戏】：若上文存在明确的女主角或主要对手戏女性角色，所有小纸条的心动拉扯、情绪细节与互动留钩必须集中于该真实人物；若上文暂未出现女性，可根据当前环境与氛围自然引入一位与主角处境契合的女性展开邂逅。'
                     ].join('\n'));
                 }
+            }
+        }
+
+        // 自定义模板额外条目：多选（区别于流派/深度的单选），勾选的全部按定义顺序追加注入，
+        // 用于死亡危险、敌方势力、恋爱目标等附加规则；预览工坊可在 subPrompts["ct_x.extra_<id>"] 覆盖
+        if (customTemplate) {
+            const extras = Array.isArray(customTemplate.extras) ? customTemplate.extras : [];
+            const selExtraIds = Array.isArray(customTemplate.selectedExtraIds) ? customTemplate.selectedExtraIds : [];
+            for (const ex of extras) {
+                if (!selExtraIds.includes(ex.id) || !isCustomTemplateItemValid(ex)) continue;
+                const exPrompt = getSubPrompt(type.key, `extra_${ex.id}`, settings) || ex.prompt;
+                if (exPrompt) subInstructions.push(exPrompt);
             }
         }
 
@@ -8315,13 +8477,14 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
         diffKey: 'medium',
         turns: 2,
         deathRisk: false,
+        extraKeys: [],
         novelBypass: true,
         worldInfo: true,
         variables: true,
         contextMode: 'chat',
     };
 
-    // 打开查看器/切换主类时，把流派、难度、回合数与死亡危险对齐到该主类当前的真实细节设置
+    // 打开查看器/切换主类时，把流派、难度、回合数、死亡危险与额外多选对齐到该主类当前的真实细节设置
     // （此前回合数从不同步，预览与复制全部会按初始 2 回合拼装，与细分设置里配置的回合数脱节）
     function syncPromptViewerStateForType(typeKey) {
         const s = getSettings();
@@ -8332,6 +8495,7 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
             promptViewerState.genreKey = genres.some(g => g.id === t?.selectedGenreId) ? t.selectedGenreId : (genres[0]?.id || '');
             promptViewerState.diffKey = depths.some(d => d.id === t?.selectedDepthId) ? t.selectedDepthId : (depths[0]?.id || '');
             promptViewerState.deathRisk = false;
+            promptViewerState.extraKeys = [...(Array.isArray(t?.selectedExtraIds) ? t.selectedExtraIds : [])];
             promptViewerState.turns = Math.min(30, Math.max(1, Math.floor(Number(t?.turns)) || 2));
             return;
         }
@@ -8339,6 +8503,7 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
         if (curSub.genre) promptViewerState.genreKey = curSub.genre;
         if (curSub.difficulty) promptViewerState.diffKey = curSub.difficulty;
         promptViewerState.deathRisk = !!curSub.deathRisk;
+        promptViewerState.extraKeys = [];
         const curTurns = Math.floor(Number(curSub.turns));
         if (curTurns >= 1) promptViewerState.turns = Math.min(30, curTurns);
     }
@@ -8363,7 +8528,13 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
             },
             customTemplates: isCustomTypeKey(curTypeKey)
                 ? getCustomTemplates(s).map(t => t.id === curTypeKey
-                    ? { ...t, selectedGenreId: promptViewerState.genreKey, selectedDepthId: promptViewerState.diffKey, turns: promptViewerState.turns }
+                    ? {
+                        ...t,
+                        selectedGenreId: promptViewerState.genreKey,
+                        selectedDepthId: promptViewerState.diffKey,
+                        selectedExtraIds: [...(promptViewerState.extraKeys || [])],
+                        turns: promptViewerState.turns,
+                    }
                     : t)
                 : s.customTemplates,
             enableNovelBypass: promptViewerState.novelBypass,
@@ -8541,6 +8712,15 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
                     <select class="se-pv-quick-select" data-pv-action="change-diff">
                         ${diffs.map(d => `<option value="${escapeHtml(d.key)}" ${d.key === promptViewerState.diffKey ? 'selected' : ''}>${escapeHtml(d.label)}</option>`).join('')}
                     </select>
+                </div>
+                ` : ''}
+
+                ${customTemplate && (customTemplate.extras || []).length ? `
+                <div class="se-pv-quick-item">
+                    <span class="se-pv-quick-label">额外:</span>
+                    <span style="display:inline-flex; gap:10px; flex-wrap:wrap;">
+                        ${customTemplate.extras.map(e => `<label class="se-pv-checkbox-label" title="勾选后预览注入该额外提示词（可多选，同模板编辑器中的勾选）"><input type="checkbox" data-pv-action="toggle-extra" data-extra-id="${escapeHtml(e.id)}" ${(promptViewerState.extraKeys || []).includes(e.id) ? 'checked' : ''} /><span>${escapeHtml(e.label || '未命名')}</span></label>`).join('')}
+                    </span>
                 </div>
                 ` : ''}
 

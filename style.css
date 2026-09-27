@@ -4864,12 +4864,58 @@
     grid-template-columns: 1fr 1fr;
     gap: 8px;
 }
+/* 编辑器分区工具栏：复制范例（虚线次级）+ 添加条目（描边主动作）等宽并排，统一起伏手感 */
 .se-ct-section-toolbar {
     display: flex;
     gap: 8px;
-    align-items: center;
-    margin-bottom: 10px;
-    flex-wrap: wrap;
+    align-items: stretch;
+    margin-bottom: 12px;
+}
+#st-direct-event-root .se-ct-section-toolbar .se-btn-action {
+    flex: 1 1 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px;
+    min-height: 32px !important;
+    min-width: 0 !important;
+    height: auto !important;
+    padding: 7px 10px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    border-radius: 10px !important;
+    white-space: nowrap !important;
+    margin: 0 !important;
+    letter-spacing: .03em;
+}
+#st-direct-event-root .se-ct-btn-copy {
+    background: transparent !important;
+    border: 1.5px dashed var(--se-border) !important;
+    color: var(--se-text-muted) !important;
+    box-shadow: none !important;
+}
+#st-direct-event-root .se-ct-btn-copy:hover {
+    color: var(--se-accent) !important;
+    border-color: var(--se-accent) !important;
+    background: var(--se-bg-hover) !important;
+}
+#st-direct-event-root .se-ct-btn-add {
+    background: var(--se-bg-hover) !important;
+    border: 1.5px solid var(--se-accent) !important;
+    color: var(--se-accent) !important;
+    box-shadow: none !important;
+}
+#st-direct-event-root .se-ct-btn-add:hover {
+    background: var(--se-accent) !important;
+    color: var(--se-bg-panel) !important;
+}
+/* 模板主提示词右侧的复制按钮沿用次级态但不拉伸 */
+#st-direct-event-root .se-ct-field-label-row .se-ct-btn-copy {
+    flex: 0 0 auto !important;
+    min-height: 24px !important;
+    padding: 4px 10px !important;
+    font-size: 11.5px !important;
+    border-radius: 8px !important;
 }
 @media (max-width: 520px) {
     .se-ct-item-grid {
