@@ -4519,22 +4519,23 @@
 }
 
 .se-wi-search-box {
-    position: relative;
     flex: 1;
     display: flex;
     align-items: center;
+    gap: 8px;
 }
 
+/* 图标用流内 flex 子项排布（与提示词查看器 .se-pv-search-box 同款机制），
+   绝对定位方案防压字完全依赖 input 左内边距在宿主页级联中存活，会被酒馆主题打掉 */
 .se-wi-search-box svg {
-    position: absolute;
-    left: 10px;
     color: var(--se-text-sub);
-    pointer-events: none;
+    flex-shrink: 0;
 }
 
 .se-wi-search-input {
-    width: 100%;
-    padding: 6px 12px 6px 30px;
+    flex: 1;
+    min-width: 0;
+    padding: 6px 12px;
     font-size: 12px;
     border-radius: var(--se-radius-sm, 6px);
     border: 1px solid var(--se-border-subtle);

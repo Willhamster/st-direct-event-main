@@ -417,6 +417,17 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         const saveHead = src.slice(src.indexOf('async function saveVariableModal'), src.indexOf('async function saveVariableModal') + 400);
         assert(saveHead.includes('syncVariableSelectionsFromDom();'), 'saveVariableModal does not sync from DOM');
     });
+    check('WI/var modal search boxes use in-flow svg layout like the prompt viewer',()=>{
+        const css = fs.readFileSync(path.join(__dirname,'..','style.css'),'utf8');
+        const svgStart = css.indexOf('.se-wi-search-box svg {');
+        const svgBlock = css.slice(svgStart, css.indexOf('}', svgStart));
+        assert(!svgBlock.includes('position: absolute'), 'search svg must not be absolutely positioned (overlaps text when host overrides input padding)');
+        assert(svgBlock.includes('flex-shrink: 0'), 'search svg must be an in-flow flex item');
+        const inputStart = css.indexOf('.se-wi-search-input {');
+        const inputBlock = css.slice(inputStart, css.indexOf('}', inputStart));
+        assert(!inputBlock.includes('30px'), 'search input must not rely on left padding to avoid the icon');
+        assert(inputBlock.includes('flex: 1') && inputBlock.includes('min-width: 0'), 'search input must flex within the box');
+    });
     check('Variable section is injected between world info and sub-prompt',()=>{
         const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
         const wi = src.indexOf('// 2. 独立注入：世界书核心设定');
