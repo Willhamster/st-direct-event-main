@@ -12,7 +12,7 @@ const end = src.indexOf('`;', start);
 if (start < marker.length || end < 0) throw new Error('未找到 mountUI 模板');
 let markup = src.slice(start, end).replace(/\$\{[^}]*\}/g, '');
 
-const panels = ['se-panel', 'se-settings', 'se-events', 'se-presets', 'se-api-log', 'se-sub-modal', 'se-stage-modal', 'se-prompt-viewer-modal', 'se-world-info-modal'];
+const panels = ['se-panel', 'se-settings', 'se-events', 'se-presets', 'se-api-log', 'se-sub-modal', 'se-stage-modal', 'se-prompt-viewer-modal', 'se-world-info-modal', 'se-custom-template-modal'];
 const bar = panels.map((p, i) => `<button data-show="${p}" ${i === 1 ? 'class="on"' : ''}>${p.replace(/^se-/, '').replace(/-modal$/, '')}</button>`).join('');
 
 const html = `<!doctype html><html lang="zh"><head>

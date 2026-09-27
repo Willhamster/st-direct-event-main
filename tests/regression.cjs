@@ -503,6 +503,101 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         assert.equal(h5.api.collectTavernVariables().length, 0);
         assert(!h5.api.buildEventPrompt(h5.api.EVENT_TYPES.combat, '玩家: 你好', h5.api.DEFAULT_SETTINGS, []).some(m => String(m.content).includes('【酒馆变量注入')), 'empty variables must not push a section');
     });
+    check('Custom template settings are wired end to end',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        assert(src.includes('customTemplates: [],'), 'DEFAULT_SETTINGS default missing');
+        assert(src.includes('merged.customTemplates = (Array.isArray(ls.customTemplates)'), 'getSettings merge missing');
+        assert(src.includes('.map(normalizeCustomTemplate)'), 'template normalization missing');
+        assert(src.includes('customTemplates: Array.isArray(current.customTemplates) ? current.customTemplates : [],'), 'form preserve missing');
+        assert(src.includes('id="se-custom-template-modal"'), 'editor modal shell missing');
+        assert(src.includes('id="se-ct-editor-body"'), 'editor body missing');
+        assert(src.includes('id="se-custom-rows"'), 'custom rows container missing');
+        assert(src.includes('data-action="create-custom"'), 'create button missing');
+        assert(src.includes('data-action="save-custom-template"'), 'save button missing');
+        assert(src.includes('data-action="delete-custom"'), 'delete button missing');
+        assert(src.includes('data-action="ct-copy-genre-template"') && src.includes('data-action="ct-copy-depth-template"') && src.includes('data-action="ct-copy-main-template"'), 'copy template buttons missing');
+        assert(src.includes('function isCustomTemplateComplete'), 'completeness check missing');
+        assert(src.includes('function syncCustomEventTypes'), 'event types sync missing');
+        assert(src.includes('function saveCustomTemplate'), 'save missing');
+        assert(src.includes('function deleteCustomTemplate'), 'delete missing');
+        assert(src.includes('function refreshCustomRows'), 'rows refresh missing');
+        assert(src.includes('DEFAULT_CUSTOM_MAIN_PROMPT') && src.includes('DEFAULT_CUSTOM_GENRE_PROMPT') && src.includes('DEFAULT_CUSTOM_DEPTH_PROMPT'), 'copyable prompt constants missing');
+        // 主面板：自定义行容器必须位于恋爱组与随机事件组之间（含＋新建行）
+        const romanceIdx = src.indexOf('data-event="romance"');
+        const rowsIdx = src.indexOf('id="se-custom-rows"');
+        const randomIdx = src.indexOf('data-event="random"');
+        assert(romanceIdx > 0 && rowsIdx > romanceIdx && randomIdx > rowsIdx, 'custom rows not between romance and random');
+        // 删除按钮必须二次确认，不允许一次点击直接删
+        const delIdx = src.indexOf("if (action === 'delete-custom')");
+        const confirmIdx = src.indexOf("if (!el.dataset.confirming)", delIdx);
+        const execIdx = src.indexOf('deleteCustomTemplate(el.dataset.template)', delIdx);
+        assert(delIdx > 0 && confirmIdx > 0 && execIdx > confirmIdx, 'delete confirm flow missing');
+        // 未完成模板不得触发生成：handleGenerate 内必须有完成度守卫
+        const genHead = src.slice(src.indexOf('async function handleGenerate'), src.indexOf('async function handleGenerate') + 900);
+        assert(genHead.includes('isCustomTemplateComplete'), 'handleGenerate completeness guard missing');
+    });
+
+    check('Custom template completeness gating rules',()=>{
+        const h6 = harness();
+        const base = { id: 'ct_test1', prefix: 'e', name: '校园试炼', mainPrompt: '', turns: 2, genres: [{ id: 'g1', label: '试炼', badge: '试', desc: '', prompt: '试炼规则' }], depths: [], selectedGenreId: 'g1', selectedDepthId: '', createdAt: 1, updatedAt: 1 };
+        assert.equal(h6.api.isCustomTemplateComplete(base), true, 'complete template rejected');
+        assert.equal(h6.api.isCustomTemplateComplete({ ...base, name: ' ' }), false, 'blank name must fail');
+        assert.equal(h6.api.isCustomTemplateComplete({ ...base, genres: [] }), false, 'no genre must fail');
+        assert.equal(h6.api.isCustomTemplateComplete({ ...base, genres: [{ ...base.genres[0], prompt: '' }] }), false, 'genre without prompt must fail');
+        assert.equal(h6.api.isCustomTemplateComplete({ ...base, selectedGenreId: 'nope' }), false, 'invalid genre selection must fail');
+        assert.equal(h6.api.isCustomTemplateComplete({ ...base, depths: [{ id: 'd1', label: '深', badge: '', desc: '', prompt: '' }] }), false, 'half-filled depth must fail');
+        assert.equal(h6.api.isCustomTemplateComplete({ ...base, depths: [{ id: 'd1', label: '深', badge: '', desc: '', prompt: '深度规则' }], selectedDepthId: 'd1' }), true, 'valid depth must pass');
+        assert.equal(h6.api.isCustomTemplateComplete({ ...base, selectedDepthId: '' }), true, 'depth is optional');
+        assert(h6.api.customTemplateMissingText({ ...base, name: '' }).includes('模板名'), 'missing text should name the field');
+    });
+
+    check('Custom templates register into EVENT_TYPES and build prompts',()=>{
+        const h7 = harness();
+        const tpl = { id: 'ct_test2', prefix: 'f', name: '校园试炼', mainPrompt: '自定义主提示词内容', turns: 3, genres: [{ id: 'g1', label: '试炼流派', badge: '试', desc: '', prompt: '流派提示词内容' }, { id: 'g2', label: '另一流派', badge: '', desc: '', prompt: '另一流派内容' }], depths: [{ id: 'd1', label: '浅层', badge: '', desc: '', prompt: '浅层深度内容' }], selectedGenreId: 'g1', selectedDepthId: 'd1', createdAt: 1, updatedAt: 1 };
+        h7.api.syncCustomEventTypes({ customTemplates: [tpl] });
+        const typeObj = h7.api.EVENT_TYPES['ct_test2'];
+        assert(typeObj, 'custom type not registered');
+        assert.equal(typeObj.prefix, 'f');
+        assert.equal(typeObj.label, '校园试炼');
+        const s7 = { ...h7.api.DEFAULT_SETTINGS, customTemplates: [tpl] };
+        const msgs = h7.api.buildEventPrompt(typeObj, '玩家: 你好', s7, []);
+        const text = msgs.map(m => m.content).join('\n');
+        assert(text.includes('自定义主提示词内容'), 'main prompt not injected');
+        assert(text.includes('流派提示词内容'), 'selected genre prompt not injected');
+        assert(!text.includes('另一流派内容'), 'unselected genre prompt leaked');
+        assert(text.includes('浅层深度内容'), 'selected depth prompt not injected');
+        assert(text.includes('【专属细分流派与难度设定'), 'sub prompt header missing');
+        assert(text.includes('总计 3 回合'), 'custom turns not honored');
+        // 未选择深度（空）时该节应回退到第一条；深度为空数组时整节省略
+        const noDepth = { ...tpl, depths: [], selectedDepthId: '' };
+        const msgs2 = h7.api.buildEventPrompt(typeObj, '玩家: 你好', { ...h7.api.DEFAULT_SETTINGS, customTemplates: [noDepth] }, []);
+        const text2 = msgs2.map(m => m.content).join('\n');
+        assert(text2.includes('流派提示词内容'), 'genre prompt missing without depth');
+        assert(!text2.includes('浅层深度内容'), 'depth prompt leaked after removal');
+        // 删除模板后注册同步摘除
+        h7.api.syncCustomEventTypes({ customTemplates: [] });
+        assert(!h7.api.EVENT_TYPES['ct_test2'], 'deleted custom type still registered');
+    });
+
+    check('Custom template prefix allocation and persistence round trip',()=>{
+        const h8 = harness();
+        // 前缀分配：跳过已占用字母，池耗尽后回退 x2 序列
+        assert.equal(h8.api.allocCustomPrefix([]), 'e');
+        assert.equal(h8.api.allocCustomPrefix([{ prefix: 'e' }, { prefix: 'f' }]), 'g');
+        const drained = ['e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z'].map(p => ({ prefix: p }));
+        assert.equal(h8.api.allocCustomPrefix(drained), 'x2');
+        // 持久化往返：写入设置后经 getSettings 合并取回，字段形状稳定
+        const tpl = { id: 'ct_rt1', prefix: 'e', name: '往返测试', mainPrompt: '', turns: 5, genres: [{ id: 'g1', label: '流', badge: '流', desc: '', prompt: '内容' }], depths: [], selectedGenreId: 'g1', selectedDepthId: '', createdAt: 1, updatedAt: 1 };
+        h8.api.persistSettings({ ...h8.api.getSettings(), customTemplates: [tpl] });
+        const back = h8.api.getCustomTemplates(h8.api.getSettings());
+        assert.equal(back.length, 1, 'custom template not persisted');
+        assert.equal(back[0].id, 'ct_rt1');
+        assert.equal(back[0].turns, 5);
+        assert.equal(h8.api.isCustomTemplateComplete(back[0]), true, 'round-tripped template must stay complete');
+        // collectSettingsForm 必须原样回带，避免保存全局设置时清空模板
+        const collected = h8.api.collectSettingsForm();
+        assert(Array.isArray(collected.customTemplates) && collected.customTemplates.length === 1, 'collectSettingsForm drops customTemplates');
+    });
     check('Production source contains no pictographs',()=>{for(const file of ['index.js','style.css']) assert(!/\p{Extended_Pictographic}/u.test(fs.readFileSync(path.join(__dirname,'..',file),'utf8')));});
     const report={checks,passed:true,date:new Date().toISOString()};fs.writeFileSync(path.join(__dirname,'regression-result.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));
 })().catch(err=>{console.error(err.stack);process.exitCode=1;});

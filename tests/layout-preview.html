@@ -10,7 +10,7 @@ button{font:inherit}
 .se-preview-bar button{padding:4px 8px;font-size:12px;cursor:pointer;border:1px solid #ccc;background:#fff;border-radius:6px}
 .se-preview-bar button.on{background:#333;color:#fff;border-color:#333}
 </style></head><body>
-<div class="se-preview-bar"><button data-show="se-panel" >panel</button><button data-show="se-settings" class="on">settings</button><button data-show="se-events" >events</button><button data-show="se-presets" >presets</button><button data-show="se-api-log" >api-log</button><button data-show="se-sub-modal" >sub</button><button data-show="se-stage-modal" >stage</button><button data-show="se-prompt-viewer-modal" >prompt-viewer</button><button data-show="se-world-info-modal" >world-info</button></div>
+<div class="se-preview-bar"><button data-show="se-panel" >panel</button><button data-show="se-settings" class="on">settings</button><button data-show="se-events" >events</button><button data-show="se-presets" >presets</button><button data-show="se-api-log" >api-log</button><button data-show="se-sub-modal" >sub</button><button data-show="se-stage-modal" >stage</button><button data-show="se-prompt-viewer-modal" >prompt-viewer</button><button data-show="se-world-info-modal" >world-info</button><button data-show="se-custom-template-modal" >custom-template</button></div>
 <div id="st-direct-event-root" data-theme="cream">
             <button type="button" class="se-fab" data-action="toggle" aria-label="打开剧情导演" title="剧情导演 (分轮多回合引擎)">
                 <img src="" alt="剧情导演" onerror="this.style.display='none'; const fb = this.nextElementSibling; if(fb) fb.style.display='block';" />
@@ -107,6 +107,15 @@ button{font:inherit}
                         </button>
                         <button class="se-sub-btn" data-action="open-sub" data-event="romance" title="恋爱细分设置">
                             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                        </button>
+                    </div>
+
+                    <div id="se-custom-rows"></div>
+
+                    <div class="se-btn-group">
+                        <button class="se-event-btn se-event-btn-full se-custom-add-btn" data-action="create-custom" title="新建自定义事件模板（流派、深度与提示词自由配置）">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            <span class="se-btn-label">新建自定义模板</span>
                         </button>
                     </div>
 
@@ -431,6 +440,20 @@ button{font:inherit}
                     <button data-action="save-variable-modal" class="se-sub-save-btn">保存变量注入配置</button>
                 </div>
             </div>
+
+            <div class="se-world-info-modal" id="se-custom-template-modal" style="display:none">
+                <div class="se-modal-header">
+                    <span id="se-ct-modal-title">自定义事件模板</span>
+                    <button data-action="close-custom-template">关闭</button>
+                </div>
+                <div class="se-presets-tip">
+                    配置专属事件模板：模板名与至少一条流派/风格（名称+提示词）填写完整后模板按钮才会生效，深度可选。设置到一半可直接保存，主界面按钮会保持草稿置灰状态，随时点铅笔继续编辑。各区块的「复制模板」按钮可复制提示词骨架，粘贴到提示词框后改写。
+                </div>
+                <div class="se-wi-list" id="se-ct-editor-body"></div>
+                <div class="se-settings-actions">
+                    <button data-action="save-custom-template" class="se-sub-save-btn">保存模板</button>
+                </div>
+            </div>
         </div>
 <script>
 // 动态容器注入示例内容，验证内滚
@@ -479,7 +502,7 @@ if (pv && !pv.children.length) {
   for (let i = 1; i <= 10; i++) h += '<div class="se-preset-card"><div class="se-preset-title">消息块 ' + i + '</div><div class="se-preset-desc">说明文字：撑高度用。</div></div>';
   pv.innerHTML = h;
 }
-const PANELS = ["se-panel","se-settings","se-events","se-presets","se-api-log","se-sub-modal","se-stage-modal","se-prompt-viewer-modal","se-world-info-modal"];
+const PANELS = ["se-panel","se-settings","se-events","se-presets","se-api-log","se-sub-modal","se-stage-modal","se-prompt-viewer-modal","se-world-info-modal","se-custom-template-modal"];
 function show(id) {
   PANELS.forEach(p => { const el = document.getElementById(p); if (el) el.style.display = (p === id) ? 'flex' : 'none'; });
   document.querySelectorAll('[data-show]').forEach(b => b.classList.toggle('on', b.dataset.show === id));

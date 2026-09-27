@@ -115,7 +115,21 @@
     "random": {
         "systemPrompt": "你是文字角色扮演的后台事件导演，专职输出供叙事主模型执行的现场推演大纲。\n【客观外部推力铁律（彻底杜绝自说自话）】：\n小纸条绝对严禁代写、预设或脑补玩家的任何言行、决定或态度（严禁出现“面对你的询问/你决定上前查看……”等任何假定玩家言行的句子）！\n每张小纸条必须且只能描写两项客观要素：\n1. 【客观突发意外与环境连锁】：现场突发的意外事态、突兀闯入的外部变数、不可逆的物理连锁反应。\n2. 【NPC的突发反应与行动推动】：在场NPC的主动应对、求助呼喊、阻拦动作或提出的突发要求。\n无论玩家上一轮输入什么言行，意外事件的客观连锁与NPC的动作都自然向前推进；若玩家意图置身事外，突发事态的余波或NPC的动作必须主动牵连现场，推动局势咬合！\n随机事件推进规范：从当前场景的日常事务、环境异动、偶遇人物或意外发现中切入，避免无缘由灾难。首轮以客观突发事件打破日常，NPC主动介入并提出应急对策；后续轮次客观升级事件连锁反应，展现现场紧迫感；终局根据玩家实际处置手段结算风波余波。\n非终局小纸条结尾，必须停留在NPC的紧迫求助、现场危险抉择或突发事态分叉点（Action Hook），留出明确的操作空间供玩家下轮选择！后台真相只写入 <event_archive>，结局条件只写入 <event_endings>，纸条绝不替玩家决定行动。\n因果边界：纸条是环境与NPC的可执行计划，不能推翻已经发生的事实。若玩家已离场、阻止触发条件或明确拒绝，依据现场实际条件取消、改写或收束该动作，禁止传送、复活道具或强制亲密。非终局只写客观推力与动作留钩，不假定回应；终局公正评估真实言行，出人意料的合理解法也可成功，沉默与拒绝本身不等于失败。"
     }
-};
+    };
+
+    // ========== 自定义事件模板：可复制提示词模板与常量 ==========
+
+    // 模板主提示词骨架：留空主提示词时的内置通用导演预设，同时也是编辑器「复制模板」按钮的复制源
+    const DEFAULT_CUSTOM_MAIN_PROMPT = "你是文字角色扮演的后台事件导演，专职输出供叙事主模型执行的现场推演大纲。\n【客观外部推力铁律（彻底杜绝自说自话）】：\n小纸条绝对严禁代写、预设或脑补玩家的任何言行、决定或态度（严禁出现“面对你的询问/你决定上前查看……”等任何假定玩家言行的句子）！\n每张小纸条必须且只能描写两项客观要素：\n1. 【客观情境推力与突发变数】：贴合本模板主题的客观情境变化、突发事态、环境连锁或时间推移。\n2. 【NPC的主动作为与目标施压】：NPC基于自身动机与立场，主动采取的具体言行、推进动作或施加的压力。\n无论玩家上一轮输入什么言行，客观推力与NPC的主动作为都自然向前推进；若玩家意图置身事外，情境的连锁余波或NPC的动作必须主动牵连现场，持续维持张力！\n自定义事件推进规范：紧扣模板主提示词与所选流派、深度设定展开推演，从当前场景自然切入，避免无缘由的强行冲突。首轮以契合主题的客观契机打破日常，并留下可应对的窗口；后续轮次客观推进事态与NPC的主动施压，绝不假定玩家的应对方式；终局依据玩家真实言行公正结算结果与余波。\n非终局小纸条结尾，必须停留在NPC的具体动作、事态分叉或抉择焦点上（Action Hook），留出明确的操作空间供玩家下轮选择！后台真相与数值设定只写入 <event_archive>，结局条件只写入 <event_endings>，纸条绝不替玩家决定行动。\n因果边界：纸条是环境与NPC的可执行计划，不能推翻已经发生的事实。若玩家已离场、阻止触发条件或明确拒绝，依据现场实际条件取消、改写或收束该动作，禁止传送、复活道具或强制亲密。非终局只写客观推力与动作留钩，不假定回应；终局公正评估真实言行，出人意料的合理解法也可成功，沉默与拒绝本身不等于失败。";
+
+    // 流派提示词骨架：编辑器流派区「复制模板」按钮的复制源（空白流派提示词框不预填，避免骨架原样注入）
+    const DEFAULT_CUSTOM_GENRE_PROMPT = "（流派提示词模板：复制后逐项改写为该流派/风格的专属设定）\n核心玩法：用两三句写明该流派独有的推进机制——由谁发起、如何推进、按什么标准判定进展与成败。\n氛围基调：写明画面质感、节奏快慢与情绪底色。\n硬性约束：写明该流派下绝对禁止的写法，例如严禁代写玩家的流派抉择、严禁偏离题材基调。\n留钩要求：写明非终局纸条结尾必须停在什么抉择点或动作焦点上。";
+
+    // 深度提示词骨架：编辑器深度区「复制模板」按钮的复制源
+    const DEFAULT_CUSTOM_DEPTH_PROMPT = "（深度提示词模板：复制后逐项改写为该深度档位的专属设定）\n强度定位：写明该档位的整体强度或浓度，以及与相邻档位的关键差异。\n具体表现：写明该档位下冲突烈度、信息密度或情感浓度的具体要求。\n边界提醒：写明该档位不允许跨越的界限，例如不得引入超出档位强度的致命危机。";
+
+    // 自定义模板事件计数前缀池：a-d 已被固定模板占用，创建模板时从空闲字母中分配并持久化，保证事件编号稳定
+    const CUSTOM_PREFIX_POOL = ['e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'];
 
     const THEMES = [
         { id: 'sakura', name: '樱花梦境', color: '#ff75a0', desc: '柔美樱粉与间桐樱相伴，通透梦幻' },
@@ -161,6 +175,7 @@
         worldInfoOverrides: null,
         customWorldInfoEntries: [],
         factions: [],
+        customTemplates: [],
         subConfig: {
             combat: {
                 genre: 'dice_roll', difficulty: 'medium', deathRisk: false, turns: 2, customDiffPrompt: '',
@@ -435,6 +450,8 @@
         merged.varInjectionSelections = ls.varInjectionSelections != null ? ls.varInjectionSelections : (stored.varInjectionSelections != null ? stored.varInjectionSelections : null);
         merged.varPruneEmpty = (ls.varPruneEmpty ?? stored.varPruneEmpty) !== false;
         merged.factions = Array.isArray(ls.factions) ? ls.factions : (Array.isArray(stored.factions) ? stored.factions : []);
+        // 自定义事件模板：数组整体取最新一份（空数组是合法的“已全部删除”状态），再逐条规范化补字段
+        merged.customTemplates = (Array.isArray(ls.customTemplates) ? ls.customTemplates : (Array.isArray(stored.customTemplates) ? stored.customTemplates : [])).map(normalizeCustomTemplate);
         merged.defaultTurns = Math.min(30, Math.max(1, Math.floor(Number(merged.defaultTurns) || DEFAULT_SETTINGS.defaultTurns)));
         merged.subConfig = Object.assign({}, DEFAULT_SETTINGS.subConfig);
         const storedSub = ls.subConfig || stored.subConfig || {};
@@ -509,6 +526,149 @@
             return userPreset;
         }
         return DEFAULT_PRESETS[typeKey] || DEFAULT_PRESETS.random;
+    }
+
+    // ========== 自定义事件模板（数据层） ==========
+
+    function isCustomTypeKey(key) {
+        return typeof key === 'string' && key.startsWith('ct_');
+    }
+
+    function getCustomTemplates(s) {
+        const list = (s || getSettings()).customTemplates;
+        return Array.isArray(list) ? list : [];
+    }
+
+    function getCustomTemplate(typeKey, s) {
+        if (!isCustomTypeKey(typeKey)) return null;
+        return getCustomTemplates(s).find(t => t.id === typeKey) || null;
+    }
+
+    // 逐条字段规范化：旧存档缺字段时补默认值，保证 UI 与生成链路拿到的形状稳定
+    function normalizeCustomTemplate(t) {
+        const src = t && typeof t === 'object' ? t : {};
+        const str = (v) => (typeof v === 'string' ? v : '');
+        const normItem = (item) => {
+            const it = item && typeof item === 'object' ? item : {};
+            return {
+                id: str(it.id) || ('cti_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7)),
+                label: str(it.label),
+                badge: str(it.badge),
+                desc: str(it.desc),
+                prompt: str(it.prompt),
+            };
+        };
+        const arr = (v) => (Array.isArray(v) ? v.map(normItem) : []);
+        return {
+            id: str(src.id),
+            prefix: str(src.prefix),
+            name: str(src.name),
+            mainPrompt: str(src.mainPrompt),
+            turns: Math.min(30, Math.max(1, Math.floor(Number(src.turns)) || 2)),
+            genres: arr(src.genres),
+            depths: arr(src.depths),
+            selectedGenreId: str(src.selectedGenreId),
+            selectedDepthId: str(src.selectedDepthId),
+            createdAt: Number(src.createdAt) || 0,
+            updatedAt: Number(src.updatedAt) || 0,
+        };
+    }
+
+    // 创建时分配事件计数前缀（a-d 被固定模板占用，e 起取空闲字母）；池耗尽后回退 x2/x3 序列
+    function allocCustomPrefix(existing) {
+        const used = new Set((existing || []).map(t => t.prefix).filter(Boolean));
+        const free = CUSTOM_PREFIX_POOL.find(p => !used.has(p));
+        if (free) return free;
+        let n = 2;
+        while (used.has('x' + n)) n++;
+        return 'x' + n;
+    }
+
+    // 单条流派/深度有效性：名称与提示词非空（标签/备注可选）
+    function isCustomTemplateItemValid(item) {
+        return !!(item && String(item.label || '').trim() && String(item.prompt || '').trim());
+    }
+
+    // 完成度判定：必填项全部满足才允许生成；深度可选 0 条，但已列出的每条都必须有效
+    function isCustomTemplateComplete(t) {
+        if (!t || typeof t !== 'object') return false;
+        if (!String(t.name || '').trim()) return false;
+        const genres = Array.isArray(t.genres) ? t.genres : [];
+        if (!genres.length || !genres.every(isCustomTemplateItemValid)) return false;
+        const depths = Array.isArray(t.depths) ? t.depths : [];
+        if (!depths.every(isCustomTemplateItemValid)) return false;
+        if (!genres.some(g => g.id === t.selectedGenreId)) return false;
+        if (depths.length && !depths.some(d => d.id === t.selectedDepthId)) return false;
+        return true;
+    }
+
+    // 草稿还缺什么（保存后的 toastr 提示用）
+    function customTemplateMissingText(t) {
+        const missing = [];
+        if (!String(t?.name || '').trim()) missing.push('模板名');
+        const genres = Array.isArray(t?.genres) ? t.genres : [];
+        if (!genres.length) missing.push('至少一条流派');
+        else {
+            if (!genres.every(isCustomTemplateItemValid)) missing.push('流派名称与提示词须填完整');
+            if (!genres.some(g => g.id === t.selectedGenreId)) missing.push('默认流派选择');
+        }
+        const depths = Array.isArray(t?.depths) ? t.depths : [];
+        if (!depths.every(isCustomTemplateItemValid)) missing.push('深度名称与提示词须填完整');
+        if (depths.length && !depths.some(d => d.id === t.selectedDepthId)) missing.push('默认深度选择');
+        return missing.join('、') || '无';
+    }
+
+    // 把自定义模板整形为与 SUB_CONFIGS 同构的目录，复用固定模板的流派/难度装配逻辑
+    function customConfFor(t) {
+        return {
+            title: t?.name || '自定义模板',
+            genres: (Array.isArray(t?.genres) ? t.genres : []).map(g => ({
+                key: g.id, label: g.label || '', badge: g.badge || '', desc: g.desc || '', prompt: g.prompt || '',
+            })),
+            difficulties: (Array.isArray(t?.depths) ? t.depths : []).map(d => ({
+                key: d.id, label: d.label || '', desc: d.desc || '', prompt: d.prompt || '',
+            })),
+            hasDeathRisk: false,
+        };
+    }
+
+    // 把模板的当前选择整形为与 subConfig 同构的用户选择（含回合数）
+    function customUserSubFor(t) {
+        const genres = Array.isArray(t?.genres) ? t.genres : [];
+        const depths = Array.isArray(t?.depths) ? t.depths : [];
+        return {
+            genre: genres.some(g => g.id === t.selectedGenreId) ? t.selectedGenreId : (genres[0]?.id || ''),
+            difficulty: depths.some(d => d.id === t.selectedDepthId) ? t.selectedDepthId : (depths[0]?.id || ''),
+            turns: Math.min(30, Math.max(1, Math.floor(Number(t?.turns)) || 2)),
+        };
+    }
+
+    // 自定义模板主预设取值链：预设工坊覆盖 > 模板主提示词 > 内置通用导演预设
+    function customTemplatePreset(t, settings) {
+        const userPreset = settings?.presets?.[t?.id];
+        if (userPreset && typeof userPreset.systemPrompt === 'string' && userPreset.systemPrompt.trim()) {
+            return userPreset;
+        }
+        const main = String(t?.mainPrompt || '').trim();
+        return { systemPrompt: main || DEFAULT_CUSTOM_MAIN_PROMPT };
+    }
+
+    // 把自定义模板动态并入 EVENT_TYPES（key 即模板 id，ct_ 前缀），已删除的同步摘除；幂等可反复调用
+    function syncCustomEventTypes(s) {
+        const list = getCustomTemplates(s);
+        const validIds = new Set(list.map(t => t.id).filter(Boolean));
+        for (const key of Object.keys(EVENT_TYPES)) {
+            if (isCustomTypeKey(key) && !validIds.has(key)) delete EVENT_TYPES[key];
+        }
+        for (const t of list) {
+            if (!t.id) continue;
+            EVENT_TYPES[t.id] = {
+                key: t.id,
+                prefix: t.prefix || t.id,
+                label: t.name || '自定义模板',
+                title: t.name || '自定义事件',
+            };
+        }
     }
 
     function applyTheme(themeId) {
@@ -995,6 +1155,15 @@
                         </button>
                     </div>
 
+                    <div id="se-custom-rows"></div>
+
+                    <div class="se-btn-group">
+                        <button class="se-event-btn se-event-btn-full se-custom-add-btn" data-action="create-custom" title="新建自定义事件模板（流派、深度与提示词自由配置）">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            <span class="se-btn-label">新建自定义模板</span>
+                        </button>
+                    </div>
+
                     <div class="se-btn-group">
                         <button class="se-event-btn se-event-btn-full" data-action="generate" data-event="random" title="随机生成意外事件">
                             <span class="se-btn-label">随机事件</span>
@@ -1316,6 +1485,20 @@
                     <button data-action="save-variable-modal" class="se-sub-save-btn">保存变量注入配置</button>
                 </div>
             </div>
+
+            <div class="se-world-info-modal" id="se-custom-template-modal" style="display:none">
+                <div class="se-modal-header">
+                    <span id="se-ct-modal-title">自定义事件模板</span>
+                    <button data-action="close-custom-template">关闭</button>
+                </div>
+                <div class="se-presets-tip">
+                    配置专属事件模板：模板名与至少一条流派/风格（名称+提示词）填写完整后模板按钮才会生效，深度可选。设置到一半可直接保存，主界面按钮会保持草稿置灰状态，随时点铅笔继续编辑。各区块的「复制模板」按钮可复制提示词骨架，粘贴到提示词框后改写。
+                </div>
+                <div class="se-wi-list" id="se-ct-editor-body"></div>
+                <div class="se-settings-actions">
+                    <button data-action="save-custom-template" class="se-sub-save-btn">保存模板</button>
+                </div>
+            </div>
         `;
         document.body.appendChild(root);
         try {
@@ -1443,8 +1626,7 @@
         }
 
         observeFab();
-        bindSubMenuTriggers();
-        updateBadges();
+        refreshCustomRows();
 
         window.removeEventListener('resize', onWindowResizeUI);
         window.addEventListener('resize', onWindowResizeUI);
@@ -1579,21 +1761,32 @@
     function bindSubMenuTriggers() {
         if (!root) return;
         root.querySelectorAll('.se-event-btn[data-event]').forEach(btn => {
+            // 幂等：自定义模板行保存/删除后会重渲染并重跑本函数，避免对固定按钮重复叠加监听
+            if (btn.dataset.seMenuBound) return;
             const eventKey = btn.dataset.event;
-            if (!SUB_CONFIGS[eventKey]) return;
+            const isFixed = !!SUB_CONFIGS[eventKey];
+            const isCustom = isCustomTypeKey(eventKey);
+            if (!isFixed && !isCustom) return;
+            btn.dataset.seMenuBound = '1';
+
+            // 固定模板右键/长按打开细分设置；自定义模板打开模板编辑器
+            const openMenu = () => {
+                if (isCustom) openCustomTemplateModal(eventKey);
+                else openSubModal(eventKey);
+            };
 
             // 桌面端右键直接触发细分菜单
             btn.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                openSubModal(eventKey);
+                openMenu();
             });
 
             // 移动端长按支持（触摸按住 450ms 自动调出细分菜单）
             let pressTimer = null;
             btn.addEventListener('touchstart', () => {
                 pressTimer = setTimeout(() => {
-                    openSubModal(eventKey);
+                    openMenu();
                 }, 450);
             }, { passive: true });
 
@@ -1609,8 +1802,13 @@
         });
     }
 
-    // 按钮回合数取值链与 generateAndSave 完全同源：细分设置回合数优先，缺省回落全局默认（随机事件无细分，恒用全局默认）
+    // 按钮回合数取值链与 generateAndSave 完全同源：细分设置回合数优先，缺省回落全局默认（随机事件无细分，恒用全局默认；自定义模板用模板自身回合数）
     function resolveEventTurns(typeKey, s) {
+        if (isCustomTypeKey(typeKey)) {
+            const tpl = getCustomTemplate(typeKey, s);
+            const chosen = Number(tpl?.turns) || Number(s?.defaultTurns) || 2;
+            return Math.min(30, Math.max(1, chosen));
+        }
         const userSub = s.subConfig?.[typeKey] || {};
         const chosen = Number(userSub.turns) || Number(s.defaultTurns) || 2;
         return Math.min(30, Math.max(1, chosen));
@@ -1649,6 +1847,18 @@
                 badgeText += '·危';
             }
             badgeEl.textContent = badgeText;
+        }
+        // 自定义模板按钮徽标：完成模板显示所选流派标签，草稿显示「草稿」
+        for (const t of getCustomTemplates(s)) {
+            const badgeEl = root.querySelector('#se-badge-' + t.id);
+            if (!badgeEl) continue;
+            if (!isCustomTemplateComplete(t)) {
+                badgeEl.textContent = '草稿';
+                continue;
+            }
+            const genres = Array.isArray(t.genres) ? t.genres : [];
+            const sel = genres.find(g => g.id === t.selectedGenreId) || genres[0];
+            badgeEl.textContent = sel ? (sel.badge || sel.label) : '';
         }
         updateTurnLabels(s);
     }
@@ -2243,6 +2453,410 @@
         const key = currentSubEventKey;
         closeSubModal();
         if (key) handleGenerate(key);
+    }
+
+    // ========== 自定义事件模板编辑器 ==========
+
+    let customTemplateEditorId = null; // null = 新建模式
+    let customTemplateDraft = null;
+
+    function copyTextWithToast(text, successMsg) {
+        if (navigator.clipboard?.writeText) {
+            navigator.clipboard.writeText(text).then(() => {
+                if (window.toastr) toastr.success(successMsg || '已复制到剪贴板');
+            }).catch(() => {
+                if (window.toastr) toastr.info('复制失败，请手动选择复制');
+            });
+        } else if (window.toastr) {
+            toastr.info('当前环境不支持剪贴板，请手动复制');
+        }
+    }
+
+    function newCustomTemplateItem() {
+        return { id: 'cti_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7), label: '', badge: '', desc: '', prompt: '' };
+    }
+
+    function openCustomTemplateModal(templateId) {
+        if (!root) return;
+        const s = getSettings();
+        const existing = templateId ? getCustomTemplates(s).find(t => t.id === templateId) : null;
+        if (templateId && !existing) return;
+        customTemplateEditorId = existing ? existing.id : null;
+        customTemplateDraft = existing
+            ? normalizeCustomTemplate(JSON.parse(JSON.stringify(existing)))
+            : { id: '', prefix: '', name: '', mainPrompt: '', turns: 2, genres: [], depths: [], selectedGenreId: '', selectedDepthId: '', createdAt: 0, updatedAt: 0 };
+        // 新建草稿预置一张空白流派卡片，降低上手成本
+        if (!customTemplateDraft.genres.length) {
+            const g = newCustomTemplateItem();
+            customTemplateDraft.genres.push(g);
+            customTemplateDraft.selectedGenreId = g.id;
+        }
+        renderCustomTemplateModal();
+        const modal = root.querySelector('#se-custom-template-modal');
+        if (modal) {
+            modal.style.display = 'flex';
+            modal.scrollTop = 0;
+        }
+        const panel = root.querySelector('#se-panel');
+        if (panel) panel.style.display = 'none';
+        const stageModal = root?.querySelector('#se-stage-modal');
+        if (stageModal) stageModal.style.display = 'none';
+    }
+
+    function closeCustomTemplateModal() {
+        if (!root) return;
+        const modal = root.querySelector('#se-custom-template-modal');
+        if (modal) modal.style.display = 'none';
+        const panel = root.querySelector('#se-panel');
+        if (panel) panel.style.display = 'flex';
+        customTemplateEditorId = null;
+        customTemplateDraft = null;
+    }
+
+    function renderCustomTemplateModal() {
+        const body = root?.querySelector('#se-ct-editor-body');
+        const title = root?.querySelector('#se-ct-modal-title');
+        if (!body || !title || !customTemplateDraft) return;
+        const t = customTemplateDraft;
+        title.textContent = customTemplateEditorId
+            ? `编辑自定义模板：${t.name || '未命名'}`
+            : '新建自定义事件模板';
+
+        const curTurns = Math.min(30, Math.max(1, Math.floor(Number(t.turns)) || 2));
+        const turnCard = (value, num, pill, pillClass, desc) => `
+                    <label class="se-sub-turn-card ${curTurns === value ? 'active' : ''}">
+                        <input type="radio" name="se-ct-turns" value="${value}" ${curTurns === value ? 'checked' : ''} />
+                        <div class="se-sub-turn-card-head">
+                            <span class="se-sub-turn-num">${num}</span>
+                            <span class="se-sub-turn-pill ${pillClass}">${pill}</span>
+                        </div>
+                        <div class="se-sub-turn-card-desc">${desc}</div>
+                    </label>`;
+        const turnsHtml = `
+            <div class="se-sub-section se-settings-section" data-section-key="ct-turns">
+                <div class="se-settings-section-title" data-action="toggle-section" title="点击折叠/展开"><span class="se-section-chevron">▾</span>回合数<span class="se-sub-turns-badge">共 ${curTurns} 回合</span></div>
+                <div class="se-sub-turn-modes">
+                    ${turnCard(1, '1 回合', '一回合', 'se-pill-gold', '单回合小事件：一个契机、一次抉择、当轮结算')}
+                    ${turnCard(2, '2 回合', '两回合', 'se-pill-blue', '首轮契机与留钩，次轮承接收束')}
+                    ${turnCard(3, '3 回合', '三回合', 'se-pill-purple', '契机、推进、收束三段式，短小精悍')}
+                    <label class="se-sub-turn-card ${curTurns >= 4 ? 'active' : ''}">
+                        <input type="radio" name="se-ct-turns" value="custom" ${curTurns >= 4 ? 'checked' : ''} />
+                        <div class="se-sub-turn-card-head">
+                            <span class="se-sub-turn-num">多回合</span>
+                            <span class="se-sub-turn-pill se-pill-green">长线推进</span>
+                        </div>
+                        <div class="se-sub-turn-card-desc">
+                            多轮层层递进：
+                            <input type="number" min="4" max="30" class="se-ct-custom-turns-input" value="${curTurns >= 4 ? curTurns : 6}" /> 回合
+                        </div>
+                    </label>
+                </div>
+            </div>`;
+
+        const genreCard = (g, index) => `
+                <div class="se-ct-item-card ${g.id === t.selectedGenreId ? 'se-ct-item-selected' : ''}" data-ct-kind="genre">
+                    <div class="se-ct-item-head">
+                        <label class="se-chip-radio-label" title="勾选为该模板的默认流派（生成事件时使用的流派）">
+                            <input type="radio" name="se-ct-genre-sel" value="${escapeHtml(g.id)}" ${g.id === t.selectedGenreId ? 'checked' : ''} />
+                            <span class="se-ct-item-index">流派 ${index + 1}</span>
+                        </label>
+                        <button type="button" class="se-ct-item-del" data-action="ct-del-genre" data-ct-id="${escapeHtml(g.id)}" title="删除该流派">删除</button>
+                    </div>
+                    <div class="se-ct-item-grid">
+                        <div>
+                            <label class="se-ct-field-label">名称（必填）</label>
+                            <input type="text" class="se-sub-input se-ct-genre-name" placeholder="例如：厨艺比拼" value="${escapeHtml(g.label)}" />
+                        </div>
+                        <div>
+                            <label class="se-ct-field-label">标签（按钮徽标，可选）</label>
+                            <input type="text" class="se-sub-input se-ct-genre-badge" placeholder="例如：比拼" value="${escapeHtml(g.badge)}" />
+                        </div>
+                    </div>
+                    <div>
+                        <label class="se-ct-field-label">备注（可选）</label>
+                        <input type="text" class="se-sub-input se-ct-genre-desc" placeholder="一句话说明该流派的玩法基调" value="${escapeHtml(g.desc)}" />
+                    </div>
+                    <div>
+                        <label class="se-ct-field-label">提示词内容（必填）</label>
+                        <textarea class="se-sub-inline-textarea se-ct-genre-prompt" rows="4" placeholder="点击上方「复制模板」获取骨架，粘贴后改写为该流派专属提示词">${escapeHtml(g.prompt)}</textarea>
+                    </div>
+                </div>`;
+        const depthCard = (d, index) => `
+                <div class="se-ct-item-card ${d.id === t.selectedDepthId ? 'se-ct-item-selected' : ''}" data-ct-kind="depth">
+                    <div class="se-ct-item-head">
+                        <label class="se-chip-radio-label" title="勾选为该模板的默认深度（生成事件时使用的深度档）">
+                            <input type="radio" name="se-ct-depth-sel" value="${escapeHtml(d.id)}" ${d.id === t.selectedDepthId ? 'checked' : ''} />
+                            <span class="se-ct-item-index">深度 ${index + 1}</span>
+                        </label>
+                        <button type="button" class="se-ct-item-del" data-action="ct-del-depth" data-ct-id="${escapeHtml(d.id)}" title="删除该深度">删除</button>
+                    </div>
+                    <div class="se-ct-item-grid">
+                        <div>
+                            <label class="se-ct-field-label">名称（必填）</label>
+                            <input type="text" class="se-sub-input se-ct-depth-name" placeholder="例如：浅层试探" value="${escapeHtml(d.label)}" />
+                        </div>
+                        <div>
+                            <label class="se-ct-field-label">备注（可选）</label>
+                            <input type="text" class="se-sub-input se-ct-depth-desc" placeholder="一句话说明该档位的定位" value="${escapeHtml(d.desc)}" />
+                        </div>
+                    </div>
+                    <div>
+                        <label class="se-ct-field-label">提示词内容（必填）</label>
+                        <textarea class="se-sub-inline-textarea se-ct-depth-prompt" rows="4" placeholder="点击上方「复制模板」获取骨架，粘贴后改写为该深度专属提示词">${escapeHtml(d.prompt)}</textarea>
+                    </div>
+                </div>`;
+
+        const headHtml = `
+            <div class="se-sub-section se-settings-section" data-section-key="ct-basic">
+                <div class="se-settings-section-title" data-action="toggle-section" title="点击折叠/展开"><span class="se-section-chevron">▾</span>模板基础信息</div>
+                <div class="se-ct-basic-card">
+                    <div>
+                        <label class="se-ct-field-label">模板名（必填，主界面按钮显示名）</label>
+                        <input type="text" id="se-ct-name" class="se-sub-input" placeholder="例如：校园异闻" value="${escapeHtml(t.name)}" />
+                    </div>
+                    <div>
+                        <div class="se-ct-field-label-row">
+                            <label class="se-ct-field-label">模板主提示词（可选，留空使用内置通用导演预设）</label>
+                            <button type="button" class="se-btn-action" data-action="ct-copy-main-template" title="复制模板主提示词骨架，粘贴到下方改写">复制模板</button>
+                        </div>
+                        <textarea id="se-ct-main-prompt" class="se-sub-inline-textarea" rows="5" placeholder="写明这类事件整体怎么推演：主题基调、推进方式与铁律。留空则使用内置通用自定义导演预设。">${escapeHtml(t.mainPrompt)}</textarea>
+                    </div>
+                </div>
+            </div>`;
+
+        const genresHtml = `
+            <div class="se-sub-section se-settings-section" data-section-key="ct-genres">
+                <div class="se-settings-section-title" data-action="toggle-section" title="点击折叠/展开"><span class="se-section-chevron">▾</span>流派 / 风格（至少一条，生成时单选其一）</div>
+                <div class="se-ct-section-toolbar">
+                    <button type="button" class="se-btn-action" data-action="ct-copy-genre-template" title="复制流派提示词骨架，粘贴到提示词框后改写">复制模板</button>
+                    <button type="button" class="se-btn-action" data-action="ct-add-genre">添加流派</button>
+                </div>
+                ${t.genres.length ? t.genres.map(genreCard).join('') : '<div class="se-wi-empty-tip">还没有流派，点击「添加流派」开始。</div>'}
+            </div>`;
+
+        const depthsHtml = `
+            <div class="se-sub-section se-settings-section" data-section-key="ct-depths">
+                <div class="se-settings-section-title" data-action="toggle-section" title="点击折叠/展开"><span class="se-section-chevron">▾</span>深度（可选，生成时单选其一，不添加则不注入深度设定）</div>
+                <div class="se-ct-section-toolbar">
+                    <button type="button" class="se-btn-action" data-action="ct-copy-depth-template" title="复制深度提示词骨架，粘贴到提示词框后改写">复制模板</button>
+                    <button type="button" class="se-btn-action" data-action="ct-add-depth">添加深度</button>
+                </div>
+                ${t.depths.length ? t.depths.map(depthCard).join('') : '<div class="se-wi-empty-tip">还没有深度档位，不需要可不添加。</div>'}
+            </div>`;
+
+        body.innerHTML = headHtml + turnsHtml + genresHtml + depthsHtml;
+
+        // 恢复各分区折叠记忆（与细分设置弹窗共用 UI 存档）
+        body.querySelectorAll('.se-settings-section[data-section-key]').forEach(section => {
+            section.classList.toggle('se-section-collapsed', isSectionCollapsed(section.dataset.sectionKey));
+        });
+
+        // 回合模式卡片点击选中态（与固定模板细分弹窗交互一致）
+        body.querySelectorAll('.se-sub-turn-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                if (e.target.tagName === 'INPUT' && e.target.type === 'number') return;
+                const radio = card.querySelector('input[type="radio"]');
+                if (radio) {
+                    radio.checked = true;
+                    body.querySelectorAll('.se-sub-turn-card').forEach(c => c.classList.remove('active'));
+                    card.classList.add('active');
+                }
+            });
+        });
+
+        // 流派/深度卡片点击空白处选中为默认，并联动选中态高亮
+        body.querySelectorAll('.se-ct-item-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                if (e.target.closest('input, textarea, button')) return;
+                const radio = card.querySelector('input[type="radio"]');
+                if (radio && !radio.checked) {
+                    radio.checked = true;
+                    radio.dispatchEvent(new Event('change'));
+                }
+            });
+        });
+        const bindSelHighlight = (radioName, kind) => {
+            body.querySelectorAll(`input[name="${radioName}"]`).forEach(radio => {
+                radio.addEventListener('change', () => {
+                    body.querySelectorAll(`.se-ct-item-card[data-ct-kind="${kind}"]`).forEach(c => {
+                        c.classList.toggle('se-ct-item-selected', !!c.querySelector('input[type="radio"]')?.checked);
+                    });
+                });
+            });
+        };
+        bindSelHighlight('se-ct-genre-sel', 'genre');
+        bindSelHighlight('se-ct-depth-sel', 'depth');
+    }
+
+    // 增删条目后整段重绘但保持滚动位置（参照变量弹窗的重绘保滚模式）
+    function rerenderCustomTemplatePreservingScroll() {
+        const body = root?.querySelector('#se-ct-editor-body');
+        const top = body ? body.scrollTop : 0;
+        renderCustomTemplateModal();
+        const el = root?.querySelector('#se-ct-editor-body');
+        if (el) el.scrollTop = top;
+    }
+
+    // 重绘前把 DOM 输入同步回工作副本，避免整段重绘丢字
+    function syncCustomTemplateDraftFromDom() {
+        if (!root || !customTemplateDraft) return;
+        const body = root.querySelector('#se-ct-editor-body');
+        if (!body) return;
+        const t = customTemplateDraft;
+        t.name = body.querySelector('#se-ct-name')?.value ?? t.name;
+        t.mainPrompt = body.querySelector('#se-ct-main-prompt')?.value ?? t.mainPrompt;
+        const turnEl = body.querySelector('input[name="se-ct-turns"]:checked');
+        if (turnEl) {
+            t.turns = turnEl.value === 'custom'
+                ? Math.min(30, Math.max(4, Number(body.querySelector('.se-ct-custom-turns-input')?.value) || 6))
+                : Math.min(30, Math.max(1, Number(turnEl.value) || 2));
+        }
+        body.querySelectorAll('.se-ct-item-card[data-ct-kind="genre"]').forEach((card, i) => {
+            const g = t.genres[i];
+            if (!g) return;
+            g.label = card.querySelector('.se-ct-genre-name')?.value ?? g.label;
+            g.badge = card.querySelector('.se-ct-genre-badge')?.value ?? g.badge;
+            g.desc = card.querySelector('.se-ct-genre-desc')?.value ?? g.desc;
+            g.prompt = card.querySelector('.se-ct-genre-prompt')?.value ?? g.prompt;
+            if (card.querySelector('input[type="radio"]')?.checked) t.selectedGenreId = g.id;
+        });
+        body.querySelectorAll('.se-ct-item-card[data-ct-kind="depth"]').forEach((card, i) => {
+            const d = t.depths[i];
+            if (!d) return;
+            d.label = card.querySelector('.se-ct-depth-name')?.value ?? d.label;
+            d.desc = card.querySelector('.se-ct-depth-desc')?.value ?? d.desc;
+            d.prompt = card.querySelector('.se-ct-depth-prompt')?.value ?? d.prompt;
+            if (card.querySelector('input[type="radio"]')?.checked) t.selectedDepthId = d.id;
+        });
+    }
+
+    function addCustomTemplateItem(kind) {
+        if (!customTemplateDraft) return;
+        syncCustomTemplateDraftFromDom();
+        const item = newCustomTemplateItem();
+        if (kind === 'depth') customTemplateDraft.depths.push(item);
+        else customTemplateDraft.genres.push(item);
+        rerenderCustomTemplatePreservingScroll();
+    }
+
+    function removeCustomTemplateItem(kind, itemId) {
+        if (!customTemplateDraft || !itemId) return;
+        syncCustomTemplateDraftFromDom();
+        if (kind === 'depth') {
+            customTemplateDraft.depths = customTemplateDraft.depths.filter(d => d.id !== itemId);
+            if (customTemplateDraft.selectedDepthId === itemId) {
+                customTemplateDraft.selectedDepthId = customTemplateDraft.depths[0]?.id || '';
+            }
+        } else {
+            customTemplateDraft.genres = customTemplateDraft.genres.filter(g => g.id !== itemId);
+            if (customTemplateDraft.selectedGenreId === itemId) {
+                customTemplateDraft.selectedGenreId = customTemplateDraft.genres[0]?.id || '';
+            }
+        }
+        rerenderCustomTemplatePreservingScroll();
+    }
+
+    function saveCustomTemplate() {
+        if (!customTemplateDraft) return;
+        syncCustomTemplateDraftFromDom();
+        const t = customTemplateDraft;
+        const trimStr = (v) => String(v ?? '').trim();
+        t.name = trimStr(t.name);
+        t.mainPrompt = String(t.mainPrompt || '').trim();
+        t.genres.forEach(g => { g.label = trimStr(g.label); g.badge = trimStr(g.badge); g.desc = trimStr(g.desc); g.prompt = String(g.prompt || '').trim(); });
+        t.depths.forEach(d => { d.label = trimStr(d.label); d.desc = trimStr(d.desc); d.prompt = String(d.prompt || '').trim(); });
+
+        const s = getSettings();
+        const list = getCustomTemplates(s);
+        if (t.name && list.some(x => x.id !== t.id && String(x.name || '').trim() === t.name) && window.toastr) {
+            toastr.warning('已存在同名模板，建议换个名字便于区分');
+        }
+
+        // 新建：此刻才分配 id 与事件计数前缀；编辑：保持原 id/prefix，历史事件编号不受改名影响
+        if (!t.id) {
+            t.id = 'ct_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7);
+            t.prefix = allocCustomPrefix(list);
+            t.createdAt = Date.now();
+        }
+        t.updatedAt = Date.now();
+
+        // 选择兜底：默认选择指向无效条目时回退到第一条有效条目
+        if (!t.genres.some(g => g.id === t.selectedGenreId)) {
+            t.selectedGenreId = t.genres.find(isCustomTemplateItemValid)?.id || '';
+        }
+        if (!t.depths.some(d => d.id === t.selectedDepthId)) {
+            t.selectedDepthId = t.depths.find(isCustomTemplateItemValid)?.id || '';
+        }
+
+        const record = normalizeCustomTemplate(JSON.parse(JSON.stringify(t)));
+        const idx = list.findIndex(x => x.id === record.id);
+        if (idx >= 0) list[idx] = record;
+        else list.push(record);
+        s.customTemplates = list;
+        persistSettings(s);
+        syncCustomEventTypes(s);
+        refreshCustomRows();
+        closeCustomTemplateModal();
+        if (window.toastr) {
+            if (isCustomTemplateComplete(record)) toastr.success('自定义模板已保存并生效');
+            else toastr.warning('已保存草稿（还差：' + customTemplateMissingText(record) + '），补齐前不能生成事件');
+        }
+    }
+
+    function deleteCustomTemplate(templateId) {
+        if (!templateId) return;
+        const s = getSettings();
+        const list = getCustomTemplates(s);
+        const idx = list.findIndex(t => t.id === templateId);
+        if (idx < 0) return;
+        const name = list[idx].name || '未命名模板';
+        list.splice(idx, 1);
+        s.customTemplates = list;
+        persistSettings(s);
+        if (currentGeneratingTypeKey === templateId) cancelCurrentGeneration();
+        syncCustomEventTypes(s);
+        refreshCustomRows();
+        if (window.toastr) toastr.success('已删除自定义模板「' + name + '」');
+    }
+
+    // 主面板自定义模板行（恋爱与随机事件之间）；保存/删除/挂载后调用以同步按钮与注册状态
+    function refreshCustomRows() {
+        if (!root) return;
+        syncCustomEventTypes(getSettings());
+        const wrap = root.querySelector('#se-custom-rows');
+        if (wrap) wrap.innerHTML = renderCustomTemplateRowsHtml(getSettings());
+        bindSubMenuTriggers();
+        updateBadges();
+    }
+
+    function renderCustomTemplateRowsHtml(s) {
+        const list = getCustomTemplates(s);
+        if (!list.length) return '';
+        return list.map(t => {
+            const complete = isCustomTemplateComplete(t);
+            const escName = escapeHtml(t.name || '未命名模板');
+            const turns = resolveEventTurns(t.id, s);
+            const mainTitle = complete
+                ? '点击生成 / 右键或长按编辑模板'
+                : '模板未配置完成，暂不能生成；点右侧铅笔继续编辑';
+            const genres = Array.isArray(t.genres) ? t.genres : [];
+            const sel = genres.find(g => g.id === t.selectedGenreId) || genres[0];
+            const badge = complete ? (sel ? (sel.badge || sel.label) : '') : '草稿';
+            return `
+                    <div class="se-btn-group">
+                        <button class="se-event-btn${complete ? '' : ' se-event-btn-incomplete'}" data-action="generate" data-event="${escapeHtml(t.id)}" ${complete ? '' : 'disabled'} title="${mainTitle}">
+                            <span class="se-btn-label">${escName}</span>
+                            ${badge ? `<span class="se-badge" id="se-badge-${escapeHtml(t.id)}">${escapeHtml(badge)}</span>` : ''}
+                            <span class="se-badge se-badge-turns" id="se-turns-${escapeHtml(t.id)}">${turns}回合</span>
+                        </button>
+                        <button class="se-sub-btn" data-action="open-custom-edit" data-template="${escapeHtml(t.id)}" title="编辑自定义模板">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                        </button>
+                        <button class="se-sub-btn se-sub-btn-del" data-action="delete-custom" data-template="${escapeHtml(t.id)}" title="删除自定义模板">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        </button>
+                    </div>`;
+        }).join('');
     }
 
     function applyFabSettings() {
@@ -3020,6 +3634,82 @@
             return;
         }
 
+        if (action === 'create-custom') {
+            openCustomTemplateModal(null);
+            return;
+        }
+
+        if (action === 'open-custom-edit') {
+            openCustomTemplateModal(el.dataset.template);
+            return;
+        }
+
+        if (action === 'close-custom-template') {
+            closeCustomTemplateModal();
+            return;
+        }
+
+        if (action === 'save-custom-template') {
+            saveCustomTemplate();
+            return;
+        }
+
+        if (action === 'ct-add-genre') {
+            addCustomTemplateItem('genre');
+            return;
+        }
+
+        if (action === 'ct-add-depth') {
+            addCustomTemplateItem('depth');
+            return;
+        }
+
+        if (action === 'ct-del-genre') {
+            removeCustomTemplateItem('genre', el.dataset.ctId);
+            return;
+        }
+
+        if (action === 'ct-del-depth') {
+            removeCustomTemplateItem('depth', el.dataset.ctId);
+            return;
+        }
+
+        if (action === 'ct-copy-main-template') {
+            copyTextWithToast(DEFAULT_CUSTOM_MAIN_PROMPT, '已复制模板主提示词骨架');
+            return;
+        }
+
+        if (action === 'ct-copy-genre-template') {
+            copyTextWithToast(DEFAULT_CUSTOM_GENRE_PROMPT, '已复制流派提示词模板');
+            return;
+        }
+
+        if (action === 'ct-copy-depth-template') {
+            copyTextWithToast(DEFAULT_CUSTOM_DEPTH_PROMPT, '已复制深度提示词模板');
+            return;
+        }
+
+        if (action === 'delete-custom') {
+            // 二次确认：第一次点击变红显示「确认」，4 秒内再次点击才真正删除，超时或重绘自动复位
+            if (!el.dataset.confirming) {
+                el.dataset.confirming = '1';
+                el.dataset.origHtml = el.innerHTML;
+                el.classList.add('se-sub-btn-danger');
+                el.innerHTML = '<span class="se-del-confirm-text">确认</span>';
+                setTimeout(() => {
+                    if (el.isConnected && el.dataset.confirming) {
+                        delete el.dataset.confirming;
+                        el.innerHTML = el.dataset.origHtml || '';
+                        el.classList.remove('se-sub-btn-danger');
+                        delete el.dataset.origHtml;
+                    }
+                }, 4000);
+                return;
+            }
+            deleteCustomTemplate(el.dataset.template);
+            return;
+        }
+
         if (action === 'open-settings') {
             if (settings && settings.style.display !== 'none') {
                 settings.style.display = 'none';
@@ -3710,6 +4400,7 @@
             varInjectionSelections: current.varInjectionSelections || null,
             varPruneEmpty: current.varPruneEmpty !== false,
             factions: Array.isArray(current.factions) ? current.factions : [],
+            customTemplates: Array.isArray(current.customTemplates) ? current.customTemplates : [],
             fabIconUrl: String(val('se-fab-icon')).trim(),
             fabX: current.fabX ?? null,
             fabY: current.fabY ?? null,
@@ -4215,6 +4906,16 @@
         const type = EVENT_TYPES[eventTypeKey];
         if (!type) return;
 
+        // 自定义模板守卫：未配置完成的模板不能生成，直接带去编辑器继续完善
+        if (isCustomTypeKey(eventTypeKey)) {
+            const tpl = getCustomTemplate(eventTypeKey, getSettings());
+            if (!isCustomTemplateComplete(tpl)) {
+                if (window.toastr) toastr.warning('该自定义模板还未配置完成，补齐必填项后才能生成事件');
+                openCustomTemplateModal(eventTypeKey);
+                return;
+            }
+        }
+
         if (isGenerating) {
             if (currentGeneratingTypeKey === eventTypeKey) {
                 cancelCurrentGeneration();
@@ -4283,8 +4984,10 @@
         if (getChatState() !== state || getCtx()?.chatId !== sourceChatId) throw new Error('聊天已切换，本次结果未写入；可在 API 日志查看预览');
         if (signal?.aborted) throw new Error('用户已取消生成');
 
-        const conf = SUB_CONFIGS[type.key];
-        const userSub = settings.subConfig?.[type.key] || {};
+        // 自定义模板：目录与选择从模板数据现场合成，与固定模板共用下方事件元数据装配
+        const customTemplate = isCustomTypeKey(type.key) ? getCustomTemplate(type.key, settings) : null;
+        const conf = customTemplate ? customConfFor(customTemplate) : SUB_CONFIGS[type.key];
+        const userSub = customTemplate ? customUserSubFor(customTemplate) : (settings.subConfig?.[type.key] || {});
         let subGenre = null;
         let difficulty = null;
         let deathRisk = false;
@@ -4926,9 +5629,11 @@
     }
 
     function buildEventPrompt(type, context, settings, customWorldInfoEntries) {
-        const preset = getPreset(type.key, settings);
-        const conf = SUB_CONFIGS[type.key];
-        const userSub = settings.subConfig?.[type.key] || {};
+        // 自定义模板：主预设与目录从模板数据现场合成（customConfFor 与 SUB_CONFIGS 同构），共用下方流派/难度装配逻辑
+        const customTemplate = isCustomTypeKey(type.key) ? getCustomTemplate(type.key, settings) : null;
+        const preset = customTemplate ? customTemplatePreset(customTemplate, settings) : getPreset(type.key, settings);
+        const conf = customTemplate ? customConfFor(customTemplate) : SUB_CONFIGS[type.key];
+        const userSub = customTemplate ? customUserSubFor(customTemplate) : (settings.subConfig?.[type.key] || {});
         const subInstructions = [];
         const labelParts = [type.label];
 
@@ -4938,7 +5643,8 @@
             const activeGenre = conf.genres.find(g => g.key === targetGenreKey) || conf.genres[0];
             if (activeGenre) {
                 labelParts.push(activeGenre.label);
-                const subPrompt = getSubPrompt(type.key, activeGenre.key, settings);
+                // 自定义模板的流派提示词存于模板条目本身（getSubPrompt 只查固定目录），故追加条目值回退；对固定模板该回退与内置三级回退等值，行为不变
+                const subPrompt = getSubPrompt(type.key, activeGenre.key, settings) || activeGenre.prompt;
                 if (subPrompt) {
                     subInstructions.push(subPrompt);
                 }

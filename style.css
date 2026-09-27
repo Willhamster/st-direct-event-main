@@ -4753,3 +4753,126 @@
     opacity: 0.65 !important;
     filter: invert(1) brightness(1.6) !important;
 }
+
+/* ========== 自定义事件模板 ========== */
+
+/* 主面板「＋ 新建自定义模板」整行按钮：虚线框弱化存在感，悬停点亮 */
+#st-direct-event-root .se-custom-add-btn {
+    justify-content: center;
+    gap: 8px;
+    border: 1.5px dashed var(--se-border) !important;
+    background: transparent !important;
+    color: var(--se-text-muted) !important;
+}
+#st-direct-event-root .se-custom-add-btn:hover {
+    background: var(--se-bg-hover) !important;
+    color: var(--se-accent) !important;
+    border-color: var(--se-accent) !important;
+}
+#st-direct-event-root .se-custom-add-btn .se-btn-label {
+    font-weight: 500;
+    letter-spacing: .05em;
+}
+
+/* 草稿模板按钮：置灰禁用，明确不可生成 */
+#st-direct-event-root .se-event-btn.se-event-btn-incomplete,
+#st-direct-event-root .se-event-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    filter: saturate(0.4);
+}
+#st-direct-event-root .se-event-btn:disabled:hover {
+    background: var(--se-bg-card) !important;
+}
+
+/* 删除小按钮：常态弱化，悬停警示；二次确认态红底强调 */
+#st-direct-event-root .se-sub-btn.se-sub-btn-del {
+    color: var(--se-text-muted) !important;
+}
+#st-direct-event-root .se-sub-btn.se-sub-btn-del:hover {
+    color: #f87171 !important;
+}
+#st-direct-event-root .se-sub-btn.se-sub-btn-danger {
+    background: rgba(248, 113, 113, 0.18) !important;
+    color: #f87171 !important;
+}
+#st-direct-event-root .se-del-confirm-text {
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+/* 编辑器：基础信息卡与流派/深度条目卡 */
+.se-ct-basic-card,
+.se-ct-item-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 14px;
+    border-radius: var(--se-radius-md);
+    background: var(--se-bg-card);
+    border: 1.5px solid var(--se-border-subtle);
+    box-sizing: border-box;
+    transition: border-color 0.2s ease;
+}
+.se-ct-item-card.se-ct-item-selected {
+    border-color: var(--se-accent);
+}
+.se-ct-item-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+.se-ct-item-index {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--se-text-title);
+    margin-left: 4px;
+}
+.se-ct-item-del {
+    border: none;
+    background: transparent;
+    color: var(--se-text-muted);
+    font-size: 11.5px;
+    cursor: pointer;
+    padding: 2px 8px;
+    border-radius: 6px;
+}
+.se-ct-item-del:hover {
+    color: #f87171;
+    background: rgba(248, 113, 113, 0.12);
+}
+.se-ct-field-label {
+    display: block;
+    font-size: 11px;
+    color: var(--se-text-sub);
+    margin-bottom: 3px;
+}
+.se-ct-field-label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 3px;
+}
+.se-ct-field-label-row .se-ct-field-label {
+    margin-bottom: 0;
+}
+.se-ct-item-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+.se-ct-section-toolbar {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+@media (max-width: 520px) {
+    .se-ct-item-grid {
+        grid-template-columns: 1fr;
+    }
+}
