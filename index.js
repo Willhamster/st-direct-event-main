@@ -1326,6 +1326,29 @@
         } catch (e) { console.warn('[ST Direct] 恢复分区折叠记忆失败:', e); }
         root.addEventListener('click', onRootClick);
         root.addEventListener('change', (e) => {
+            // DOM 状态类复选框（无 data-pv-action 祖先）必须在此守卫之前处理，
+            // 否则下方 if (!pvActionEl) return 会把它们的 change 事件全部吞掉
+            const wiCheckbox = e.target.closest('.se-wi-checkbox');
+            if (wiCheckbox && wiCheckbox.dataset.wiUid) {
+                const item = cachedAllWorldInfoList.find(x => x.uid === wiCheckbox.dataset.wiUid);
+                if (item) item.enabled = wiCheckbox.checked;
+                updateWorldInfoGroupCount(wiCheckbox.closest('.se-wi-group'));
+                return;
+            }
+            const varCheckbox = e.target.closest('.se-var-checkbox');
+            if (varCheckbox && varCheckbox.dataset.varPath) {
+                setVarSelection(varCheckbox.dataset.varGroup || '聊天变量', varCheckbox.dataset.varPath, varCheckbox.checked);
+                rerenderVariableModalPreservingScroll();
+                return;
+            }
+            if (e.target.id === 'se-var-prune-empty') {
+                rerenderVariableModalPreservingScroll();
+                return;
+            }
+            if (e.target.id === 'se-pv-filter-match') {
+                filterPromptViewerMessages();
+                return;
+            }
             const pvActionEl = e.target.closest('[data-pv-action]');
             if (!pvActionEl) return;
             const pvAction = pvActionEl.dataset.pvAction;
@@ -1370,27 +1393,6 @@
             if (pvAction === 'toggle-variables') {
                 promptViewerState.variables = pvActionEl.checked;
                 renderPromptViewerContent();
-                return;
-            }
-            const wiCheckbox = e.target.closest('.se-wi-checkbox');
-            if (wiCheckbox && wiCheckbox.dataset.wiUid) {
-                const item = cachedAllWorldInfoList.find(x => x.uid === wiCheckbox.dataset.wiUid);
-                if (item) item.enabled = wiCheckbox.checked;
-                updateWorldInfoGroupCount(wiCheckbox.closest('.se-wi-group'));
-                return;
-            }
-            const varCheckbox = e.target.closest('.se-var-checkbox');
-            if (varCheckbox && varCheckbox.dataset.varPath) {
-                setVarSelection(varCheckbox.dataset.varGroup || '聊天变量', varCheckbox.dataset.varPath, varCheckbox.checked);
-                rerenderVariableModalPreservingScroll();
-                return;
-            }
-            if (e.target.id === 'se-var-prune-empty') {
-                rerenderVariableModalPreservingScroll();
-                return;
-            }
-            if (e.target.id === 'se-pv-filter-match') {
-                filterPromptViewerMessages();
                 return;
             }
         });
@@ -8220,7 +8222,22 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
         for (const group of cachedVariableGroups) setVarGroupSelection(group.label, value);
     }
 
+    // 保存前从弹窗 DOM 重读可见勾选状态（与世界书 syncWorldInfoInputsFromDom 同款兜底）。
+    // 仅在 DOM 与记录不一致时覆写且不清除后代标记，避免把已折叠未渲染的子分支标记冲掉。
+    function syncVariableSelectionsFromDom() {
+        const modal = root?.querySelector('#se-variable-modal');
+        if (!modal) return;
+        modal.querySelectorAll('.se-var-checkbox').forEach(cb => {
+            const path = cb.dataset.varPath;
+            if (!path) return;
+            const label = cb.dataset.varGroup || '聊天变量';
+            const map = varModalSelections[label] || (varModalSelections[label] = {});
+            if (map[path] !== cb.checked) map[path] = cb.checked;
+        });
+    }
+
     async function saveVariableModal() {
+        syncVariableSelectionsFromDom();
         const pruneCheckbox = root?.querySelector('#se-var-prune-empty');
         const s = getSettings();
         const selections = {};

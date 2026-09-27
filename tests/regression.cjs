@@ -403,6 +403,20 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         assert(src.includes('varInjectionSelections: current.varInjectionSelections || null,'), 'form preserve selections missing');
         assert(src.includes('varPruneEmpty: current.varPruneEmpty !== false,'), 'form preserve prune missing');
     });
+    check('Change listener handles DOM checkboxes before the pv-action guard',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        const guard = src.indexOf('if (!pvActionEl) return;');
+        assert(guard > 0, 'pv-action guard missing');
+        // 回归：var/wi 复选框与弹窗开关的处理分支曾被守卫吞掉导致勾选保存无效，必须位于守卫之前
+        assert(src.indexOf("e.target.closest('.se-var-checkbox')") < guard, 'var checkbox branch after the guard (dead code)');
+        assert(src.indexOf("e.target.closest('.se-wi-checkbox')") < guard, 'wi checkbox branch after the guard (dead code)');
+        assert(src.indexOf("e.target.id === 'se-var-prune-empty'") < guard, 'prune toggle branch after the guard (dead code)');
+        assert(src.indexOf("e.target.id === 'se-pv-filter-match'") < guard, 'pv filter-match branch after the guard (dead code)');
+        // 保存兜底：saveVariableModal 必须先从 DOM 重读勾选状态
+        assert(src.includes('function syncVariableSelectionsFromDom'), 'dom sync helper missing');
+        const saveHead = src.slice(src.indexOf('async function saveVariableModal'), src.indexOf('async function saveVariableModal') + 400);
+        assert(saveHead.includes('syncVariableSelectionsFromDom();'), 'saveVariableModal does not sync from DOM');
+    });
     check('Variable section is injected between world info and sub-prompt',()=>{
         const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
         const wi = src.indexOf('// 2. 独立注入：世界书核心设定');
