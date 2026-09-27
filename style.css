@@ -1003,6 +1003,19 @@
     margin-bottom: 14px;
 }
 
+/* 内滚容器的直接子项保持自然高度：overflow 非 visible 的子项（如预设工坊手风琴）在 flex 下
+   自动最小尺寸为 0，容器被限高时会被等比压扁、内容遭自身裁切且容器无可滚动余量（无滚动条） */
+.se-settings-body > *,
+.se-sub-body > *,
+.se-preset-list > *,
+.se-api-log-list > *,
+.se-event-list > *,
+.se-stage-modal-body > *,
+.se-prompt-viewer-body > *,
+.se-wi-list > * {
+    flex-shrink: 0;
+}
+
 /* 设置表单主体 */
 .se-settings-body {
     display: flex;

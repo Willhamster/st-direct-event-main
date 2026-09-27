@@ -32,10 +32,32 @@ button{font:inherit}
 <script>
 // 动态容器注入示例内容，验证内滚
 const card = (n) => '<div class="se-preset-card"><div class="se-preset-title">示例条目 ' + n + '</div><div class="se-preset-desc">说明文字：撑高度用，验证内容区内部滚动、顶栏与底栏保持固定。</div><textarea rows="3">示例内容 ' + n + '</textarea></div>';
-['se-preset-list','se-api-log-list','se-event-list','se-sub-body','se-stage-modal-body','se-wi-list'].forEach(id => {
+// 预设工坊用与 renderPresets 相同的手风琴结构（details > summary + 嵌套子手风琴 + 长文本 textarea），
+// 用于复现「overflow:hidden 的 flex 子项被压扁」类问题
+const longText = (n) => Array.from({ length: n }, (_, i) => '这是用于验证内容区内部滚动与子项不被压缩的示例提示词长文本第' + (i + 1) + '句，足够长的中文内容会把卡片与手风琴撑到真实高度。').join('');
+const pcard = (title, desc, rows, val) => '<div class="se-preset-card">' + (title ? '<div class="se-preset-title">' + title + '</div>' : '') + (desc ? '<div class="se-preset-desc">' + desc + '</div>' : '') + '<textarea rows="' + rows + '">' + val + '</textarea></div>';
+const subSec = (key, title, inner) => '<details class="se-preset-sub-accordion" data-section-key="' + key + '" open><summary class="se-preset-sub-summary"><span class="se-preset-sub-chevron">▾</span>' + title + '</summary><div class="se-preset-sub-body">' + inner + '</div></details>';
+const genre = (key, title, inner) => '<details class="se-preset-accordion" data-section-key="presets-' + key + '" open><summary class="se-preset-accordion-summary">' + title + '</summary><div class="se-preset-accordion-body">' + inner + '</div></details>';
+const genreBody = (label) =>
+  subSec('main', '大事件基础导演预设', pcard('', '', 7, longText(14))) +
+  subSec('sub', '小事件流派预设（5 个细分）', [1, 2, 3, 4, 5].map(i => pcard(label + '流派 ' + i, '说明：' + label + '流派 ' + i + ' 的玩法与反噬描述。', 5, longText(8))).join('')) +
+  subSec('diff', '挑战难度预设（5 档 + 自定义）', ['轻松', '标准', '困难', '噩梦', '自定义'].map(t => pcard(t, '难度「' + t + '」档提示词。', 3, longText(4))).join(''));
+['se-api-log-list', 'se-event-list', 'se-sub-body', 'se-stage-modal-body', 'se-wi-list'].forEach(id => {
   const el = document.getElementById(id);
   if (el && !el.children.length) { let h = ''; for (let i = 1; i <= 10; i++) h += card(i); el.innerHTML = h; }
 });
+const pl = document.getElementById('se-preset-list');
+if (pl && !pl.children.length) {
+  pl.innerHTML =
+    genre('jailbreak', '破限与防审查提示词（置顶注入与外审破限）',
+      pcard('头部小说破限（雪融雪降 · 过外审预填充）', '针对 build、gcli、one-api 等严格外审渠道。在对话最前端以 User 身份预填充万字纯文学小说样本，由 Assistant 虚假确认承接，使模型在首轮审查时误判为文学品读分析，彻底瓦解拒答与道德过滤。', 8, longText(12)) +
+      pcard('系统级破限与创作准则（Dramatron 深度缝合版）', '源自 Kemini Dramatron 特化破限与私密沙盒豁免架构，深度缝合不媚 USER 去主角化、防机械化生活对白、防全知有限视角。', 12, longText(16))) +
+    genre('combat', '战斗预设（大事件导演 / 小事件流派 / 难度 / 死线）', genreBody('战斗') +
+      subSec('death', '死亡危险死线提示词（极高死亡危险模式注入）', pcard('', '开启「极高死亡危险模式」时注入的死线与因果判定准则。', 5, longText(8)))) +
+    genre('reasoning', '推理预设（大事件导演 / 小事件流派 / 难度）', genreBody('推理')) +
+    genre('romance', '恋爱预设（大事件导演 / 小事件流派 / 浓度）', genreBody('恋爱')) +
+    genre('random', '随机事件预设（大事件导演）', subSec('main', '大事件基础导演预设', pcard('', '', 7, longText(14))));
+}
 const pv = document.getElementById('se-prompt-viewer-body');
 if (pv && !pv.children.length) {
   let h = '<div class="se-pv-stats-row"><div class="se-pv-stats-left"><span class="se-pv-token-counter">12,345</span><span class="se-pv-msg-counter">示例统计行（固定验证）</span></div></div>';
