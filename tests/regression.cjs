@@ -387,6 +387,54 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         assert(/#st-direct-event-root \.se-stage-engine-actions \.se-cap-btn\s*{[^}]*width:\s*100%/.test(css), 'uniform button sizing missing');
     });
 
+    check('Tavern variable injection toggle is wired end to end',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        assert(src.includes('enableVarInjection: true'), 'DEFAULT_SETTINGS default missing');
+        assert(src.includes('merged.enableVarInjection = (ls.enableVarInjection ?? stored.enableVarInjection) !== false;'), 'getSettings merge missing');
+        assert(src.includes('id="se-enable-var-injection"'), 'settings toggle missing');
+        assert(src.includes("setChecked('se-enable-var-injection', s.enableVarInjection !== false);"), 'form fill missing');
+        assert(src.includes("enableVarInjection: checked('se-enable-var-injection')"), 'form collect missing');
+        assert(src.includes('data-pv-action="toggle-variables"'), 'prompt viewer toggle missing');
+        assert(src.includes('promptViewerState.variables = s.enableVarInjection !== false;'), 'prompt viewer state sync missing');
+    });
+    check('Variable section is injected between world info and sub-prompt',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        const wi = src.indexOf('// 2. 独立注入：世界书核心设定');
+        const va = src.indexOf('// 3. 独立注入：酒馆变量');
+        const sp = src.indexOf('// 4. 独立注入：专属细分流派与难度设定');
+        const tn = src.indexOf('// 5. 独立注入：回合推进规约与XML大纲结构');
+        assert(wi >= 0 && va > wi && sp > va && tn > sp, 'variable push not between world info and sub prompt');
+        const body = src.slice(src.indexOf('function buildEventPrompt'), src.indexOf('function pushApiLog'));
+        assert(body.includes('buildVariablesSystemPrompt(collectTavernVariables())'), 'buildEventPrompt does not build variable content');
+        assert(body.includes('enableVarInjection !== false'), 'variable content not gated on setting');
+    });
+    check('Variable prompt builder renders YAML groups and hides $ keys',()=>{
+        assert.equal(h.api.DEFAULT_SETTINGS.enableVarInjection, true);
+        const out = h.api.buildVariablesSystemPrompt([
+            {label:'角色卡变量', variables:{好感度:5, 状态:{体力:'良好', $meta:'hidden'}, 装备:['长剑','盾'], 备注:'多行\n第二行'}},
+        ]);
+        assert(out.includes('【酒馆变量注入'), 'header missing');
+        assert(out.includes('### 【角色卡变量】'), 'group title missing');
+        assert(out.includes('好感度: 5'));
+        assert(out.includes('体力: 良好'));
+        assert(out.includes('- 长剑') && out.includes('- 盾'));
+        assert(out.includes('第二行'));
+        assert(!out.includes('$meta'), 'hidden $ key leaked');
+        assert(!out.includes('hidden'), 'stripped value leaked');
+        assert.equal(h.api.buildVariablesSystemPrompt([]), '');
+        assert.equal(h.api.buildVariablesSystemPrompt([{label:'聊天变量', variables:{}}]), '');
+        assert(h.api.buildVariablesSystemPrompt([{label:'聊天变量', variables:{a:{$secret:1}, $b:2}}]).includes('a: {}'), 'nested $ keys not stripped');
+    });
+    check('Variable collection falls back to core chat variables without TavernHelper',()=>{
+        const h4 = harness({ctx:{chatMetadata:{variables:{gold:9}}}});
+        const groups = h4.api.collectTavernVariables();
+        assert.equal(groups.length, 1);
+        assert.equal(groups[0].label, '聊天变量');
+        assert.equal(groups[0].variables.gold, 9);
+        const h5 = harness();
+        assert.equal(h5.api.collectTavernVariables().length, 0);
+        assert(!h5.api.buildEventPrompt(h5.api.EVENT_TYPES.combat, '玩家: 你好', h5.api.DEFAULT_SETTINGS, []).some(m => String(m.content).includes('【酒馆变量注入')), 'empty variables must not push a section');
+    });
     check('Production source contains no pictographs',()=>{for(const file of ['index.js','style.css']) assert(!/\p{Extended_Pictographic}/u.test(fs.readFileSync(path.join(__dirname,'..',file),'utf8')));});
     const report={checks,passed:true,date:new Date().toISOString()};fs.writeFileSync(path.join(__dirname,'regression-result.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));
 })().catch(err=>{console.error(err.stack);process.exitCode=1;});

@@ -230,6 +230,15 @@ button{font:inherit}
                             默认注入常驻蓝灯。点击右侧按钮可自主勾选任意条目注入副 API，或直接修改/新增世界观设定。
                         </div>
                     </div>
+                    <div class="se-setting-card-item">
+                        <label class="se-check-label" style="margin:0; cursor:pointer;">
+                            <input id="se-enable-var-injection" type="checkbox" />
+                            <span style="font-weight:600; color:var(--se-text-title);">启用酒馆变量注入</span>
+                        </label>
+                        <div style="font-size:11px; color:var(--se-text-muted); margin-top:4px; padding-left:24px; line-height:1.4;">
+                            将酒馆变量（角色卡变量 / 聊天变量，含 MVU 等框架的数值状态）作为独立 System 注入副 API。检测到酒馆助手时读取角色卡与聊天变量；未安装时读取酒馆核心聊天变量。每次生成时实时读取，以 $ 开头的隐藏变量不注入。
+                        </div>
+                    </div>
                     <label>发送最近 N 轮聊天内容</label>
                     <input id="se-recent-rounds" type="number" min="1" max="200" />
 

@@ -154,6 +154,7 @@
         hideFab: false,
         theme: 'ocean',
         enableWorldInfo: true,
+        enableVarInjection: true,
         worldInfoSelections: null,
         worldInfoOverrides: null,
         customWorldInfoEntries: [],
@@ -422,6 +423,7 @@
         merged.autoSendMode = migratedMode;
         merged.autoSend = migratedMode === 'auto';
         merged.enableWorldInfo = (ls.enableWorldInfo ?? stored.enableWorldInfo) !== false;
+        merged.enableVarInjection = (ls.enableVarInjection ?? stored.enableVarInjection) !== false;
         // 空数组/空对象是合法的“已清空”状态，不能用 || 兜底，否则另一份存档里的旧值会整体复活
         merged.worldInfoSelections = ls.worldInfoSelections != null ? ls.worldInfoSelections : (stored.worldInfoSelections != null ? stored.worldInfoSelections : null);
         merged.worldInfoOverrides = ls.worldInfoOverrides != null ? ls.worldInfoOverrides : (stored.worldInfoOverrides != null ? stored.worldInfoOverrides : null);
@@ -1109,6 +1111,15 @@
                             默认注入常驻蓝灯。点击右侧按钮可自主勾选任意条目注入副 API，或直接修改/新增世界观设定。
                         </div>
                     </div>
+                    <div class="se-setting-card-item">
+                        <label class="se-check-label" style="margin:0; cursor:pointer;">
+                            <input id="se-enable-var-injection" type="checkbox" />
+                            <span style="font-weight:600; color:var(--se-text-title);">启用酒馆变量注入</span>
+                        </label>
+                        <div style="font-size:11px; color:var(--se-text-muted); margin-top:4px; padding-left:24px; line-height:1.4;">
+                            将酒馆变量（角色卡变量 / 聊天变量，含 MVU 等框架的数值状态）作为独立 System 注入副 API。检测到酒馆助手时读取角色卡与聊天变量；未安装时读取酒馆核心聊天变量。每次生成时实时读取，以 $ 开头的隐藏变量不注入。
+                        </div>
+                    </div>
                     <label>发送最近 N 轮聊天内容</label>
                     <input id="se-recent-rounds" type="number" min="1" max="200" />
 
@@ -1313,6 +1324,11 @@
             }
             if (pvAction === 'toggle-wi') {
                 promptViewerState.worldInfo = pvActionEl.checked;
+                renderPromptViewerContent();
+                return;
+            }
+            if (pvAction === 'toggle-variables') {
+                promptViewerState.variables = pvActionEl.checked;
                 renderPromptViewerContent();
                 return;
             }
@@ -3518,6 +3534,7 @@
         setChecked('se-enable-jailbreak', s.enableJailbreak !== false);
         setChecked('se-enable-novel-bypass', s.enableNovelBypass !== false);
         setChecked('se-enable-world-info', s.enableWorldInfo !== false);
+        setChecked('se-enable-var-injection', s.enableVarInjection !== false);
         setChecked('se-hide-fab', !!s.hideFab);
         set('se-auto-send', s.autoSendMode || 'auto');
 
@@ -3565,6 +3582,7 @@
             enableJailbreak: checked('se-enable-jailbreak'),
             enableNovelBypass: checked('se-enable-novel-bypass'),
             enableWorldInfo: checked('se-enable-world-info'),
+            enableVarInjection: checked('se-enable-var-injection'),
             hideFab: checked('se-hide-fab'),
             worldInfoSelections: current.worldInfoSelections || null,
             worldInfoOverrides: current.worldInfoOverrides || null,
@@ -4631,6 +4649,108 @@
         return lines.join('\n\n');
     }
 
+    // 酒馆助手约定：以 $ 开头的变量键为不发给 AI 的隐藏数据，所有层级统一过滤
+    function stripHiddenVariableKeys(value) {
+        if (Array.isArray(value)) return value.map(item => stripHiddenVariableKeys(item));
+        if (value && typeof value === 'object') {
+            const out = {};
+            for (const key of Object.keys(value)) {
+                if (key.startsWith('$')) continue;
+                out[key] = stripHiddenVariableKeys(value[key]);
+            }
+            return out;
+        }
+        return value;
+    }
+
+    // 收集酒馆变量：优先走酒馆助手(TavernHelper)导出到页面的全局接口读取角色卡/聊天变量；
+    // 未安装酒馆助手时降级读取酒馆核心聊天变量（chat_metadata.variables，角色卡变量为核心所无，直接省略）
+    function collectTavernVariables() {
+        const groups = [];
+        const pushGroup = (label, variables) => {
+            if (!variables || typeof variables !== 'object') return;
+            const cleaned = stripHiddenVariableKeys(variables);
+            if (!cleaned || typeof cleaned !== 'object') return;
+            if (Array.isArray(cleaned) ? cleaned.length === 0 : Object.keys(cleaned).length === 0) return;
+            groups.push({ label, variables: cleaned });
+        };
+        try {
+            const th = window.TavernHelper;
+            if (th && typeof th.getVariables === 'function') {
+                try {
+                    pushGroup('角色卡变量', th.getVariables({ type: 'character' }));
+                } catch (e) { /* 未打开角色卡时酒馆助手会抛错，跳过该组 */ }
+                try {
+                    pushGroup('聊天变量', th.getVariables({ type: 'chat' }));
+                } catch (e) { /* 静默降级 */ }
+                return groups;
+            }
+        } catch (e) { /* 浏览器酒馆之外环境静默忽略 */ }
+        try {
+            pushGroup('聊天变量', getCtx()?.chatMetadata?.variables);
+        } catch (e) { /* 静默降级 */ }
+        return groups;
+    }
+
+    function renderVariableScalar(value) {
+        if (value === null || value === undefined) return 'null';
+        if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+        return String(value);
+    }
+
+    // 变量以 YAML 风格渲染（酒馆助手文档建议：YAML 的 AI 理解效果优于 JSON）
+    function renderVariableBody(value, pad, depth) {
+        if (depth > 10) return pad + JSON.stringify(value);
+        if (Array.isArray(value)) {
+            return value.map(item => {
+                if (item && typeof item === 'object') {
+                    const keys = Object.keys(item);
+                    if (!keys.length) return `${pad}- {}`;
+                    const childPad = pad + '  ';
+                    const first = renderVariableEntry(keys[0], item[keys[0]], childPad, depth + 1);
+                    const rest = keys.slice(1).map(k => renderVariableEntry(k, item[k], childPad, depth + 1));
+                    return `${pad}- ${first.trimStart()}${rest.length ? '\n' + rest.join('\n') : ''}`;
+                }
+                return `${pad}- ${renderVariableScalar(item)}`;
+            }).join('\n');
+        }
+        return Object.keys(value).map(k => renderVariableEntry(k, value[k], pad, depth)).join('\n');
+    }
+
+    function renderVariableEntry(key, value, pad, depth) {
+        if (value && typeof value === 'object') {
+            const isEmpty = Array.isArray(value) ? value.length === 0 : Object.keys(value).length === 0;
+            if (isEmpty) return `${pad}${key}: ${Array.isArray(value) ? '[]' : '{}'}`;
+            return `${pad}${key}:\n${renderVariableBody(value, pad + '  ', depth + 1)}`;
+        }
+        if (typeof value === 'string' && value.includes('\n')) {
+            const body = value.split('\n').map(line => (line ? `${pad}  ${line}` : '')).join('\n');
+            return `${pad}${key}: |-\n${body}`;
+        }
+        return `${pad}${key}: ${renderVariableScalar(value)}`;
+    }
+
+    function buildVariablesSystemPrompt(groups) {
+        // 渲染前统一剥离 $ 隐藏键：过滤责任放在最后出口，即使来源未经 collectTavernVariables 清洗也不会泄漏
+        const usable = (Array.isArray(groups) ? groups : [])
+            .map(g => ({
+                label: g && typeof g === 'object' ? g.label : '',
+                variables: stripHiddenVariableKeys(g && typeof g.variables === 'object' && !Array.isArray(g.variables) ? g.variables : {}),
+            }))
+            .filter(g => Object.keys(g.variables).length > 0);
+        if (!usable.length) return '';
+        const lines = [
+            '【酒馆变量注入（角色状态与数值动态基底）】',
+            '以下为酒馆当前存储的实时变量快照（角色状态、好感度、物品、剧情进度等数值与状态数据），生成事件大纲与各轮纸条时必须与其保持一致：严禁凭空捏造或写出与变量矛盾的数值状态，涉及状态变动的剧情须自然衔接当前取值：',
+            ''
+        ];
+        for (const group of usable) {
+            const body = renderVariableBody(group.variables, '  ', 0);
+            lines.push(`### 【${group.label || '变量'}】\n${body}`);
+        }
+        return lines.join('\n\n');
+    }
+
     function buildEventPrompt(type, context, settings, customWorldInfoEntries) {
         const preset = getPreset(type.key, settings);
         const conf = SUB_CONFIGS[type.key];
@@ -4743,6 +4863,11 @@
             ? buildWorldInfoSystemPrompt(wiEntries)
             : '';
 
+        // 酒馆变量注入（角色状态与数值实时快照，无变量时自动省略）
+        const variableContent = (settings?.enableVarInjection !== false)
+            ? buildVariablesSystemPrompt(collectTavernVariables())
+            : '';
+
         // 破限与创作豁免指令
         const jailbreak = getJailbreakPrompt(settings);
 
@@ -4815,7 +4940,15 @@
             });
         }
 
-        // 3. 独立注入：专属细分流派与难度设定
+        // 3. 独立注入：酒馆变量 (角色状态与数值实时快照)
+        if (variableContent) {
+            messages.push({
+                role: 'system',
+                content: variableContent,
+            });
+        }
+
+        // 4. 独立注入：专属细分流派与难度设定
         if (subPromptContent) {
             messages.push({
                 role: 'system',
@@ -4823,7 +4956,7 @@
             });
         }
 
-        // 4. 独立注入：回合推进规约与XML大纲结构
+        // 5. 独立注入：回合推进规约与XML大纲结构
         if (turnStructureContent) {
             messages.push({
                 role: 'system',
@@ -7322,6 +7455,7 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
         turns: 2,
         novelBypass: true,
         worldInfo: true,
+        variables: true,
         contextMode: 'chat',
     };
 
@@ -7329,6 +7463,7 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
         if (!root) return;
         const s = getSettings();
         promptViewerState.worldInfo = s.enableWorldInfo !== false;
+        promptViewerState.variables = s.enableVarInjection !== false;
         if (defaultTypeKey && EVENT_TYPES[defaultTypeKey]) {
             promptViewerState.typeKey = defaultTypeKey;
             const conf = SUB_CONFIGS[defaultTypeKey];
@@ -7406,6 +7541,7 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
         const previewSettings = {
             ...s,
             enableWorldInfo: promptViewerState.worldInfo,
+            enableVarInjection: promptViewerState.variables,
             subConfig: {
                 ...s.subConfig,
                 [curTypeKey]: {
@@ -7540,6 +7676,13 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
                     </label>
                     <button type="button" class="se-pv-link-btn" data-pv-action="open-world-info-modal" style="font-size:11px; padding:0 3px;" title="打开世界书条目选择与自定义编辑窗口">编辑条目</button>
                 </div>
+
+                <div class="se-pv-quick-item">
+                    <label class="se-pv-checkbox-label" title="开启后注入酒馆变量（角色卡/聊天变量实时快照）为独立System设定基底">
+                        <input type="checkbox" data-pv-action="toggle-variables" ${promptViewerState.variables ? 'checked' : ''} />
+                        <span>酒馆变量</span>
+                    </label>
+                </div>
             </div>
 
             <div class="se-pv-meta-row">
@@ -7566,15 +7709,18 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
 
             const isNovelBypass = idx === 0 && msg.role === 'user' && promptViewerState.novelBypass;
             const isWorldInfoCard = msg.role === 'system' && textContent.includes('【世界书核心设定');
+            const isVariablesCard = msg.role === 'system' && textContent.includes('【酒馆变量注入');
             const isSubPromptCard = msg.role === 'system' && textContent.includes('【专属细分流派与难度设定');
             const isTurnStructureCard = msg.role === 'system' && textContent.includes('【回合推进规约与大纲结构');
-            const isSystemPresetCard = msg.role === 'system' && !isWorldInfoCard && !isSubPromptCard && !isTurnStructureCard;
+            const isSystemPresetCard = msg.role === 'system' && !isWorldInfoCard && !isVariablesCard && !isSubPromptCard && !isTurnStructureCard;
 
             let roleTitle = '事件生成用户指示';
             if (isNovelBypass) {
                 roleTitle = '头部小说破限预填充 (雪融雪降)';
             } else if (isWorldInfoCard) {
                 roleTitle = '世界书核心设定 (常驻蓝灯 · 独立System)';
+            } else if (isVariablesCard) {
+                roleTitle = '酒馆变量注入 (实时变量快照 · 独立System)';
             } else if (isSubPromptCard) {
                 roleTitle = '专属细分流派与难度设定 (独立System)';
             } else if (isTurnStructureCard) {
