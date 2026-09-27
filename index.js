@@ -422,21 +422,28 @@
         merged.autoSendMode = migratedMode;
         merged.autoSend = migratedMode === 'auto';
         merged.enableWorldInfo = (ls.enableWorldInfo ?? stored.enableWorldInfo) !== false;
-        merged.worldInfoSelections = ls.worldInfoSelections || stored.worldInfoSelections || null;
-        merged.worldInfoOverrides = ls.worldInfoOverrides || stored.worldInfoOverrides || null;
-        merged.customWorldInfoEntries = Array.isArray(ls.customWorldInfoEntries || stored.customWorldInfoEntries)
-            ? (ls.customWorldInfoEntries || stored.customWorldInfoEntries)
-            : [];
-        merged.factions = Array.isArray(ls.factions || stored.factions) ? (ls.factions || stored.factions) : [];
+        // 空数组/空对象是合法的“已清空”状态，不能用 || 兜底，否则另一份存档里的旧值会整体复活
+        merged.worldInfoSelections = ls.worldInfoSelections != null ? ls.worldInfoSelections : (stored.worldInfoSelections != null ? stored.worldInfoSelections : null);
+        merged.worldInfoOverrides = ls.worldInfoOverrides != null ? ls.worldInfoOverrides : (stored.worldInfoOverrides != null ? stored.worldInfoOverrides : null);
+        merged.customWorldInfoEntries = Array.isArray(ls.customWorldInfoEntries)
+            ? ls.customWorldInfoEntries
+            : (Array.isArray(stored.customWorldInfoEntries) ? stored.customWorldInfoEntries : []);
+        merged.factions = Array.isArray(ls.factions) ? ls.factions : (Array.isArray(stored.factions) ? stored.factions : []);
         merged.defaultTurns = Math.min(30, Math.max(1, Math.floor(Number(merged.defaultTurns) || DEFAULT_SETTINGS.defaultTurns)));
         merged.subConfig = Object.assign({}, DEFAULT_SETTINGS.subConfig);
         const storedSub = ls.subConfig || stored.subConfig || {};
         for (const k of Object.keys(DEFAULT_SETTINGS.subConfig)) {
             merged.subConfig[k] = Object.assign({}, DEFAULT_SETTINGS.subConfig[k], storedSub[k] || {});
         }
-        merged.subPrompts = Object.assign({}, ls.subPrompts || stored.subPrompts || {});
-        // v8 迁移：因果边界只保留在主类预设，用户已保存的流派/死线提示词若原样内联旧尾缀则剥掉
+        merged.subPrompts = Object.assign({}, stored.subPrompts || {}, ls.subPrompts || {});
+        // v8 迁移：因果边界只保留在主类预设，用户已保存的流派/死线提示词若原样内联旧尾缀则剥掉；
+        // 旧版“未缝合约定”破限一次性平滑升级为完整缝合版。v8 起用户保存的破限一律尊重，
+        // 不再按长度静默替换（旧判断会吞掉用户 <1000 字的自定义破限且无任何提示）
         if ((Number(stored.configVersion) || 0) < 8 || (Number(ls.configVersion) || 0) < 8) {
+            const legacyPrompt = typeof merged.jailbreakPrompt === 'string' ? merged.jailbreakPrompt.trim() : '';
+            if (legacyPrompt && !legacyPrompt.includes('roleplay_and_writing_constraints') && legacyPrompt.length < 1000) {
+                merged.jailbreakPrompt = '';
+            }
             for (const k of Object.keys(merged.subPrompts)) {
                 const v = merged.subPrompts[k];
                 if (typeof v === 'string' && v.endsWith(LEGACY_CAUSAL_TAIL)) {
@@ -444,7 +451,7 @@
                 }
             }
         }
-        merged.presets = ls.presets || stored.presets || null;
+        merged.presets = Object.hasOwn(ls, 'presets') ? (ls.presets || null) : (stored.presets || null);
         merged.enableJailbreak = (ls.enableJailbreak ?? stored.enableJailbreak) !== false;
         merged.jailbreakPrompt = (ls.jailbreakPrompt ?? stored.jailbreakPrompt) || '';
         merged.enableNovelBypass = (ls.enableNovelBypass ?? stored.enableNovelBypass) !== false;
@@ -458,10 +465,7 @@
         const s = settings || getSettings();
         if (s.enableJailbreak === false) return '';
         const userPrompt = s.jailbreakPrompt && typeof s.jailbreakPrompt === 'string' ? s.jailbreakPrompt.trim() : '';
-        // 若用户保存的是旧版未缝合约定（未包含 roleplay_and_writing_constraints 且长度小于 1000），平滑升级为完整缝合版
-        if (userPrompt && !userPrompt.includes('roleplay_and_writing_constraints') && userPrompt.length < 1000) {
-            return DEFAULT_JAILBREAK_PROMPT;
-        }
+        // 用户保存的破限一律生效；旧版未缝合约定的平滑升级已在 getSettings 的 v8 迁移中一次性完成
         return userPrompt || DEFAULT_JAILBREAK_PROMPT;
     }
 
@@ -763,7 +767,10 @@
             }
             
         } catch (e) {
-            console.warn('[ST Direct] 初始化失败:', e);
+            // 初始化失败时复位标志，让 APP_READY 订阅等后续启动路径还能重试，
+            // 否则任何一次未捕获异常都会让插件静默死亡且永无重试机会
+            initialized = false;
+            console.warn('[ST Direct] 初始化失败(稍后自动重试):', e);
         }
     }
 
@@ -841,9 +848,41 @@
 
     // 关闭所有插件窗口（不含悬浮球与胶囊）。胶囊由 updateFloatingCapsule 依新聊天状态决定去留。
     function closeAllUiWindows() {
+        modalReturnPanelId = null;
         root?.querySelectorAll('.se-panel, .se-settings, .se-events, .se-presets, .se-api-log, .se-sub-modal, .se-stage-modal, .se-prompt-viewer-modal, .se-world-info-modal').forEach(el => {
             el.style.display = 'none';
         });
+    }
+
+    // ===== 弹窗来源面板记录/恢复 =====
+    // stage / 提示词查看器 / 世界书弹窗可从主面板或事件列表、预设工坊等子面板打开。
+    // 关闭时若一律拉起主面板，会与仍然可见的来源子面板叠加成两个窗口；
+    // 因此打开时记录来源面板，关闭时优先恢复来源，无来源记录时仅在没有子面板可见时才拉起主面板。
+    let modalReturnPanelId = null;
+
+    function recordModalReturnPanel() {
+        for (const id of ['se-settings', 'se-events', 'se-presets', 'se-api-log']) {
+            const el = document.getElementById(id);
+            if (el && el.style.display !== 'none' && el.getBoundingClientRect().width > 0) return id;
+        }
+        return null;
+    }
+
+    function showPanelAfterModalClose() {
+        const returnId = modalReturnPanelId;
+        modalReturnPanelId = null;
+        if (returnId) {
+            const el = document.getElementById(returnId);
+            if (el) { el.style.display = 'block'; return; }
+        }
+        const subVisible = ['se-settings', 'se-events', 'se-presets', 'se-api-log'].some(id => {
+            const el = document.getElementById(id);
+            return el && el.style.display !== 'none' && el.getBoundingClientRect().width > 0;
+        });
+        if (!subVisible) {
+            const panel = root?.querySelector('#se-panel');
+            if (panel && panel.style.display === 'none') panel.style.display = 'flex';
+        }
     }
 
     function mountUI() {
@@ -878,7 +917,7 @@
                     <div class="se-panel-header-left">
                         <span class="se-brand-dot"></span>
                         <span class="se-panel-brand">剧情导演</span>
-                        <button type="button" class="se-theme-pill" data-action="cycle-theme" title="点击快速切换主题风格 (当前 7 款预设)">
+                        <button type="button" class="se-theme-pill" data-action="cycle-theme" title="点击快速切换主题风格 (当前 8 款预设)">
                             <span class="se-theme-pill-dot"></span>
                             <span id="se-theme-name">深海蔚蓝</span>
                         </button>
@@ -2004,7 +2043,7 @@
                         factionSelect.innerHTML = `<option value="">-- 手动临时配置 / 未选势力 --</option>` +
                             currentSettings.factions.map(f => `<option value="${escapeHtml(f.id)}" ${f.id === target.id ? 'selected' : ''}>${escapeHtml(f.name || '未命名势力')}</option>`).join('');
                     }
-                    if (window.toastr) toastr.success(`势力「${name}」已保存至势力库`);
+                    if (window.toastr) toastr.success(`势力「${escapeHtml(name)}」已保存至势力库`);
                 });
             }
 
@@ -2034,7 +2073,7 @@
                         if (powerInput) powerInput.value = '';
                         if (traitsInput) traitsInput.value = '';
                         if (weaknessInput) weaknessInput.value = '';
-                        if (window.toastr) toastr.success(`已从势力库移除「${removed?.name || '势力'}」`);
+                        if (window.toastr) toastr.success(`已从势力库移除「${escapeHtml(removed?.name || '势力')}」`);
                     }
                 });
             }
@@ -2504,11 +2543,18 @@
 
     function getVisibleResizePanel() {
         if (!root) return null;
+        // 弹窗（stage/sub/世界书等）打开时下层子面板仍然可见：按 z-index 取最上层者，
+        // 否则把手会钉在被弹窗覆盖的下层窗口上；z-index 相同按列表顺序（与 DOM 叠放一致）取后者
+        let best = null;
+        let bestZ = -Infinity;
         for (const id of RESIZE_PANEL_IDS) {
             const el = document.getElementById(id);
-            if (el && el.style.display !== 'none' && el.getBoundingClientRect().width > 0) return el;
+            if (!el || el.style.display === 'none' || el.getBoundingClientRect().width <= 0) continue;
+            const z = parseFloat(getComputedStyle(el).zIndex);
+            const zv = Number.isFinite(z) ? z : 0;
+            if (!best || zv >= bestZ) { best = el; bestZ = zv; }
         }
-        return null;
+        return best;
     }
 
     // 每个面板首次显示时恢复上次手动调整的尺寸；移动端视口差异大，不恢复也不持久化
@@ -2568,7 +2614,10 @@
 
     // 面板的显隐（display）与拖动（left/top）都通过内联 style 修改，监听 style 变更即可集中跟随，无需在每个入口埋点
     function setupResizePanelObserver() {
-        if (!root || resizePanelObserver) return;
+        if (!root) return;
+        // mountUI 可重入（root 被外部移除后 observeFab 会重建整个面板树）：旧观察器仍盯着
+        // 已脱离 DOM 的旧节点会永久失联，因此每次挂载都断开重建，改盯当前节点
+        if (resizePanelObserver) { try { resizePanelObserver.disconnect(); } catch (e) { /* ignore */ } }
         resizePanelObserver = new MutationObserver(() => positionResizeHandle());
         RESIZE_PANEL_IDS.forEach(id => {
             const el = document.getElementById(id);
@@ -2578,7 +2627,8 @@
 
     // 面板自身的尺寸变化（初始布局稳定、内容增减）不走 style，需 ResizeObserver 补充跟随
     function setupResizePanelSizeObserver() {
-        if (!root || resizePanelSizeObserver) return;
+        if (!root) return;
+        if (resizePanelSizeObserver) { try { resizePanelSizeObserver.disconnect(); } catch (e) { /* ignore */ } }
         resizePanelSizeObserver = new ResizeObserver(() => positionResizeHandle());
         RESIZE_PANEL_IDS.forEach(id => {
             const el = document.getElementById(id);
@@ -2591,6 +2641,7 @@
         if (!handle) return;
         let target = null;
         let startX = 0, startY = 0, startW = 0, startH = 0;
+        let startLeft = 0, startTop = 0;
 
         const applyResize = (clientX, clientY) => {
             if (!target) return;
@@ -2600,8 +2651,11 @@
                 target.style.setProperty('max-height', h + 'px', 'important');
                 return;
             }
-            target.style.width = clampPanelWidth(startW + (clientX - startX)) + 'px';
-            const h = clampPanelHeight(startH + (clientY - startY));
+            // 加宽/加高以面板当前位置为基准计算可用空间，避免右缘/下缘拖出视口外
+            const availW = window.innerWidth - 8 - startLeft;
+            const availH = window.innerHeight - 8 - startTop;
+            target.style.width = Math.max(280, Math.min(clampPanelWidth(startW + (clientX - startX)), availW)) + 'px';
+            const h = Math.max(220, Math.min(clampPanelHeight(startH + (clientY - startY)), availH));
             target.style.height = h + 'px';
             target.style.maxHeight = h + 'px';
         };
@@ -2616,6 +2670,8 @@
             const rect = target.getBoundingClientRect();
             startW = rect.width;
             startH = rect.height;
+            startLeft = rect.left;
+            startTop = rect.top;
             return true;
         };
 
@@ -3180,7 +3236,7 @@
         if (action === 'close-stage-modal') {
             const m = root?.querySelector('#se-stage-modal');
             if (m) m.style.display = 'none';
-            if (panel) panel.style.display = 'flex';
+            showPanelAfterModalClose();
             return;
         }
 
@@ -3188,7 +3244,7 @@
             const m = root?.querySelector('#se-prompt-viewer-modal');
             if (m && m.style.display !== 'none') {
                 m.style.display = 'none';
-                if (panel) panel.style.display = 'flex';
+                showPanelAfterModalClose();
                 return;
             }
             openPromptViewerModal();
@@ -3198,7 +3254,7 @@
         if (action === 'close-prompt-viewer') {
             const m = root?.querySelector('#se-prompt-viewer-modal');
             if (m) m.style.display = 'none';
-            if (panel) panel.style.display = 'flex';
+            showPanelAfterModalClose();
             return;
         }
 
@@ -3206,7 +3262,7 @@
             const m = root?.querySelector('#se-world-info-modal');
             if (m && m.style.display !== 'none') {
                 m.style.display = 'none';
-                if (panel) panel.style.display = 'flex';
+                showPanelAfterModalClose();
                 return;
             }
             openWorldInfoModal();
@@ -3214,9 +3270,6 @@
         }
 
         if (action === 'close-world-info-modal') {
-            const m = root?.querySelector('#se-world-info-modal');
-            if (m) m.style.display = 'none';
-            if (panel) panel.style.display = 'flex';
             closeWorldInfoModal();
             return;
         }
@@ -3320,7 +3373,7 @@
             const m = root?.querySelector('#se-stage-modal');
             if (m && m.style.display !== 'none') {
                 m.style.display = 'none';
-                if (panel) panel.style.display = 'flex';
+                showPanelAfterModalClose();
                 return;
             }
             const state = getChatState();
@@ -3346,6 +3399,7 @@
                 const body = root?.querySelector('#se-stage-modal-body');
                 const titleEl = root?.querySelector('#se-stage-modal-title');
                 if (modal && body) {
+                    modalReturnPanelId = recordModalReturnPanel();
                     if (panel) panel.style.display = 'none';
                     titleEl.textContent = `【${lastRawModelOutput.eventId || '最近生成'}】模型生成原文 (${lastRawModelOutput.time || ''})`;
                     body.innerHTML = `
@@ -3378,7 +3432,7 @@
             const m = root?.querySelector('#se-stage-modal');
             if (m && m.style.display !== 'none') {
                 m.style.display = 'none';
-                if (panel) panel.style.display = 'flex';
+                showPanelAfterModalClose();
                 return;
             }
             openStageOverview();
@@ -3706,6 +3760,14 @@
         values.subPrompts = null;
         values.jailbreakPrompt = null;
         values.novelBypassPrompt = null;
+        // 自定义难度/浓度文本保存在 subConfig.customDiffPrompt，一并还原，否则「恢复默认」后文本框仍残留旧内容
+        const subConfigCopy = values.subConfig && typeof values.subConfig === 'object' ? JSON.parse(JSON.stringify(values.subConfig)) : {};
+        for (const k of Object.keys(subConfigCopy)) {
+            if (subConfigCopy[k] && typeof subConfigCopy[k] === 'object' && subConfigCopy[k].customDiffPrompt) {
+                subConfigCopy[k].customDiffPrompt = '';
+            }
+        }
+        values.subConfig = subConfigCopy;
         persistSettings(values);
         if (window.toastr) toastr.success('已恢复全部默认预设与创作约定');
         renderPresets();
@@ -3826,10 +3888,16 @@
         const state = getChatState();
         const event = state.events.find(x => x.id === eventId);
         if (!event) return;
+        // 当前推进中事件的回合计划正被本轮生成消费，改上限会与落地计数竞态
+        if (state.activeEvent?.id === eventId && isMainGenerationBusy()) {
+            if (window.toastr) toastr.warning('主模型生成中，请等本轮回复完成后再调整该事件的回合数');
+            return;
+        }
 
         let curMax = Number(event.maxTurns) || 3;
-        const isActive = state.activeEvent?.id === eventId && state.activeEvent.isActive;
-        const oldActiveMax = isActive ? (Number(state.activeEvent.maxTurns) || curMax) : curMax;
+        const isActiveEvent = state.activeEvent?.id === eventId;
+        const isActive = isActiveEvent && state.activeEvent.isActive;
+        const oldActiveMax = isActiveEvent ? (Number(state.activeEvent.maxTurns) || curMax) : curMax;
         const minAllowed = 1;
 
         curMax = Math.min(30, Math.max(minAllowed, curMax + delta));
@@ -3839,17 +3907,24 @@
         }
         event.maxTurns = curMax;
 
-        if (isActive) {
+        if (isActiveEvent) {
+            // 暂停态（isActive=false）同样要同步上限与回合计划，否则恢复推进时用户修改被旧值静默覆盖
             state.activeEvent.maxTurns = Math.max(curMax, state.activeEvent.currentTurn);
             event.maxTurns = state.activeEvent.maxTurns;
             rebuildStagePlan(state.activeEvent, oldActiveMax);
-            registerInjection(buildActiveStagePrompt(state.activeEvent));
-            updateFloatingCapsule();
+            if (isActive) {
+                registerInjection(buildActiveStagePrompt(state.activeEvent));
+                updateFloatingCapsule();
+            }
         }
 
         await saveChatState();
         renderEventList();
-        if (window.toastr) toastr.success(`事件 ${eventId} 回合数已调整为 ${curMax} 回合`);
+        // 上限不允许低于当前已推进回合，实际生效值可能大于请求值，提示必须如实反映
+        const appliedMax = isActiveEvent ? state.activeEvent.maxTurns : event.maxTurns;
+        if (window.toastr) toastr.success(appliedMax === curMax
+            ? `事件 ${eventId} 回合数已调整为 ${curMax} 回合`
+            : `事件 ${eventId} 回合数请求调整为 ${curMax} 回合，但不能低于已推进的第 ${state.activeEvent.currentTurn} 回合，实际保持 ${appliedMax} 回合`);
     }
 
     async function setEventTurns(eventId, targetValue) {
@@ -3857,10 +3932,15 @@
         const state = getChatState();
         const event = state.events.find(x => x.id === eventId);
         if (!event) return;
+        if (state.activeEvent?.id === eventId && isMainGenerationBusy()) {
+            if (window.toastr) toastr.warning('主模型生成中，请等本轮回复完成后再调整该事件的回合数');
+            return;
+        }
 
-        const isActive = state.activeEvent?.id === eventId && state.activeEvent.isActive;
+        const isActiveEvent = state.activeEvent?.id === eventId;
+        const isActive = isActiveEvent && state.activeEvent.isActive;
         const newMax = Math.min(30, Math.max(1, Number(targetValue) || 1));
-        const oldActiveMax = isActive ? (Number(state.activeEvent.maxTurns) || newMax) : newMax;
+        const oldActiveMax = isActiveEvent ? (Number(state.activeEvent.maxTurns) || newMax) : newMax;
 
         if (event.stages?.length === 1 && newMax > 1) {
             if (window.toastr) toastr.warning('单轮剧本没有独立铺垫纸条，请重新生成多轮事件');
@@ -3868,17 +3948,22 @@
         }
         event.maxTurns = newMax;
 
-        if (isActive) {
+        if (isActiveEvent) {
             state.activeEvent.maxTurns = Math.max(newMax, state.activeEvent.currentTurn);
             event.maxTurns = state.activeEvent.maxTurns;
             rebuildStagePlan(state.activeEvent, oldActiveMax);
-            registerInjection(buildActiveStagePrompt(state.activeEvent));
-            updateFloatingCapsule();
+            if (isActive) {
+                registerInjection(buildActiveStagePrompt(state.activeEvent));
+                updateFloatingCapsule();
+            }
         }
 
         await saveChatState();
         renderEventList();
-        if (window.toastr) toastr.success(`事件 ${eventId} 回合数已设定为 ${newMax} 回合`);
+        const appliedMax = isActiveEvent ? state.activeEvent.maxTurns : event.maxTurns;
+        if (window.toastr) toastr.success(appliedMax === newMax
+            ? `事件 ${eventId} 回合数已设定为 ${newMax} 回合`
+            : `事件 ${eventId} 回合数请求设定为 ${newMax} 回合，但不能低于已推进的第 ${state.activeEvent.currentTurn} 回合，实际保持 ${appliedMax} 回合`);
     }
 
     function saveEventContent(id) {
@@ -3892,7 +3977,7 @@
         const content = textarea.value.trim();
         let parsed;
         try { parsed = EventInjectionTool.parse(content, event.stages?.length || event.maxTurns, event.title); }
-        catch (err) { if (window.toastr) toastr.error(err.message); return; }
+        catch (err) { if (window.toastr) toastr.error(escapeHtml(err?.message || String(err))); return; }
         Object.assign(event, parsed, {content});
         if (state.activeEvent?.id === event.id) {
             Object.assign(state.activeEvent, parsed);
@@ -4008,7 +4093,8 @@
                 console.log('[ST Direct] 生成已由用户主动取消');
             } else {
                 console.error('[ST Direct] 生成失败:', err);
-                if (window.toastr) toastr.error('生成失败：' + (err?.message || err));
+                // toastr 默认按 HTML 渲染消息，而 err.message 可能携带 API 返回的响应片段，必须转义防注入
+                if (window.toastr) toastr.error(escapeHtml('生成失败：' + (err?.message || err)));
             }
         } finally {
             if (activeGenerationController !== requestController) return;
@@ -4168,19 +4254,23 @@
             .replace(DIRECTOR_BLOCK, '')
             .replace(/<(event_outline|event_archive|event_endings|the_key|judgment_criteria|segment_\d+)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, '')
             .replace(/<(thinking|reasoning)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, '')
-            // 去掉历史指令注入残留
+            // 去掉历史指令注入残留（跨度限定上限：结尾标记缺失时惰性匹配不会一路吞到文末，误删正常上下文）
             .replace(/<director_system_override>[\s\S]*?<\/director_system_override>/g, '')
-            .replace(/【剧情导演系统指令[\s\S]*?【(?:叙事展开|AI剧情演绎)[^】]*】[\s\S]*?(?=\n\n|$)/g, '')
-            .replace(/【历史事件设定留存[\s\S]*?【历史延续准则】[\s\S]*?(?=\n\n|$)/g, '')
-            .replace(/【历史事件背景[\s\S]*?(?=\n\n|$)/g, '')
+            .replace(/【剧情导演系统指令[\s\S]{0,2000}?【(?:叙事展开|AI剧情演绎)[^】]{0,80}】[\s\S]{0,4000}?(?=\n\n|$)/g, '')
+            .replace(/【历史事件设定留存[\s\S]{0,2000}?【历史延续准则】[\s\S]{0,4000}?(?=\n\n|$)/g, '')
+            .replace(/【历史事件背景[\s\S]{0,2000}?(?=\n\n|$)/g, '')
             // 去掉代码缓冲区与 Python 脚本残留
             .replace(/(?:^|\n)\s*(?:[a-zA-Z0-9_-]+\.py\b|system_config_buffer\b|interaction_buffer\b|timeline_data\b|payload_b64\b|roleplay_mode\b)[^\n]*[\s\S]*?(?=\n\n|\n[^\n:]+:[^\n]+|$)/gi, '')
-            // 去掉 Base64 编码长文本块
-            .replace(/(?:[A-Za-z0-9+/]{4}){8,}(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?/g, '[已过滤编码数据]')
+            // 去掉 Base64 编码长文本块：仅在候选段具备编码特征（含 +/= 或大小写数字混排）时才过滤，
+            // 避免把惨叫连打、长拼音等 32+ 位普通字母串误判为编码数据
+            .replace(/(?:[A-Za-z0-9+/]{4}){8,}(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?/g, seg => {
+                const looksEncoded = /[+/=]/.test(seg) || (/[0-9]/.test(seg) && /[a-z]/.test(seg) && /[A-Z]/.test(seg));
+                return looksEncoded ? '[已过滤编码数据]' : seg;
+            })
             // 去掉思考标签
             .replace(/<think>[\s\S]*?<\/think>/gi, '')
-            // 去掉常见 HTML/富文本标签
-            .replace(/<[^>]+>/g, ' ')
+            // 去掉常见 HTML/富文本标签：只匹配「标签形态」（< 后紧跟字母），不误伤「x < y 且 z > w」这类正文比较式
+            .replace(/<\/?[A-Za-z][A-Za-z0-9_-]*(?:\s[^<>]*)?>/g, ' ')
             // 去掉角色扮演常见的横向分隔符
             .replace(/^[\s\-——_=*•·]{3,}$/gm, '')
             // 合并连续空白
@@ -4201,9 +4291,7 @@
             .filter(Boolean);
     }
 
-    function escapeRegExp(s) {
-        return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    }
+    // escapeRegExp 全局仅保留一处定义（见文末工具区），重复声明靠提升覆盖属维护隐患
 
     function applyCustomContextRules(text, settings) {
         let out = String(text || '');
@@ -4979,8 +5067,12 @@ var err = function (ind, msg, nt) {
 };
 var rb = function (d, b, n) {
     var i = 0, o = 0;
-    for (; i < n; ++i)
+    // 前 4 字节按位或即可；≥5 字节（仅 8 字节 Frame_Content_Size 会走到）改用乘法，
+    // 避免 JS 位运算 32 位截断把高位字节回绕进低位得到错误的帧大小
+    for (; i < n && i < 4; ++i)
         o |= d[b++] << (i << 3);
+    for (; i < n; ++i)
+        o += d[b++] * Math.pow(2, i << 3);
     return o;
 };
 var b4 = function (d, b) { return (d[b] | (d[b + 1] << 8) | (d[b + 2] << 16) | (d[b + 3] << 24)) >>> 0; };
@@ -5009,10 +5101,17 @@ var rzfh = function (dat, w) {
         var ws = fss;
         if (!ss) {
             // window descriptor
+            // 窗口指数合法范围 0..21（2^10..2^31）；≥22 时 JS 位移截断会算出假窗口静默解码出乱码
+            if ((dat[5] >> 3) > 21)
+                err(1);
             var wb = 1 << (10 + (dat[5] >> 3));
             ws = wb + (wb >> 3) * (dat[5] & 7);
         }
         if (ws > 2145386496)
+            err(1);
+        // 本插件只解压 LLM API 响应，256MB 输出上限足以覆盖合法流量，
+        // 同时防住伪造帧头声明超大 Frame_Content_Size 触发的一次性巨量内存分配
+        if (fss > 268435456)
             err(1);
         var buf = new u8((w == 1 ? (fss || ws) : w ? 0 : ws) + 12);
         buf[0] = 1, buf[4] = 4, buf[8] = 8;
@@ -5164,7 +5263,12 @@ var rhu = function (dat, bt) {
         // fse pos
         // pre-increment to account for original deficit of 1
         var fpos = (++bt << 3) - 8 + msb(lb);
+        // 恶意构造的 FSE 表可能使 nbBits=0 的状态互相成环导致 fpos 永不前进；
+        // 合法流权重数 ≤255、迭代次数远小于 1024，超限直接判非法数据
+        var huGuard = 0;
         for (;;) {
+            if (++huGuard > 1024)
+                err(0, 'zstd huffman weight decode failed to terminate');
             fpos -= btr1;
             if (fpos < epos)
                 break;
@@ -5310,6 +5414,10 @@ var rzb = function (dat, st, out) {
     var b0 = dat[bt], btype = (b0 >> 1) & 3;
     st.l = b0 & 1;
     var sz = (b0 >> 3) | (dat[bt + 1] << 5) | (dat[bt + 2] << 13);
+    // zstd 规范：块尺寸（RLE 的解压后尺寸 / 压缩块的压缩后尺寸）不得超过 min(window, 128KB)。
+    // 无校验时 4 字节 RLE 块头即可声明 2MB 输出，配合重复块构成内存炸弹
+    if (sz > st.m)
+        err(0, 'zstd block size exceeds maximum');
     // end byte for block
     var ebt = (bt += 3) + sz;
     if (btype == 1) {
@@ -5548,6 +5656,9 @@ function decompress(dat, buf) {
                 if (buf)
                     st.e = st.y;
                 else {
+                    // 总输出上限：防恶意/损坏流通过海量小块把内存耗尽（正常 LLM 响应远达不到）
+                    if (ol > 268435456)
+                        err(0, 'decompressed zstd output too large (>256MB)');
                     bufs.push(blk);
                     ol += blk.length;
                     cpw(st.w, 0, blk.length);
@@ -5733,6 +5844,10 @@ var Decompress = /*#__PURE__*/ (function () {
             }
             // 2. 检查是否为 gzip 压缩流（魔数 0x1f 0x8b）
             else if (bytes.length >= 2 && bytes[0] === 0x1f && bytes[1] === 0x8b) {
+                if (typeof DecompressionStream === 'undefined' && typeof require === 'undefined') {
+                    // 环境不支持 gzip 解压时明确报错，而不是把压缩原文当 UTF-8 解码误导成“JSON 解析失败”
+                    throw new Error(contextName + ' 返回了 gzip 压缩流，但当前浏览器不支持 DecompressionStream，无法解压；请更换浏览器或在 API 端点关闭 gzip 压缩');
+                }
                 try {
                     if (typeof DecompressionStream !== 'undefined') {
                         const ds = new DecompressionStream('gzip');
@@ -5741,7 +5856,7 @@ var Decompress = /*#__PURE__*/ (function () {
                         writer.close();
                         const decompressedBuffer = await new Response(ds.readable).arrayBuffer();
                         bytes = new Uint8Array(decompressedBuffer);
-                    } else if (typeof require !== 'undefined') {
+                    } else {
                         const zlib = require('node:zlib');
                         bytes = new Uint8Array(zlib.gunzipSync(bytes));
                     }
@@ -5759,7 +5874,11 @@ var Decompress = /*#__PURE__*/ (function () {
                 throw new Error(contextName + ' 响应数据 UTF-8 解码失败（' + decErr.message + '）');
             }
         } else {
-            text = await res.text();
+            try {
+                text = await res.text();
+            } catch (textErr) {
+                throw new Error(contextName + ' 读取响应文本失败（' + textErr.message + '）');
+            }
         }
 
         const trimmed = String(text || '').trim();
@@ -5898,7 +6017,7 @@ var Decompress = /*#__PURE__*/ (function () {
             }
         }
         if (window.toastr) {
-            toastr.error('获取模型列表失败（' + (lastError?.message || '网络连接受阻') + '）。提示：无需获取，您可以直接在模型框中手动填写任意模型名！');
+            toastr.error(escapeHtml('获取模型列表失败（' + (lastError?.message || '网络连接受阻') + '）') + '。提示：无需获取，您可以直接在模型框中手动填写任意模型名！');
         }
     }
 
@@ -5929,7 +6048,7 @@ var Decompress = /*#__PURE__*/ (function () {
             }
         }
         if (window.toastr) {
-            toastr.error('连接失败：' + (lastError?.message || '地址或网络不通') + '。若使用自建反代请确认跨域已放行，也可直接在输入框填入模型名尝试生成。');
+            toastr.error(escapeHtml('连接失败：' + (lastError?.message || '地址或网络不通')) + '。若使用自建反代请确认跨域已放行，也可直接在输入框填入模型名尝试生成。');
         }
     }
 
@@ -6346,14 +6465,18 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
             ].filter(Boolean).join('\n');
         },
                 inject(event, round) {
-            const ok = registerInjection(this.buildSegmentPrompt(event, round, event.maxTurns));
-            // 注入成功时补设运行态标记：onGenerationEnded 依赖 run.injected 来计数回合，
-            // 若两个 prompt-ready 事件都没走到，靠这里兜底，避免事件永远停在第一轮。
-            if (ok && typeof markInjection === 'function') {
-                try { markInjection(event, 'ext', null); } catch (err) { console.warn('[ST Direct] 注入标记失败', err); }
-            }
-            return ok;
-        },
+                    const prompt = this.buildSegmentPrompt(event, round, event.maxTurns);
+                    // 空纸条（回合越界/纸条组为空）只清空注入、不标记 injected：
+                    // 否则会出现“本轮请求没有任何纸条内容却照常计数推进一回合”的空耗
+                    if (!prompt) return false;
+                    const ok = registerInjection(prompt);
+                    // 注入成功时补设运行态标记：onGenerationEnded 依赖 run.injected 来计数回合，
+                    // 若两个 prompt-ready 事件都没走到，靠这里兜底，避免事件永远停在第一轮。
+                    if (ok && typeof markInjection === 'function') {
+                        try { markInjection(event, 'ext', null); } catch (err) { console.warn('[ST Direct] 注入标记失败', err); }
+                    }
+                    return ok;
+                },
         advance(active) {
             if (!active?.isActive) return;
             active.currentTurn = (Number(active.currentTurn) || 1) + 1;
@@ -6423,15 +6546,25 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
         const pendingInThisChat = pendingHiddenEvent && getChatState().events.includes(pendingHiddenEvent);
         let event = findTriggeredEvent(text, message.extra?.event_id);
         if (!event && pendingInThisChat) {
+            // 收紧兜底匹配：仅填入模式下搁置的事件不能被普通聊天内容误触发，
+            // 必须包含事件编号，或同时包含「突发事件」关键词与事件标题
             const hasTriggerMarker = text.includes(pendingHiddenEvent.id)
-                || text.includes('突发事件')
-                || (pendingHiddenEvent.title && text.includes(pendingHiddenEvent.title));
+                || (pendingHiddenEvent.title && text.includes('突发事件') && text.includes(pendingHiddenEvent.title));
             if (hasTriggerMarker) {
                 event = pendingHiddenEvent;
             }
         }
         if (!event) return;
-        const active = activateEvent(event, true);
+        let active;
+        try {
+            active = activateEvent(event, true);
+        } catch (err) {
+            // 存量事件剧本内容损坏时不得把异常抛进 ST 事件总线中断发送管线
+            console.warn('[ST Direct] 事件激活失败(剧本内容无法解析):', err);
+            if (window.toastr) toastr.warning(escapeHtml(`事件 ${event.id} 的剧本内容无法解析，激活已跳过；可在事件列表重新编辑保存后再试`));
+            pendingHiddenEvent = null;
+            return;
+        }
         message.extra ||= {};
         message.extra.is_event = true;
         message.extra.event_id = event.id;
@@ -6501,6 +6634,9 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
 
     function onGenerateBeforeCombinePrompts(data) {
         if (data?.dryRun || ['quiet', 'impersonate'].includes(generationRun?.type)) return;
+        // 生成在途时切换聊天：当前上下文已不是发起生成的那次对话，注入会串场
+        const ctxNow = getCtx();
+        if (generationRun?.chatId && ctxNow?.chatId && generationRun.chatId !== ctxNow.chatId) return;
         const active = resolveActiveEvent();
         if (active) EventInjectionTool.inject(active, active.currentTurn);
     }
@@ -6558,6 +6694,8 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
     function onChatCompletionPromptReady(eventData) {
         if (!Array.isArray(eventData?.chat) || eventData.dryRun) return;
         const ctx = getCtx();
+        // 生成在途时切换聊天：绝不能把旧聊天的纸条拼进新聊天的请求，更不能在新聊天里激活误触发的事件
+        if (generationRun?.chatId && ctx?.chatId && generationRun.chatId !== ctx.chatId) return;
         const chat = eventData.chat;
         // 清理所有消息中的历史导演区块
         for (const item of chat) if (item?.role === 'system') mapMessageText(item, stripDirectorBlocks);
@@ -6579,7 +6717,19 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
             const latestPlayerIndex = ctx?.chat?.findLastIndex(m => m?.is_user);
             const isAlreadyConsumed = active && active.id === newlyTriggered.id && active.lastCountedUserMessageId != null && active.lastCountedUserMessageId === latestPlayerIndex;
             if (!isReplayMode && !isAlreadyConsumed && (!active || active.id !== newlyTriggered.id || active.lastCountedMessageId != null)) {
-                active = activateEvent(newlyTriggered, true);
+                try {
+                    active = activateEvent(newlyTriggered, true);
+                } catch (err) {
+                    // 存量事件剧本损坏：不把异常抛进 ST 事件总线，放弃本次注入
+                    console.warn('[ST Direct] 事件激活失败(剧本内容无法解析):', err);
+                    if (window.toastr) toastr.warning(escapeHtml(`事件 ${newlyTriggered.id} 的剧本内容无法解析，激活已跳过`));
+                    return;
+                }
+            }
+            // 锚定触发楼层：楼层推进器的兜底定位不得命中触发楼层及更早的历史回复，
+            // 否则回复被删除后回退定位会把旧楼层误标为已推进（verify-fixes R5 场景）
+            if (!isReplayMode && active && Number.isInteger(latestPlayerIndex) && latestPlayerIndex >= 0) {
+                active.triggerMessageId = latestPlayerIndex;
             }
         }
         if (!active) return;
@@ -6608,6 +6758,8 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
 
     function onGenerateAfterCombinePrompts(eventData) {
         if (typeof eventData?.prompt !== 'string' || eventData.dryRun) return;
+        const ctxAfterCombine = getCtx();
+        if (generationRun?.chatId && ctxAfterCombine?.chatId && generationRun.chatId !== ctxAfterCombine.chatId) return;
         eventData.prompt = stripDirectorBlocks(eventData.prompt);
         if (['quiet', 'impersonate'].includes(generationRun?.type)) return;
         const active = resolveActiveEvent();
@@ -6766,7 +6918,8 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
         if (!state.activeEvent) return;
 
         // 生成期间禁止移动回合指针；end-event 不拦，保留「停止一切」出口
-        if (['advance-turn', 'climax', 'rewind-turn', 'reactivate'].includes(action) && isMainGenerationBusy()) {
+        // add-turn/sub-turn 会重建回合计划，与落地计数竞态，同样纳入生成中拦截
+        if (['advance-turn', 'climax', 'rewind-turn', 'reactivate', 'add-turn', 'sub-turn'].includes(action) && isMainGenerationBusy()) {
             if (window.toastr) toastr.warning('主模型正在回复，请等本轮结束后再操作');
             return;
         }
@@ -6830,7 +6983,7 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
             if (window.toastr) toastr.info(`已回退至第 ${state.activeEvent.currentTurn} 轮推演`);
         } else if (action === 'reactivate') {
             await resumeActiveEvent();
-            if (window.toastr) toastr.success(`已重新激活事件《${state.activeEvent.title || state.activeEvent.id}》推演！`);
+            if (window.toastr) toastr.success(`已重新激活事件《${escapeHtml(state.activeEvent.title || state.activeEvent.id)}》推演！`);
         } else if (action === 'climax') {
             state.activeEvent.currentTurn = Number(state.activeEvent.maxTurns) || 8;
             registerInjection(buildActiveStagePrompt(state.activeEvent));
@@ -6852,7 +7005,7 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
             await saveChatState();
             updateFloatingCapsule();
             renderEventList();
-            if (window.toastr) toastr.info(`已结束事件《${state.activeEvent.title || state.activeEvent.id}》`);
+            if (window.toastr) toastr.info(`已结束事件《${escapeHtml(state.activeEvent.title || state.activeEvent.id)}》`);
         }
     }
 
@@ -6989,11 +7142,20 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
         const titleEl = root?.querySelector('#se-stage-modal-title');
         const panel = root?.querySelector('#se-panel');
         if (!modal || !body) return;
+        modalReturnPanelId = recordModalReturnPanel();
         if (panel) panel.style.display = 'none';
 
-        const parsed = (Array.isArray(event.stages) && event.stages.length > 0)
-            ? { stages: event.stages, theKey: event.theKey, goodEnd: event.goodEnd, badEnd: event.badEnd }
-            : EventInjectionTool.parse(event.content, event.maxTurns || 2, event.title);
+        let parsed;
+        try {
+            parsed = (Array.isArray(event.stages) && event.stages.length > 0)
+                ? { stages: event.stages, theKey: event.theKey, goodEnd: event.goodEnd, badEnd: event.badEnd }
+                : EventInjectionTool.parse(event.content, event.maxTurns || 2, event.title);
+        } catch (err) {
+            // 存量/被改动损坏的剧本内容解析失败时给出提示，而不是让异常打断点击处理器导致弹窗停在旧内容
+            console.warn('[ST Direct] 事件剧本解析失败:', err);
+            if (window.toastr) toastr.warning(escapeHtml(`事件 ${event.id} 的剧本内容无法解析，仅显示原始文本（${err?.message || err}）`));
+            parsed = { stages: [], theKey: '', goodEnd: '', badEnd: '' };
+        }
 
         const isActive = state.activeEvent?.id === event.id && state.activeEvent.isActive;
         const curTurn = isActive ? (Number(state.activeEvent.currentTurn) || 1) : 1;
@@ -7121,6 +7283,7 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
         }
         const modal = root.querySelector('#se-prompt-viewer-modal');
         const panel = root.querySelector('#se-panel');
+        modalReturnPanelId = recordModalReturnPanel();
         if (panel) panel.style.display = 'none';
         if (modal) {
             renderPromptViewerContent();
@@ -7426,6 +7589,7 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
     async function openWorldInfoModal() {
         const modal = root?.querySelector('#se-world-info-modal');
         if (!modal) return;
+        modalReturnPanelId = recordModalReturnPanel();
         const settings = root?.querySelector('#se-settings');
         const promptViewer = root?.querySelector('#se-prompt-viewer-modal');
         const panel = root?.querySelector('#se-panel');
@@ -7470,10 +7634,10 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
                 renderPromptViewerContent();
             }
         } else {
-            const panel = root?.querySelector('#se-panel');
-            if (panel) panel.style.display = 'flex';
+            showPanelAfterModalClose();
         }
         wiModalPreviousView = null;
+        modalReturnPanelId = null;
     }
 
     function renderWorldInfoModal() {
@@ -7778,9 +7942,17 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
             const effectiveType = generationType || generationRun?.type;
             if (['swipe', 'regenerate', 'continue', 'append', 'first_message', 'quiet', 'impersonate'].includes(effectiveType)) return;
             const chat = ctx?.chat || [];
-            const idx = (typeof messageId === 'number' && messageId >= 0 && chat[messageId])
-                ? messageId
-                : chat.findLastIndex(m => m && !m.is_user && !m.is_system);
+            let idx;
+            if (typeof messageId === 'number' && messageId >= 0 && chat[messageId]) {
+                idx = messageId;
+            } else if (typeof messageId === 'number' && messageId >= 0 && !generationRun) {
+                // 明确指定的目标楼层已不存在且当前生成任务已被中止（如回复刚被删除、MESSAGE_DELETED 已回退计数）：
+                // 与 onGenerationEnded 的护栏保持一致，坚决中止，严禁回退乱标记历史回复。
+                // （GENERATION_ENDED 传入 chat.length 时 generationRun 仍在，走下方兜底定位）
+                return;
+            } else {
+                idx = chat.findLastIndex(m => m && !m.is_user && !m.is_system);
+            }
             if (idx == null || idx < 0) return;
             const msg = chat[idx];
             if (!msg || msg.is_user || msg.is_system || !String(msg.mes || '').trim()) return;
@@ -7849,9 +8021,14 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
             // ST 的 GENERATION_ENDED 由 hideStopButton 触发（参数为 chat.length），此处只用于复位生成中标志
             mainGenerationActive = false;
         });
-        if (eventTypes.MESSAGE_DELETED) eventSource.on(eventTypes.MESSAGE_DELETED, () => {
+        if (eventTypes.MESSAGE_DELETED) eventSource.on(eventTypes.MESSAGE_DELETED, (messageId) => {
             const active = getChatState().activeEvent;
             if (!active?.activationToken || active.manuallyStopped) return;
+            // 楼层删除会使后续索引整体左移：同步修正触发楼层锚点，避免推进护栏按过期边界放行/拦截
+            if (active.triggerMessageId != null && typeof messageId === 'number' && messageId >= 0) {
+                if (messageId < active.triggerMessageId) active.triggerMessageId -= 1;
+                else if (messageId === active.triggerMessageId) active.triggerMessageId = null;
+            }
             const prevTurn = Number(active.currentTurn) || 1;
             const chat = getCtx()?.chat || [];
             const completed = chat.map((m,i) => ({mark:m.extra?.st_direct,index:i})).filter(x => x.mark?.eventId === active.id && x.mark.activationToken === active.activationToken);
@@ -7868,6 +8045,8 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
             if (active.isActive) EventInjectionTool.inject(active, active.currentTurn); else unregisterInjection();
             void saveChatState();
             updateFloatingCapsule();
+            // 事件列表卡片上显示的回合数需要即时跟随回退结果
+            try { renderEventList(); } catch (e) { /* 列表未就绪时忽略 */ }
         });
         const chatChanged = () => {
             runtimeEvent = null;
@@ -7876,6 +8055,9 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
             pendingHiddenEvent = null;
             activeInjectedEvent = null;
             lastInjectionDiagnostic = null;
+            // 事件展开状态按聊天隔离：事件 id 在不同聊天会撞号，不清空会让新聊天的
+            // 同号事件在列表里默认展开完整剧本，造成跨聊天剧透
+            revealedIds.clear();
             unregisterInjection();
             // 切换/退出角色卡 = 上下文边界：所有窗口显示的都是旧聊天的数据，一律关闭
             closeAllUiWindows();
@@ -7904,9 +8086,10 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
                             callback: (args) => {
                                 const state = getChatState();
                                 if (!state.activeEvent) return '当前没有激活的事件';
-                                const round = Number(args.round) || state.activeEvent.currentTurn || 1;
+                                // 先钳制到合法回合范围再注入：越界轮次会生成空纸条却照常消耗一个回合
+                                const round = Math.min(Math.max(1, Number(args.round) || state.activeEvent.currentTurn || 1), Math.max(1, state.activeEvent.maxTurns));
                                 EventInjectionTool.inject(state.activeEvent, round);
-                                state.activeEvent.currentTurn = Math.min(Math.max(1, round), state.activeEvent.maxTurns);
+                                state.activeEvent.currentTurn = round;
                                 state.activeEvent.isActive = true;
                                 void saveChatState();
                                 updateFloatingCapsule();
@@ -7942,7 +8125,7 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
             if (window.toastr) toastr.success('已发送 ' + event.id);
         } catch (err) {
             console.error('[ST Direct] 手动发送失败:', err);
-            if (window.toastr) toastr.error('发送失败：' + (err?.message || err));
+            if (window.toastr) toastr.error(escapeHtml('发送失败：' + (err?.message || err)));
         }
     }
 

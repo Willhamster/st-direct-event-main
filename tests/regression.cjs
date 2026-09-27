@@ -356,7 +356,9 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         // 难度卡由 SUB_CONFIGS 动态生成：验证模板键与死线卡
         assert(src.includes('data-sub-prompt-key="${pKey}.${diffKey}"'), 'workshop difficulty cards missing');
         assert(src.includes('data-sub-prompt-key="combat.death_risk"'), 'workshop missing death_risk card');
-        assert(src.includes('挑战难度 / 情感浓度与死亡死线预设'), 'difficulty accordion group missing');
+        // 736d4bb 重构后：难度/浓度小节为各题材手风琴内的 subSection（键形如 presets-combat-diff），死线小节独立
+        assert(src.includes('档 + 自定义）'), 'difficulty accordion group missing');
+        assert(src.includes('subSection(`presets-${key}-diff`'), 'difficulty subSection missing');
         assert(src.includes('自定义此档提示词'), 'difficulty inline editor missing');
     });
     check('Difficulty prompts resolve through getSubPrompt fallback',()=>{

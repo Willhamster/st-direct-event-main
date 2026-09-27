@@ -38,6 +38,9 @@
     --se-danger-text: #fecaca;
     --se-good-title: #34d399;
     --se-good-text: #d1fae5;
+    --se-bg-card-hover: rgba(255, 255, 255, 0.05);
+    --se-bg-card-header: rgba(255, 255, 255, 0.04);
+    --se-bg-badge: rgba(255, 255, 255, 0.08);
     --se-radius-sm: 6px;
     --se-radius-md: 10px;
     --se-radius-lg: 16px;
@@ -71,6 +74,12 @@
     --se-radius-sm: 4px;
     --se-radius-md: 8px;
     --se-radius-lg: 12px;
+    --se-danger-bg: rgba(255, 45, 85, 0.16);
+    --se-danger-border: rgba(255, 45, 85, 0.5);
+    --se-danger-title: #ff5c7a;
+    --se-danger-text: #ffd0da;
+    --se-good-title: #2ee6a8;
+    --se-good-text: #d2ffe9;
 }
 
 /* 复古羊皮 (Vintage Parchment / Antique Journal) */
@@ -101,6 +110,12 @@
     --se-radius-sm: 5px;
     --se-radius-md: 9px;
     --se-radius-lg: 14px;
+    --se-danger-bg: rgba(155, 42, 18, 0.10);
+    --se-danger-border: rgba(155, 42, 18, 0.4);
+    --se-danger-title: #9b2a12;
+    --se-danger-text: #7f2f1a;
+    --se-good-title: #4d7c0f;
+    --se-good-text: #365314;
 }
 
 /* 奶油白 (Cream Vanilla / Soft Warm Daylight) */
@@ -137,6 +152,9 @@
     --se-radius-sm: 8px;
     --se-radius-md: 12px;
     --se-radius-lg: 16px;
+    --se-bg-card-hover: rgba(146, 96, 10, 0.10);
+    --se-bg-card-header: rgba(146, 96, 10, 0.06);
+    --se-bg-badge: rgba(146, 96, 10, 0.10);
 }
 
 /* 极简极夜 (Minimalist Monochrome Noir) */
@@ -167,6 +185,12 @@
     --se-radius-sm: 4px;
     --se-radius-md: 8px;
     --se-radius-lg: 12px;
+    --se-danger-bg: rgba(248, 113, 113, 0.12);
+    --se-danger-border: rgba(248, 113, 113, 0.4);
+    --se-danger-title: #f87171;
+    --se-danger-text: #fecaca;
+    --se-good-title: #34d399;
+    --se-good-text: #d1fae5;
 }
 
 /* 深海蔚蓝 (Abyssal Ocean) */
@@ -197,6 +221,12 @@
     --se-radius-sm: 6px;
     --se-radius-md: 10px;
     --se-radius-lg: 16px;
+    --se-danger-bg: rgba(239, 68, 68, 0.12);
+    --se-danger-border: rgba(239, 68, 68, 0.4);
+    --se-danger-title: #f87171;
+    --se-danger-text: #fecaca;
+    --se-good-title: #2dd4bf;
+    --se-good-text: #ccfbf1;
 }
 
 /* 暮色紫晶 (Twilight Amethyst) */
@@ -227,6 +257,12 @@
     --se-radius-sm: 6px;
     --se-radius-md: 10px;
     --se-radius-lg: 16px;
+    --se-danger-bg: rgba(244, 63, 94, 0.14);
+    --se-danger-border: rgba(244, 63, 94, 0.45);
+    --se-danger-title: #fb7185;
+    --se-danger-text: #ffe4e6;
+    --se-good-title: #34d399;
+    --se-good-text: #d1fae5;
 }
 
 /* 翡翠林境 (Emerald Forest) */
@@ -257,6 +293,12 @@
     --se-radius-sm: 6px;
     --se-radius-md: 10px;
     --se-radius-lg: 16px;
+    --se-danger-bg: rgba(220, 38, 38, 0.14);
+    --se-danger-border: rgba(220, 38, 38, 0.45);
+    --se-danger-title: #f87171;
+    --se-danger-text: #fee2e2;
+    --se-good-title: #6ee7b7;
+    --se-good-text: #d1fae5;
 }
 
 /* ---------- 2. 悬浮窗 (FAB) · 灵动桌面宠透明立绘 ---------- */
@@ -2916,7 +2958,7 @@
     font-family: Consolas, Monaco, "Courier New", monospace;
     font-size: 12px;
     line-height: 1.65;
-    color: var(--se-text);
+    color: var(--se-text-main);
     user-select: text;
 }
 
