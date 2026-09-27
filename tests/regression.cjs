@@ -598,6 +598,34 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         const collected = h8.api.collectSettingsForm();
         assert(Array.isArray(collected.customTemplates) && collected.customTemplates.length === 1, 'collectSettingsForm drops customTemplates');
     });
+    check('Prompt viewer covers custom templates and mirrors real sub settings',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        // 编辑器弹窗可缩放：RESIZE_PANEL_IDS 必须包含自定义模板弹窗
+        assert(src.includes("'se-world-info-modal', 'se-custom-template-modal']"), 'resize list missing custom template modal');
+        // 主类下拉渲染自定义模板选项
+        assert(src.includes("getCustomTemplates(s).map(t => `<option"), 'viewer type select missing custom template options');
+        // 回合数从真实细节设置同步（打开/切换主类共用同一函数）
+        assert(src.includes('function syncPromptViewerStateForType'), 'viewer state sync missing');
+        const syncBody = src.slice(src.indexOf('function syncPromptViewerStateForType'), src.indexOf('function buildPromptViewerTempSettings'));
+        assert(syncBody.includes('Number(t?.turns)') && syncBody.includes('Number(curSub.turns)'), 'turns not synced from sub settings / template');
+        assert(src.includes('回合（当前设置）'), 'current-turn option missing');
+        // 预览与「复制全部文本/JSON」共用同一镜像设置（1 处渲染 + 2 处复制）
+        assert(src.includes('function buildPromptViewerTempSettings'), 'shared mirror settings helper missing');
+        assert((src.match(/buildPromptViewerTempSettings\(s\)/g) || []).length >= 3, 'copy handlers not using shared mirror settings');
+        // 死亡危险开关与只读锁定徽标
+        assert(src.includes('data-pv-action="toggle-death"'), 'death toggle missing');
+        assert(src.includes('已锁对手：') && src.includes('已锁女主：'), 'lock badges missing');
+        // 示例模板：不再包含填空说明文案
+        assert(!src.includes('复制后逐项改写') && !src.includes('用两三句写明'), 'genre template still placeholder-style');
+        assert(!src.includes('（深度提示词模板'), 'depth template still placeholder-style');
+        // 行为：自定义模板 20 回合经 buildEventPrompt 输出「总计 20 回合」
+        const h9 = harness();
+        const tpl20 = { id: 'ct_t20', prefix: 'e', name: '长线模板', mainPrompt: '', turns: 20, genres: [{ id: 'g1', label: '长线', badge: '', desc: '', prompt: '长线流派内容' }], depths: [], selectedGenreId: 'g1', selectedDepthId: '', createdAt: 1, updatedAt: 1 };
+        const type20 = { key: 'ct_t20', prefix: 'e', label: '长线模板', title: '长线模板' };
+        const msgs20 = h9.api.buildEventPrompt(type20, '玩家: 你好', { ...h9.api.DEFAULT_SETTINGS, customTemplates: [tpl20] }, []);
+        assert(msgs20.some(m => String(m.content).includes('总计 20 回合')), 'custom 20 turns not honored in prompt');
+        assert(msgs20.some(m => String(m.content).includes('长线流派内容')), 'genre prompt missing at 20 turns');
+    });
     check('Production source contains no pictographs',()=>{for(const file of ['index.js','style.css']) assert(!/\p{Extended_Pictographic}/u.test(fs.readFileSync(path.join(__dirname,'..',file),'utf8')));});
     const report={checks,passed:true,date:new Date().toISOString()};fs.writeFileSync(path.join(__dirname,'regression-result.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));
 })().catch(err=>{console.error(err.stack);process.exitCode=1;});

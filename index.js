@@ -122,11 +122,11 @@
     // 模板主提示词骨架：留空主提示词时的内置通用导演预设，同时也是编辑器「复制模板」按钮的复制源
     const DEFAULT_CUSTOM_MAIN_PROMPT = "你是文字角色扮演的后台事件导演，专职输出供叙事主模型执行的现场推演大纲。\n【客观外部推力铁律（彻底杜绝自说自话）】：\n小纸条绝对严禁代写、预设或脑补玩家的任何言行、决定或态度（严禁出现“面对你的询问/你决定上前查看……”等任何假定玩家言行的句子）！\n每张小纸条必须且只能描写两项客观要素：\n1. 【客观情境推力与突发变数】：贴合本模板主题的客观情境变化、突发事态、环境连锁或时间推移。\n2. 【NPC的主动作为与目标施压】：NPC基于自身动机与立场，主动采取的具体言行、推进动作或施加的压力。\n无论玩家上一轮输入什么言行，客观推力与NPC的主动作为都自然向前推进；若玩家意图置身事外，情境的连锁余波或NPC的动作必须主动牵连现场，持续维持张力！\n自定义事件推进规范：紧扣模板主提示词与所选流派、深度设定展开推演，从当前场景自然切入，避免无缘由的强行冲突。首轮以契合主题的客观契机打破日常，并留下可应对的窗口；后续轮次客观推进事态与NPC的主动施压，绝不假定玩家的应对方式；终局依据玩家真实言行公正结算结果与余波。\n非终局小纸条结尾，必须停留在NPC的具体动作、事态分叉或抉择焦点上（Action Hook），留出明确的操作空间供玩家下轮选择！后台真相与数值设定只写入 <event_archive>，结局条件只写入 <event_endings>，纸条绝不替玩家决定行动。\n因果边界：纸条是环境与NPC的可执行计划，不能推翻已经发生的事实。若玩家已离场、阻止触发条件或明确拒绝，依据现场实际条件取消、改写或收束该动作，禁止传送、复活道具或强制亲密。非终局只写客观推力与动作留钩，不假定回应；终局公正评估真实言行，出人意料的合理解法也可成功，沉默与拒绝本身不等于失败。";
 
-    // 流派提示词骨架：编辑器流派区「复制模板」按钮的复制源（空白流派提示词框不预填，避免骨架原样注入）
-    const DEFAULT_CUSTOM_GENRE_PROMPT = "（流派提示词模板：复制后逐项改写为该流派/风格的专属设定）\n核心玩法：用两三句写明该流派独有的推进机制——由谁发起、如何推进、按什么标准判定进展与成败。\n氛围基调：写明画面质感、节奏快慢与情绪底色。\n硬性约束：写明该流派下绝对禁止的写法，例如严禁代写玩家的流派抉择、严禁偏离题材基调。\n留钩要求：写明非终局纸条结尾必须停在什么抉择点或动作焦点上。";
+    // 流派提示词范例：编辑器流派区「复制模板」按钮的复制源，与内置流派提示词同款写法的真实案例，可直接使用或照此改写
+    const DEFAULT_CUSTOM_GENRE_PROMPT = "秘境探索：以一片规则未明的未知区域（遗迹、迷宫或禁地）承载事件，每轮由NPC同伴的主动抉择与区域的客观异变共同推进；机关触发、路标失效、物资消耗等关键信息必须在纸条中可观察、可验证，NPC只依据自身经验行动，绝不代替玩家探索与决策；非终局纸条结尾停在岔路抉择或异变逼近的焦点上，玩家的真实路线选择决定收获与代价。";
 
-    // 深度提示词骨架：编辑器深度区「复制模板」按钮的复制源
-    const DEFAULT_CUSTOM_DEPTH_PROMPT = "（深度提示词模板：复制后逐项改写为该深度档位的专属设定）\n强度定位：写明该档位的整体强度或浓度，以及与相邻档位的关键差异。\n具体表现：写明该档位下冲突烈度、信息密度或情感浓度的具体要求。\n边界提醒：写明该档位不允许跨越的界限，例如不得引入超出档位强度的致命危机。";
+    // 深度提示词范例：编辑器深度区「复制模板」按钮的复制源，展示单档深度的标准写法（强度定位/具体表现/边界）
+    const DEFAULT_CUSTOM_DEPTH_PROMPT = "浅层试探：冲突烈度与信息密度整体收敛，NPC的施压以试探、口头警告与一次性阻碍为主，环境变化缓慢且大多可逆；纸条留出的应对窗口宽松，普通失误只造成可挽回的小代价，不出现致命危机与不可逆损失，为更深的档位保留升级空间。";
 
     // 自定义模板事件计数前缀池：a-d 已被固定模板占用，创建模板时从空闲字母中分配并持久化，保证事件编号稳定
     const CUSTOM_PREFIX_POOL = ['e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'];
@@ -1492,7 +1492,7 @@
                     <button data-action="close-custom-template">关闭</button>
                 </div>
                 <div class="se-presets-tip">
-                    配置专属事件模板：模板名与至少一条流派/风格（名称+提示词）填写完整后模板按钮才会生效，深度可选。设置到一半可直接保存，主界面按钮会保持草稿置灰状态，随时点铅笔继续编辑。各区块的「复制模板」按钮可复制提示词骨架，粘贴到提示词框后改写。
+                    配置专属事件模板：模板名与至少一条流派/风格（名称+提示词）填写完整后模板按钮才会生效，深度可选。设置到一半可直接保存，主界面按钮会保持草稿置灰状态，随时点铅笔继续编辑。各区块的「复制模板」按钮可复制提示词范例（按内置流派/深度的写法给出，可直接使用或照此改写）。
                 </div>
                 <div class="se-wi-list" id="se-ct-editor-body"></div>
                 <div class="se-settings-actions">
@@ -1537,9 +1537,8 @@
             const pvAction = pvActionEl.dataset.pvAction;
             if (pvAction === 'change-type') {
                 promptViewerState.typeKey = pvActionEl.value;
-                const conf = SUB_CONFIGS[pvActionEl.value];
-                if (conf?.genres?.length) promptViewerState.genreKey = conf.genres[0].key;
-                if (conf?.difficulties?.length) promptViewerState.diffKey = conf.difficulties[1]?.key || conf.difficulties[0]?.key;
+                // 切换主类时把流派/难度/回合/死亡危险对齐到该主类的真实细节设置（自定义模板读模板自身）
+                syncPromptViewerStateForType(pvActionEl.value);
                 renderPromptViewerContent();
                 return;
             }
@@ -1565,6 +1564,11 @@
             }
             if (pvAction === 'toggle-novel') {
                 promptViewerState.novelBypass = pvActionEl.checked;
+                renderPromptViewerContent();
+                return;
+            }
+            if (pvAction === 'toggle-death') {
+                promptViewerState.deathRisk = pvActionEl.checked;
                 renderPromptViewerContent();
                 return;
             }
@@ -2578,7 +2582,7 @@
                     </div>
                     <div>
                         <label class="se-ct-field-label">提示词内容（必填）</label>
-                        <textarea class="se-sub-inline-textarea se-ct-genre-prompt" rows="4" placeholder="点击上方「复制模板」获取骨架，粘贴后改写为该流派专属提示词">${escapeHtml(g.prompt)}</textarea>
+                        <textarea class="se-sub-inline-textarea se-ct-genre-prompt" rows="4" placeholder="点击上方「复制模板」获取范例，可直接使用或照此改写为该流派专属提示词">${escapeHtml(g.prompt)}</textarea>
                     </div>
                 </div>`;
         const depthCard = (d, index) => `
@@ -2602,7 +2606,7 @@
                     </div>
                     <div>
                         <label class="se-ct-field-label">提示词内容（必填）</label>
-                        <textarea class="se-sub-inline-textarea se-ct-depth-prompt" rows="4" placeholder="点击上方「复制模板」获取骨架，粘贴后改写为该深度专属提示词">${escapeHtml(d.prompt)}</textarea>
+                        <textarea class="se-sub-inline-textarea se-ct-depth-prompt" rows="4" placeholder="点击上方「复制模板」获取范例，可直接使用或照此改写为该深度专属提示词">${escapeHtml(d.prompt)}</textarea>
                     </div>
                 </div>`;
 
@@ -2617,7 +2621,7 @@
                     <div>
                         <div class="se-ct-field-label-row">
                             <label class="se-ct-field-label">模板主提示词（可选，留空使用内置通用导演预设）</label>
-                            <button type="button" class="se-btn-action" data-action="ct-copy-main-template" title="复制模板主提示词骨架，粘贴到下方改写">复制模板</button>
+                            <button type="button" class="se-btn-action" data-action="ct-copy-main-template" title="复制模板主提示词范例（可直接使用）">复制模板</button>
                         </div>
                         <textarea id="se-ct-main-prompt" class="se-sub-inline-textarea" rows="5" placeholder="写明这类事件整体怎么推演：主题基调、推进方式与铁律。留空则使用内置通用自定义导演预设。">${escapeHtml(t.mainPrompt)}</textarea>
                     </div>
@@ -2628,7 +2632,7 @@
             <div class="se-sub-section se-settings-section" data-section-key="ct-genres">
                 <div class="se-settings-section-title" data-action="toggle-section" title="点击折叠/展开"><span class="se-section-chevron">▾</span>流派 / 风格（至少一条，生成时单选其一）</div>
                 <div class="se-ct-section-toolbar">
-                    <button type="button" class="se-btn-action" data-action="ct-copy-genre-template" title="复制流派提示词骨架，粘贴到提示词框后改写">复制模板</button>
+                    <button type="button" class="se-btn-action" data-action="ct-copy-genre-template" title="复制流派提示词范例，可直接使用或照此改写">复制模板</button>
                     <button type="button" class="se-btn-action" data-action="ct-add-genre">添加流派</button>
                 </div>
                 ${t.genres.length ? t.genres.map(genreCard).join('') : '<div class="se-wi-empty-tip">还没有流派，点击「添加流派」开始。</div>'}
@@ -2638,7 +2642,7 @@
             <div class="se-sub-section se-settings-section" data-section-key="ct-depths">
                 <div class="se-settings-section-title" data-action="toggle-section" title="点击折叠/展开"><span class="se-section-chevron">▾</span>深度（可选，生成时单选其一，不添加则不注入深度设定）</div>
                 <div class="se-ct-section-toolbar">
-                    <button type="button" class="se-btn-action" data-action="ct-copy-depth-template" title="复制深度提示词骨架，粘贴到提示词框后改写">复制模板</button>
+                    <button type="button" class="se-btn-action" data-action="ct-copy-depth-template" title="复制深度提示词范例，可直接使用或照此改写">复制模板</button>
                     <button type="button" class="se-btn-action" data-action="ct-add-depth">添加深度</button>
                 </div>
                 ${t.depths.length ? t.depths.map(depthCard).join('') : '<div class="se-wi-empty-tip">还没有深度档位，不需要可不添加。</div>'}
@@ -3221,7 +3225,7 @@
 
     // ========== 面板右下角调整大小（全局唯一把手，对齐当前可见面板；悬浮胶囊与悬浮球不参与） ==========
 
-    const RESIZE_PANEL_IDS = ['se-panel', 'se-settings', 'se-events', 'se-presets', 'se-api-log', 'se-sub-modal', 'se-stage-modal', 'se-prompt-viewer-modal', 'se-world-info-modal'];
+    const RESIZE_PANEL_IDS = ['se-panel', 'se-settings', 'se-events', 'se-presets', 'se-api-log', 'se-sub-modal', 'se-stage-modal', 'se-prompt-viewer-modal', 'se-world-info-modal', 'se-custom-template-modal'];
     let resizePanelObserver = null;
     let resizePanelSizeObserver = null;
 
@@ -3453,19 +3457,7 @@
                 let ctxText = '';
                 if (promptViewerState.contextMode === 'chat') ctxText = cleanRecentContext(applyCustomContextRules(buildRecentContext(s.recentRounds || 6), s));
                 else if (promptViewerState.contextMode === 'demo') ctxText = '示例剧情上下文';
-                const tempSettings = {
-                    ...s,
-                    subConfig: {
-                        ...s.subConfig,
-                        [curTypeKey]: {
-                            ...s.subConfig?.[curTypeKey],
-                            genre: promptViewerState.genreKey,
-                            difficulty: promptViewerState.diffKey,
-                            turns: promptViewerState.turns,
-                        }
-                    },
-                    enableNovelBypass: promptViewerState.novelBypass
-                };
+                const tempSettings = buildPromptViewerTempSettings(s);
                 const msgs = buildEventPrompt(typeObj, ctxText, tempSettings);
                 const fullText = msgs.map(m => `=== [${m.role.toUpperCase()}] ===\n${m.content}`).join('\n\n');
                 if (navigator.clipboard?.writeText) {
@@ -3484,19 +3476,7 @@
                 let ctxText = '';
                 if (promptViewerState.contextMode === 'chat') ctxText = cleanRecentContext(applyCustomContextRules(buildRecentContext(s.recentRounds || 6), s));
                 else if (promptViewerState.contextMode === 'demo') ctxText = '示例剧情上下文';
-                const tempSettings = {
-                    ...s,
-                    subConfig: {
-                        ...s.subConfig,
-                        [curTypeKey]: {
-                            ...s.subConfig?.[curTypeKey],
-                            genre: promptViewerState.genreKey,
-                            difficulty: promptViewerState.diffKey,
-                            turns: promptViewerState.turns,
-                        }
-                    },
-                    enableNovelBypass: promptViewerState.novelBypass
-                };
+                const tempSettings = buildPromptViewerTempSettings(s);
                 const msgs = buildEventPrompt(typeObj, ctxText, tempSettings);
                 const jsonText = JSON.stringify(msgs, null, 2);
                 if (navigator.clipboard?.writeText) {
@@ -3675,17 +3655,17 @@
         }
 
         if (action === 'ct-copy-main-template') {
-            copyTextWithToast(DEFAULT_CUSTOM_MAIN_PROMPT, '已复制模板主提示词骨架');
+            copyTextWithToast(DEFAULT_CUSTOM_MAIN_PROMPT, '已复制模板主提示词范例');
             return;
         }
 
         if (action === 'ct-copy-genre-template') {
-            copyTextWithToast(DEFAULT_CUSTOM_GENRE_PROMPT, '已复制流派提示词模板');
+            copyTextWithToast(DEFAULT_CUSTOM_GENRE_PROMPT, '已复制流派提示词范例');
             return;
         }
 
         if (action === 'ct-copy-depth-template') {
-            copyTextWithToast(DEFAULT_CUSTOM_DEPTH_PROMPT, '已复制深度提示词模板');
+            copyTextWithToast(DEFAULT_CUSTOM_DEPTH_PROMPT, '已复制深度提示词范例');
             return;
         }
 
@@ -8131,6 +8111,7 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
             actionsEl.innerHTML = `
                 <button type="button" class="se-cap-btn" data-action="open-stage-overview">查看剧本</button>
                 <button type="button" class="se-cap-btn" data-action="open-last-raw-output" style="margin-left:6px;">原始档案</button>
+                <button type="button" class="se-cap-btn" data-action="open-prompt-viewer" style="margin-left:6px;" title="查看副API完整提示词">提示词查看</button>
                 ${active ? `<button type="button" class="se-cap-btn" data-capsule-action="reactivate" style="margin-left:6px; color:var(--se-accent); border-color:var(--se-accent);">重启本事件推演</button>` : ''}
             `;
         }
@@ -8333,11 +8314,61 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
         genreKey: 'dice_roll',
         diffKey: 'medium',
         turns: 2,
+        deathRisk: false,
         novelBypass: true,
         worldInfo: true,
         variables: true,
         contextMode: 'chat',
     };
+
+    // 打开查看器/切换主类时，把流派、难度、回合数与死亡危险对齐到该主类当前的真实细节设置
+    // （此前回合数从不同步，预览与复制全部会按初始 2 回合拼装，与细分设置里配置的回合数脱节）
+    function syncPromptViewerStateForType(typeKey) {
+        const s = getSettings();
+        if (isCustomTypeKey(typeKey)) {
+            const t = getCustomTemplate(typeKey, s);
+            const genres = Array.isArray(t?.genres) ? t.genres : [];
+            const depths = Array.isArray(t?.depths) ? t.depths : [];
+            promptViewerState.genreKey = genres.some(g => g.id === t?.selectedGenreId) ? t.selectedGenreId : (genres[0]?.id || '');
+            promptViewerState.diffKey = depths.some(d => d.id === t?.selectedDepthId) ? t.selectedDepthId : (depths[0]?.id || '');
+            promptViewerState.deathRisk = false;
+            promptViewerState.turns = Math.min(30, Math.max(1, Math.floor(Number(t?.turns)) || 2));
+            return;
+        }
+        const curSub = s.subConfig?.[typeKey] || {};
+        if (curSub.genre) promptViewerState.genreKey = curSub.genre;
+        if (curSub.difficulty) promptViewerState.diffKey = curSub.difficulty;
+        promptViewerState.deathRisk = !!curSub.deathRisk;
+        const curTurns = Math.floor(Number(curSub.turns));
+        if (curTurns >= 1) promptViewerState.turns = Math.min(30, curTurns);
+    }
+
+    // 查看器预览与「复制全部」共用的镜像设置：仅覆盖查看器可切换的项（流派/难度/回合/死亡危险与全局开关），
+    // 其余（敌方势力、女主、世界书、变量等）原样透传真实设置；自定义模板把所选流派/深度/回合写回模板副本
+    function buildPromptViewerTempSettings(s) {
+        const curTypeKey = promptViewerState.typeKey || 'combat';
+        return {
+            ...s,
+            enableWorldInfo: promptViewerState.worldInfo,
+            enableVarInjection: promptViewerState.variables,
+            subConfig: {
+                ...s.subConfig,
+                [curTypeKey]: {
+                    ...s.subConfig?.[curTypeKey],
+                    genre: promptViewerState.genreKey,
+                    difficulty: promptViewerState.diffKey,
+                    turns: promptViewerState.turns,
+                    ...(curTypeKey === 'combat' ? { deathRisk: !!promptViewerState.deathRisk } : {}),
+                },
+            },
+            customTemplates: isCustomTypeKey(curTypeKey)
+                ? getCustomTemplates(s).map(t => t.id === curTypeKey
+                    ? { ...t, selectedGenreId: promptViewerState.genreKey, selectedDepthId: promptViewerState.diffKey, turns: promptViewerState.turns }
+                    : t)
+                : s.customTemplates,
+            enableNovelBypass: promptViewerState.novelBypass,
+        };
+    }
 
     async function openPromptViewerModal(defaultTypeKey) {
         if (!root) return;
@@ -8346,19 +8377,8 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
         promptViewerState.variables = s.enableVarInjection !== false;
         if (defaultTypeKey && EVENT_TYPES[defaultTypeKey]) {
             promptViewerState.typeKey = defaultTypeKey;
-            const conf = SUB_CONFIGS[defaultTypeKey];
-            if (conf?.genres?.length) {
-                promptViewerState.genreKey = conf.genres[0].key;
-            }
-            if (conf?.difficulties?.length) {
-                promptViewerState.diffKey = conf.difficulties[1]?.key || conf.difficulties[0]?.key || 'medium';
-            }
-        } else {
-            const curType = promptViewerState.typeKey || 'combat';
-            const curSub = s.subConfig?.[curType] || {};
-            if (curSub.genre) promptViewerState.genreKey = curSub.genre;
-            if (curSub.difficulty) promptViewerState.diffKey = curSub.difficulty;
         }
+        syncPromptViewerStateForType(promptViewerState.typeKey || 'combat');
         const modal = root.querySelector('#se-prompt-viewer-modal');
         const panel = root.querySelector('#se-panel');
         modalReturnPanelId = recordModalReturnPanel();
@@ -8407,7 +8427,9 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
         const s = getSettings();
         const curTypeKey = promptViewerState.typeKey || 'combat';
         const typeObj = EVENT_TYPES[curTypeKey] || EVENT_TYPES.combat;
-        const conf = SUB_CONFIGS[curTypeKey] || SUB_CONFIGS.combat;
+        // 自定义模板：目录从模板数据合成（不得回退到战斗的固定目录）
+        const customTemplate = isCustomTypeKey(curTypeKey) ? getCustomTemplate(curTypeKey, s) : null;
+        const conf = customTemplate ? customConfFor(customTemplate) : (SUB_CONFIGS[curTypeKey] || SUB_CONFIGS.combat);
 
         const genres = conf.genres || [];
         if (!genres.some(g => g.key === promptViewerState.genreKey)) {
@@ -8418,21 +8440,19 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
             promptViewerState.diffKey = diffs[1]?.key || diffs[0]?.key || 'medium';
         }
 
-        const previewSettings = {
-            ...s,
-            enableWorldInfo: promptViewerState.worldInfo,
-            enableVarInjection: promptViewerState.variables,
-            subConfig: {
-                ...s.subConfig,
-                [curTypeKey]: {
-                    ...s.subConfig?.[curTypeKey],
-                    genre: promptViewerState.genreKey,
-                    difficulty: promptViewerState.diffKey,
-                    turns: promptViewerState.turns,
-                }
-            },
-            enableNovelBypass: promptViewerState.novelBypass
-        };
+        const previewSettings = buildPromptViewerTempSettings(s);
+
+        // 只读锁定徽标：敌方势力/女主等自由文本设定已从真实设置注入预览，这里只做可见性提示
+        const lockBadges = [];
+        if (curTypeKey === 'combat') {
+            const cs = s.subConfig?.combat || {};
+            if (cs.isNewFaction) lockBadges.push('全新第三方势力');
+            if (cs.enemyName) lockBadges.push(`已锁对手：${cs.enemyName}`);
+        }
+        const heroineLock = (s.subConfig?.romance?.targetHeroine || '').trim();
+        if (curTypeKey === 'romance' && heroineLock) {
+            lockBadges.push(`已锁女主：${heroineLock}`);
+        }
 
         let contextContent = '';
         if (promptViewerState.contextMode === 'chat') {
@@ -8502,15 +8522,18 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
                         <option value="reasoning" ${curTypeKey === 'reasoning' ? 'selected' : ''}>推理事件</option>
                         <option value="romance" ${curTypeKey === 'romance' ? 'selected' : ''}>恋爱事件</option>
                         <option value="random" ${curTypeKey === 'random' ? 'selected' : ''}>随机事件</option>
+                        ${getCustomTemplates(s).map(t => `<option value="${escapeHtml(t.id)}" ${curTypeKey === t.id ? 'selected' : ''}>${escapeHtml(t.name || '未命名模板')}</option>`).join('')}
                     </select>
                 </div>
 
+                ${genres.length ? `
                 <div class="se-pv-quick-item">
                     <span class="se-pv-quick-label">流派:</span>
                     <select class="se-pv-quick-select" data-pv-action="change-genre">
                         ${genres.map(g => `<option value="${escapeHtml(g.key)}" ${g.key === promptViewerState.genreKey ? 'selected' : ''}>${escapeHtml(g.label)}</option>`).join('')}
                     </select>
                 </div>
+                ` : ''}
 
                 ${diffs.length ? `
                 <div class="se-pv-quick-item">
@@ -8530,8 +8553,24 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
                         <option value="4" ${promptViewerState.turns === 4 ? 'selected' : ''}>4 回合 (连续大纲)</option>
                         <option value="5" ${promptViewerState.turns === 5 ? 'selected' : ''}>5 回合 (连续大纲)</option>
                         <option value="6" ${promptViewerState.turns === 6 ? 'selected' : ''}>6 回合 (连续大纲)</option>
+                        ${promptViewerState.turns > 6 ? `<option value="${promptViewerState.turns}" selected>${promptViewerState.turns} 回合（当前设置）</option>` : ''}
                     </select>
                 </div>
+
+                ${curTypeKey === 'combat' ? `
+                <div class="se-pv-quick-item">
+                    <label class="se-pv-checkbox-label" title="切换后预览实时反映死亡危险死线的注入与否（同战斗细分设置中的开关）">
+                        <input type="checkbox" data-pv-action="toggle-death" ${promptViewerState.deathRisk ? 'checked' : ''} />
+                        <span>死亡危险</span>
+                    </label>
+                </div>
+                ` : ''}
+
+                ${lockBadges.length ? `
+                <div class="se-pv-quick-item">
+                    <span class="se-wi-badge se-wi-badge-blue" title="来自全局细分设置，效果已注入当前预览；如需修改请回到对应细分设置">${escapeHtml(lockBadges.join(' · '))}</span>
+                </div>
+                ` : ''}
 
                 <div class="se-pv-quick-item">
                     <span class="se-pv-quick-label">上下文:</span>
