@@ -927,8 +927,7 @@
     -webkit-backdrop-filter: blur(24px) saturate(160%);
     display: flex;
     flex-direction: column;
-    overflow-y: auto;
-    overflow-x: hidden;
+    overflow: hidden;
     z-index: 10002;
     padding: 14px 16px;
     color: var(--se-text-main);
@@ -942,6 +941,7 @@
 }
 
 .se-modal-header {
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -969,6 +969,38 @@
     background: var(--se-bg-hover);
     border-color: var(--se-border);
     color: var(--se-text-title);
+}
+
+/* 二级弹窗「外框固定 + 内容内滚」：标题栏/tip/顶部操作/底部按钮区钉在面板两端，仅内容区内部滚动 */
+.se-settings-body,
+.se-sub-body,
+.se-preset-list,
+.se-api-log-list,
+.se-event-list,
+.se-stage-modal-body,
+.se-prompt-viewer-body,
+.se-wi-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+}
+
+.se-presets-tip,
+.se-events-tip,
+.se-api-log-tip,
+.se-sub-tip,
+.se-stage-modal-tip,
+.se-wi-search-row,
+.se-wi-toolbar,
+.se-settings-actions,
+.se-presets-viewer-entry {
+    flex-shrink: 0;
+}
+
+.se-presets-viewer-entry {
+    margin-bottom: 14px;
 }
 
 /* 设置表单主体 */
@@ -1980,9 +2012,9 @@
         -webkit-overflow-scrolling: touch !important;
     }
 
-    /* 所有二级弹窗（细分设置、全局设置、事件历史、预设工坊、API日志、阶段大纲等）：
-       整体弹窗作为主滚动容器，支持流畅触屏顺滑滑动到底部，彻底解决滑不下去的问题 */
-    #st-direct-event-root :is(.se-settings, .se-events, .se-presets, .se-api-log, .se-sub-modal, .se-stage-modal) {
+    /* 所有二级弹窗（细分设置、全局设置、事件历史、预设工坊、API日志、阶段大纲、世界书注入、提示词查看器）：
+       外框固定（flex column + overflow hidden），标题栏与底部按钮栏钉在面板两端，仅内容区内部滚动 */
+    #st-direct-event-root :is(.se-settings, .se-events, .se-presets, .se-api-log, .se-sub-modal, .se-stage-modal, .se-world-info-modal, .se-prompt-viewer-modal) {
         top: calc(10px + env(safe-area-inset-top, 0px)) !important;
         bottom: auto !important;
         right: 12px !important;
@@ -1995,34 +2027,29 @@
         max-height: calc(100vh - 20px) !important;
         max-height: calc(100dvh - 20px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
         border-radius: var(--se-radius-lg) !important;
+        overflow: hidden !important;
+        padding: 14px !important;
+    }
+
+    /* 提示词查看器头部为通栏设计，移动端保持零内边距 */
+    #st-direct-event-root .se-prompt-viewer-modal {
+        padding: 0 !important;
+    }
+
+    /* 弹窗内容区内部滚动：顶栏与底部按钮栏固定，不随内容滚动 */
+    #st-direct-event-root :is(.se-settings-body, .se-sub-body, .se-preset-list, .se-api-log-list, .se-event-list, .se-stage-modal-body, .se-prompt-viewer-body, .se-wi-list) {
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
         overflow-y: auto !important;
         overflow-x: hidden !important;
         -webkit-overflow-scrolling: touch !important;
         overscroll-behavior: contain !important;
         touch-action: pan-y !important;
-        padding: 14px !important;
-        padding-bottom: 30px !important;
     }
 
-    /* 弹窗内部子容器全部解除局部滚动锁定，跟随外部弹窗整体滚动，消除嵌套滚动冲突 */
-    #st-direct-event-root :is(.se-sub-body, .se-settings-body, .se-events-body, .se-presets-body, .se-api-log-list, .se-stage-modal-body) {
-        overflow: visible !important;
-        height: auto !important;
-        min-height: 0 !important;
-        flex: none !important;
-    }
-
-    /* 弹窗顶部栏吸顶并带有毛玻璃背景，滑动时关闭按钮与标题始终置顶可见 */
-    #st-direct-event-root .se-modal-header {
-        position: sticky !important;
-        top: -14px !important;
-        margin: -14px -14px 12px -14px !important;
-        padding: 14px 14px 10px 14px !important;
-        background: var(--se-bg-panel) !important;
-        z-index: 30 !important;
-        border-bottom: 1px solid var(--se-border-subtle) !important;
-        backdrop-filter: blur(24px) saturate(160%) !important;
-        -webkit-backdrop-filter: blur(24px) saturate(160%) !important;
+    /* 底部按钮栏钉在面板底部，不参与滚动 */
+    #st-direct-event-root .se-settings-actions {
+        flex-shrink: 0 !important;
     }
     .se-theme-grid {
         grid-template-columns: 1fr 1fr;
@@ -2038,13 +2065,21 @@
     }
 }
 
-/* 滚动条 */
+/* 滚动条（主面板内容区 + 各二级弹窗内滚容器） */
 .se-panel-content::-webkit-scrollbar,
 .se-settings::-webkit-scrollbar,
 .se-events::-webkit-scrollbar,
 .se-presets::-webkit-scrollbar,
 .se-api-log::-webkit-scrollbar,
-.se-sub-modal::-webkit-scrollbar {
+.se-sub-modal::-webkit-scrollbar,
+.se-settings-body::-webkit-scrollbar,
+.se-sub-body::-webkit-scrollbar,
+.se-preset-list::-webkit-scrollbar,
+.se-api-log-list::-webkit-scrollbar,
+.se-event-list::-webkit-scrollbar,
+.se-stage-modal-body::-webkit-scrollbar,
+.se-prompt-viewer-body::-webkit-scrollbar,
+.se-wi-list::-webkit-scrollbar {
     width: 5px;
 }
 
@@ -2053,7 +2088,15 @@
 .se-events::-webkit-scrollbar-thumb,
 .se-presets::-webkit-scrollbar-thumb,
 .se-api-log::-webkit-scrollbar-thumb,
-.se-sub-modal::-webkit-scrollbar-thumb {
+.se-sub-modal::-webkit-scrollbar-thumb,
+.se-settings-body::-webkit-scrollbar-thumb,
+.se-sub-body::-webkit-scrollbar-thumb,
+.se-preset-list::-webkit-scrollbar-thumb,
+.se-api-log-list::-webkit-scrollbar-thumb,
+.se-event-list::-webkit-scrollbar-thumb,
+.se-stage-modal-body::-webkit-scrollbar-thumb,
+.se-prompt-viewer-body::-webkit-scrollbar-thumb,
+.se-wi-list::-webkit-scrollbar-thumb {
     background: var(--se-border-subtle);
     border-radius: 999px;
 }
@@ -2063,7 +2106,15 @@
 .se-events::-webkit-scrollbar-thumb:hover,
 .se-presets::-webkit-scrollbar-thumb:hover,
 .se-api-log::-webkit-scrollbar-thumb:hover,
-.se-sub-modal::-webkit-scrollbar-thumb:hover {
+.se-sub-modal::-webkit-scrollbar-thumb:hover,
+.se-settings-body::-webkit-scrollbar-thumb:hover,
+.se-sub-body::-webkit-scrollbar-thumb:hover,
+.se-preset-list::-webkit-scrollbar-thumb:hover,
+.se-api-log-list::-webkit-scrollbar-thumb:hover,
+.se-event-list::-webkit-scrollbar-thumb:hover,
+.se-stage-modal-body::-webkit-scrollbar-thumb:hover,
+.se-prompt-viewer-body::-webkit-scrollbar-thumb:hover,
+.se-wi-list::-webkit-scrollbar-thumb:hover {
     background: var(--se-accent);
 }
 
@@ -2222,11 +2273,9 @@
     max-width: min(660px, calc(100vw - 24px));
     max-height: calc(100vh - 28px);
     max-height: calc(100dvh - 28px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
-    overflow-y: auto;
-    overflow-x: hidden;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
-    touch-action: pan-y;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
     background: var(--se-bg-panel, rgba(15, 23, 42, 0.99));
     border: 1.5px solid var(--se-border);
     border-radius: var(--se-radius-lg);
@@ -2236,18 +2285,6 @@
     backdrop-filter: blur(24px) saturate(160%);
     -webkit-backdrop-filter: blur(24px) saturate(160%);
     box-sizing: border-box;
-}
-
-.se-stage-modal .se-modal-header {
-    position: sticky;
-    top: -18px;
-    margin: -18px -20px 12px -20px;
-    padding: 14px 20px 10px 20px;
-    background: var(--se-bg-panel);
-    z-index: 30;
-    border-bottom: 1px solid var(--se-border-subtle);
-    backdrop-filter: blur(24px) saturate(160%);
-    -webkit-backdrop-filter: blur(24px) saturate(160%);
 }
 
 .se-stage-modal-tip {
@@ -3141,13 +3178,8 @@
         max-width: min(520px, calc(100vw - 20px)) !important;
         max-height: calc(100vh - 20px) !important;
         max-height: calc(100dvh - 20px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
-        overflow-y: auto !important;
-        overflow-x: hidden !important;
-        -webkit-overflow-scrolling: touch !important;
-        overscroll-behavior: contain !important;
-        touch-action: pan-y !important;
+        overflow: hidden !important;
         padding: 14px !important;
-        padding-bottom: 30px !important;
     }
     #st-direct-event-root .se-event-turns-row { align-items: flex-start; }
     #st-direct-event-root .se-event-turns-ctrls { flex-wrap: wrap; }
@@ -3565,7 +3597,7 @@
         width: 860px;
         max-width: 95vw;
         max-height: 90vh;
-        overflow-y: auto;
+        overflow: hidden;
         background: var(--se-bg-panel, rgba(15, 23, 42, 0.99));
         border: 1.5px solid var(--se-border);
         border-radius: var(--se-radius-lg);
@@ -4058,7 +4090,8 @@
     flex-direction: column;
     gap: 10px;
     overflow-y: auto;
-    max-height: 52vh;
+    flex: 1 1 auto;
+    min-height: 0;
     padding-right: 4px;
     margin-bottom: 14px;
 }

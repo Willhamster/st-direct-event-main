@@ -873,7 +873,7 @@
         modalReturnPanelId = null;
         if (returnId) {
             const el = document.getElementById(returnId);
-            if (el) { el.style.display = 'block'; return; }
+            if (el) { el.style.display = 'flex'; return; }
         }
         const subVisible = ['se-settings', 'se-events', 'se-presets', 'se-api-log'].some(id => {
             const el = document.getElementById(id);
@@ -1176,6 +1176,12 @@
                     <button data-action="close-presets">关闭</button>
                 </div>
                 <div class="se-presets-tip">可在此查看和修改创作约定、大事件基础提示词、各细分流派与难度提示词。</div>
+                <div class="se-presets-viewer-entry">
+                    <button type="button" class="se-turn-save-btn" data-action="open-prompt-viewer" style="width:100%; padding:10px 14px; font-size:13px; font-weight:600; display:flex; align-items:center; justify-content:center; gap:8px;">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                        <span>查看副 API 完整提示词（实时预览与复制）</span>
+                    </button>
+                </div>
                 <div class="se-preset-list" id="se-preset-list"></div>
                 <div class="se-settings-actions">
                     <button data-action="save-presets">保存所有预设</button>
@@ -1581,7 +1587,7 @@
         renderSubModal(eventKey);
         const subModal = root.querySelector('#se-sub-modal');
         if (subModal) {
-            subModal.style.display = 'block';
+            subModal.style.display = 'flex';
             subModal.scrollTop = 0;
         }
         const panel = root.querySelector('#se-panel');
@@ -2872,7 +2878,7 @@
                 if (modal) modal.style.display = 'none';
                 renderPresets();
                 const presetsEl = root?.querySelector('#se-presets');
-                if (presetsEl) presetsEl.style.display = 'block';
+                if (presetsEl) presetsEl.style.display = 'flex';
                 return;
             }
             if (pvAction === 'open-world-info-modal') {
@@ -2949,7 +2955,7 @@
                 return;
             }
             fillSettingsForm();
-            settings.style.display = 'block';
+            settings.style.display = 'flex';
             settings.scrollTop = 0;
             if (panel) panel.style.display = 'none';
             if (events) events.style.display = 'none';
@@ -2979,7 +2985,7 @@
                 return;
             }
             renderEventList();
-            events.style.display = 'block';
+            events.style.display = 'flex';
             events.scrollTop = 0;
             if (panel) panel.style.display = 'none';
             if (settings) settings.style.display = 'none';
@@ -3004,7 +3010,7 @@
                 return;
             }
             renderPresets();
-            presets.style.display = 'block';
+            presets.style.display = 'flex';
             presets.scrollTop = 0;
             if (panel) panel.style.display = 'none';
             if (settings) settings.style.display = 'none';
@@ -3049,7 +3055,7 @@
                 return;
             }
             renderApiLogs();
-            apiLogPanel.style.display = 'block';
+            apiLogPanel.style.display = 'flex';
             apiLogPanel.scrollTop = 0;
             if (panel) panel.style.display = 'none';
             if (settings) settings.style.display = 'none';
@@ -3409,7 +3415,7 @@
                         </div>
                         <pre class="se-stage-raw-pre" id="se-last-raw-text">${escapeHtml(lastRawModelOutput.content)}</pre>
                     `;
-                    modal.style.display = 'block';
+                    modal.style.display = 'flex';
                     modal.scrollTop = 0;
                 }
                 return;
@@ -3666,12 +3672,6 @@
         `);
 
         list.innerHTML = `
-            <div style="margin-bottom:14px;">
-                <button type="button" class="se-turn-save-btn" data-action="open-prompt-viewer" style="width:100%; padding:10px 14px; font-size:13px; font-weight:600; display:flex; align-items:center; justify-content:center; gap:8px;">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                    <span>查看副 API 完整提示词（实时预览与复制）</span>
-                </button>
-            </div>
             <details class="se-preset-accordion" data-section-key="presets-jailbreak" ${isAccordionOpen('presets-jailbreak', true) ? 'open' : ''}>
                 <summary class="se-preset-accordion-summary">破限与防审查提示词（置顶注入与外审破限）</summary>
                 <div class="se-preset-accordion-body">
@@ -4108,7 +4108,7 @@
     function openSettingsPanel() {
         if (!root) return;
         fillSettingsForm();
-        root.querySelector('#se-settings').style.display = 'block';
+        root.querySelector('#se-settings').style.display = 'flex';
         root.querySelector('#se-panel').style.display = 'none';
     }
 
@@ -7128,7 +7128,7 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
                 <button type="button" class="se-sub-save-btn" data-action="close-stage-modal">我知道了，去生成事件</button>
             </div>
         `;
-        modal.style.display = 'block';
+        modal.style.display = 'flex';
         modal.scrollTop = 0;
     }
 
@@ -7248,7 +7248,7 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
         `;
 
         body.innerHTML = html;
-        modal.style.display = 'block';
+        modal.style.display = 'flex';
         modal.scrollTop = 0;
     }
 
@@ -7287,7 +7287,7 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
         if (panel) panel.style.display = 'none';
         if (modal) {
             renderPromptViewerContent();
-            modal.style.display = 'block';
+            modal.style.display = 'flex';
             try {
                 await refreshWorldInfoCache(s);
                 renderPromptViewerContent();
@@ -7626,11 +7626,11 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
         if (modal) modal.style.display = 'none';
         if (wiModalPreviousView === 'settings') {
             const settings = root?.querySelector('#se-settings');
-            if (settings) settings.style.display = 'block';
+            if (settings) settings.style.display = 'flex';
         } else if (wiModalPreviousView === 'prompt-viewer') {
             const promptViewer = root?.querySelector('#se-prompt-viewer-modal');
             if (promptViewer) {
-                promptViewer.style.display = 'block';
+                promptViewer.style.display = 'flex';
                 renderPromptViewerContent();
             }
         } else {

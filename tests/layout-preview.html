@@ -1,0 +1,410 @@
+<!doctype html><html lang="zh"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>二级弹窗布局预览（外框固定+内容内滚）</title>
+<link rel="stylesheet" href="../style.css">
+<style>
+body{background:#e9e9e4;margin:0}
+*{box-sizing:border-box}
+button{font:inherit}
+.se-preview-bar{position:fixed;top:6px;left:6px;z-index:99999;display:flex;gap:4px;flex-wrap:wrap;max-width:80vw;background:#fff;border:1px solid #ccc;border-radius:8px;padding:6px;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.se-preview-bar button{padding:4px 8px;font-size:12px;cursor:pointer;border:1px solid #ccc;background:#fff;border-radius:6px}
+.se-preview-bar button.on{background:#333;color:#fff;border-color:#333}
+</style></head><body>
+<div class="se-preview-bar"><button data-show="se-panel" >panel</button><button data-show="se-settings" class="on">settings</button><button data-show="se-events" >events</button><button data-show="se-presets" >presets</button><button data-show="se-api-log" >api-log</button><button data-show="se-sub-modal" >sub</button><button data-show="se-stage-modal" >stage</button><button data-show="se-prompt-viewer-modal" >prompt-viewer</button><button data-show="se-world-info-modal" >world-info</button></div>
+<div id="st-direct-event-root" data-theme="cream">
+            <button type="button" class="se-fab" data-action="toggle" aria-label="打开剧情导演" title="剧情导演 (分轮多回合引擎)">
+                <img src="" alt="剧情导演" onerror="this.style.display='none'; const fb = this.nextElementSibling; if(fb) fb.style.display='block';" />
+                <svg class="se-fab-fallback" style="display:none; width:34px; height:34px;" viewBox="0 0 64 64" fill="none">
+                    <!-- Director Baton -->
+                    <line x1="8" y1="56" x2="56" y2="8" stroke="#38bdf8" stroke-width="5" stroke-linecap="round"/>
+                    <circle cx="55" cy="9" r="3.2" fill="#fbbf24"/>
+                    <path d="M55 2 L56.5 7.5 L62 9 L56.5 10.5 L55 16 L53.5 10.5 L48 9 L53.5 7.5 Z" fill="#38bdf8"/>
+                    <!-- Director Slate -->
+                    <rect x="11" y="26" width="40" height="28" rx="4" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
+                    <line x1="17" y1="35" x2="45" y2="35" stroke="#475569" stroke-width="1.3" stroke-linecap="round"/>
+                    <line x1="17" y1="43" x2="45" y2="43" stroke="#475569" stroke-width="1.3" stroke-linecap="round"/>
+                    <circle cx="14" cy="23.5" r="2.8" fill="#f8fafc" stroke="#38bdf8" stroke-width="1.5"/>
+                    <g transform="rotate(-15 14 23.5)">
+                        <rect x="12" y="18" width="40" height="8.5" rx="2.5" fill="#0f172a" stroke="#38bdf8" stroke-width="1.6"/>
+                        <path d="M19 18.5 L14.5 26" stroke="#38bdf8" stroke-width="2.8" stroke-linecap="round"/>
+                        <path d="M28 18.5 L23.5 26" stroke="#fbbf24" stroke-width="2.8" stroke-linecap="round"/>
+                        <path d="M37 18.5 L32.5 26" stroke="#38bdf8" stroke-width="2.8" stroke-linecap="round"/>
+                    </g>
+                </svg>
+            </button>
+
+            <div class="se-panel" id="se-panel" style="display:none">
+                <div class="se-panel-header">
+                    <div class="se-panel-header-left">
+                        <span class="se-brand-dot"></span>
+                        <span class="se-panel-brand">剧情导演</span>
+                        <button type="button" class="se-theme-pill" data-action="cycle-theme" title="点击快速切换主题风格 (当前 8 款预设)">
+                            <span class="se-theme-pill-dot"></span>
+                            <span id="se-theme-name">深海蔚蓝</span>
+                        </button>
+                    </div>
+                    <div class="se-panel-header-right">
+                        <button type="button" class="se-icon-btn" data-action="toggle-hide-fab" title="隐藏/恢复桌面悬浮球 (隐藏后可从魔法棒随时打开)">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                        </button>
+                        <button type="button" class="se-icon-btn" data-action="open-settings" title="全局设置">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                        </button>
+                        <button type="button" class="se-icon-btn" data-action="close-panel" title="收起面板">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="se-panel-content">
+                    <div id="se-gen-banner" class="se-gen-banner" style="display:none">
+                        <span id="se-gen-status">正在生成事件…</span>
+                        <button type="button" data-action="cancel-gen" class="se-cancel-btn" title="点击取消当前正在进行的生成">取消生成</button>
+                    </div>
+
+                    <div class="se-stage-engine-card" id="se-stage-engine-card">
+                        <div class="se-stage-engine-head">
+                            <span class="se-stage-engine-title">场景进度</span>
+                            <span class="se-stage-engine-badge" id="se-engine-badge">就绪</span>
+                        </div>
+                        <div class="se-stage-engine-desc" id="se-engine-desc">
+                            选择一个事件，让场景向前一步。
+                        </div>
+                        <div class="se-stage-engine-actions" id="se-engine-actions">
+                            <button type="button" class="se-cap-btn" data-action="open-stage-overview">查看剧本</button>
+                            <button type="button" class="se-cap-btn" data-action="open-last-raw-output" style="margin-left:6px;" title="查看模型原始生成的完整正文">原始档案</button>
+                            <button type="button" class="se-cap-btn" data-action="open-prompt-viewer" style="margin-left:6px;" title="查看副API完整提示词">提示词查看</button>
+                        </div>
+                    </div>
+
+                    <div class="se-btn-group">
+                        <button class="se-event-btn" data-action="generate" data-event="combat" title="点击生成 / 右键或长按设置细分">
+                            <span class="se-btn-label">战斗</span>
+                            <span class="se-badge" id="se-badge-combat">跑团</span>
+                            <span class="se-badge se-badge-turns" id="se-turns-combat">2回合</span>
+                        </button>
+                        <button class="se-sub-btn" data-action="open-sub" data-event="combat" title="战斗细分设置">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                        </button>
+                    </div>
+
+                    <div class="se-btn-group">
+                        <button class="se-event-btn" data-action="generate" data-event="reasoning" title="点击生成 / 右键或长按设置细分">
+                            <span class="se-btn-label">推理</span>
+                            <span class="se-badge" id="se-badge-reasoning">生活流</span>
+                            <span class="se-badge se-badge-turns" id="se-turns-reasoning">2回合</span>
+                        </button>
+                        <button class="se-sub-btn" data-action="open-sub" data-event="reasoning" title="推理细分设置">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                        </button>
+                    </div>
+
+                    <div class="se-btn-group">
+                        <button class="se-event-btn" data-action="generate" data-event="romance" title="点击生成 / 右键或长按设置细分">
+                            <span class="se-btn-label">恋爱</span>
+                            <span class="se-badge" id="se-badge-romance">修罗场</span>
+                            <span class="se-badge se-badge-turns" id="se-turns-romance">2回合</span>
+                        </button>
+                        <button class="se-sub-btn" data-action="open-sub" data-event="romance" title="恋爱细分设置">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                        </button>
+                    </div>
+
+                    <div class="se-btn-group">
+                        <button class="se-event-btn se-event-btn-full" data-action="generate" data-event="random" title="随机生成意外事件">
+                            <span class="se-btn-label">随机事件</span>
+                        </button>
+                    </div>
+
+                    <div class="se-divider"></div>
+
+                    <div class="se-nav-grid">
+                        <button class="se-nav-btn" data-action="open-stage-overview" title="查看当前或历史事件的分轮大纲与暗线">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                            阶段大纲
+                        </button>
+                        <button class="se-nav-btn" data-action="open-events" title="已生成的历史事件列表">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+                            事件列表
+                        </button>
+                        <button class="se-nav-btn" data-action="open-presets" title="查看与调整预设提示词">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/><circle cx="18" cy="17" r="2"/></svg>
+                            预设工坊
+                        </button>
+                        <button class="se-nav-btn" data-action="open-api-log" title="查看副AI请求与响应日志">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+                            API 日志
+                        </button>
+                        <button class="se-nav-btn" data-action="open-settings" title="模型接口与插件设置">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                            全局设置
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="se-settings" id="se-settings" style="display:none">
+                <div class="se-modal-header">
+                    <span>设置</span>
+                    <button data-action="close-settings">关闭</button>
+                </div>
+                <div class="se-settings-body">
+                    <div class="se-theme-section">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                            <label style="margin:0; font-size:12px; font-weight:700; color:var(--se-text-title);">主题风格（支持卡片点击或下拉切换）</label>
+                            <select id="se-theme-select" style="width:110px; padding:3px 6px; font-size:11.5px; border-radius:var(--se-radius-sm); background:var(--se-bg-input); color:var(--se-text-main); border:1px solid var(--se-border-subtle); outline:none; cursor:pointer;">
+                                <option value="sakura">樱花梦境</option>
+                                <option value="cyberpunk">未来科幻</option>
+                                <option value="parchment">复古羊皮</option>
+                                <option value="cream">奶油白</option>
+                                <option value="minimal">极简极夜</option>
+                                <option value="ocean">深海蔚蓝</option>
+                                <option value="amethyst">暮色紫晶</option>
+                                <option value="emerald">翡翠林境</option>
+                            </select>
+                        </div>
+                        <div class="se-theme-grid" id="se-theme-grid"></div>
+                    </div>
+                    <div class="se-settings-section" data-section-key="settings-api">
+                    <div class="se-settings-section-title" data-action="toggle-section" title="点击折叠/展开"><span class="se-section-chevron">▾</span>API 设置</div>
+                    <label>API 地址（Base URL）</label>
+                    <input id="se-base-url" type="text" placeholder="https://api.openai.com/v1" autocomplete="off" />
+                    <label>请求方式</label>
+                    <select id="se-request-transport">
+                        <option value="proxy">酒馆代理（避免浏览器跨域）</option>
+                        <option value="auto">自动（直连网络失败后走代理）</option>
+                        <option value="direct">浏览器直连</option>
+                    </select>
+                    <small>酒馆代理需要 config.yaml 中 enableCorsProxy: true，并重启酒馆服务。</small>
+
+                    <label>API Key</label>
+                    <input id="se-api-key" type="password" placeholder="sk-..." autocomplete="off" />
+
+                    <label>模型名</label>
+                    <input id="se-model" list="se-model-list" type="text" placeholder="deepseek-chat / gpt-4o" autocomplete="off" />
+                    <datalist id="se-model-list">
+                        <option value="deepseek-chat"></option>
+                        <option value="deepseek-reasoner"></option>
+                        <option value="gpt-4o"></option>
+                        <option value="gpt-4o-mini"></option>
+                        <option value="claude-3-5-sonnet-20241022"></option>
+                        <option value="claude-3-5-haiku-20241022"></option>
+                        <option value="gemini-1.5-pro"></option>
+                        <option value="gemini-1.5-flash"></option>
+                        <option value="qwen-plus"></option>
+                        <option value="qwen-max"></option>
+                        <option value="glm-4-flash"></option>
+                        <option value="meta-llama/llama-3.1-70b-instruct"></option>
+                    </datalist>
+                    <div class="se-model-tip" style="font-size:11px; opacity:0.75; margin-top:-4px; margin-bottom:8px; line-height:1.4;">支持手动输入任意模型名（如 deepseek-chat、gpt-4o 等）。若接口受跨域限制无法拉取列表，直接手动填写即可正常生成！</div>
+
+                    <label>温度（Temperature）</label>
+                    <input id="se-temperature" type="number" step="0.1" min="0" max="2" />
+
+                    <label>最大输出长度</label>
+                    <input id="se-max-tokens" type="number" min="1" max="120000" />
+                    </div>
+
+                    <div class="se-settings-section" data-section-key="settings-worldbook">
+                    <div class="se-settings-section-title" data-action="toggle-section" title="点击折叠/展开"><span class="se-section-chevron">▾</span>世界书与上下文设置</div>
+                    <label class="se-check-label">
+                        <input id="se-enable-jailbreak" type="checkbox" />
+                        启用全套缝合破限与创作约定（Dramatron 深度创作引擎）
+                    </label>
+                    <label class="se-check-label">
+                        <input id="se-enable-novel-bypass" type="checkbox" />
+                        启用头部小说破限（雪融雪降 · 过外审预填充）
+                    </label>
+                    <div class="se-setting-card-item">
+                        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                            <label class="se-check-label" style="margin:0; flex:1; cursor:pointer;">
+                                <input id="se-enable-world-info" type="checkbox" />
+                                <span style="font-weight:600; color:var(--se-text-title);">启用世界书设定注入</span>
+                            </label>
+                            <button type="button" class="se-btn-action se-btn-wi-edit" data-action="open-world-info-modal" title="自定义选择哪些条目注入副 API 或直接在插件内编辑世界书设定">
+                                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                                <span>编辑条目与注入管理</span>
+                            </button>
+                        </div>
+                        <div style="font-size:11px; color:var(--se-text-muted); margin-top:4px; padding-left:24px; line-height:1.4;">
+                            默认注入常驻蓝灯。点击右侧按钮可自主勾选任意条目注入副 API，或直接修改/新增世界观设定。
+                        </div>
+                    </div>
+                    <label>发送最近 N 轮聊天内容</label>
+                    <input id="se-recent-rounds" type="number" min="1" max="200" />
+
+                    <label>自定义提取规则（逗号分隔标签名，留空不启用）</label>
+                    <input id="se-context-extract-tags" type="text" placeholder="content,summary" autocomplete="off" />
+                    <small>填写后，上下文只保留这些标签内的内容，标签外的文字（含无标签的普通消息）一律不发送。</small>
+
+                    <label>自定义排除规则（逗号分隔标签名，留空不启用）</label>
+                    <input id="se-context-exclude-tags" type="text" placeholder="thinking,内心" autocomplete="off" />
+                    <small>这些标签的完整块（含标签内文字）将从上下文中删除；两者同时填写时先排除、后提取。</small>
+                    </div>
+
+                    <div class="se-settings-section" data-section-key="settings-general">
+                    <div class="se-settings-section-title" data-action="toggle-section" title="点击折叠/展开"><span class="se-section-chevron">▾</span>通用</div>
+                    <label>默认事件总回合数 (回合范围 1 ~ 30；一次有效回复算一回合)</label>
+                    <input id="se-default-turns" type="number" min="1" max="30" step="1" value="8" />
+
+                    <label>悬浮球图标 URL（留空使用默认图标）</label>
+                    <input id="se-fab-icon" type="text" placeholder="https://... 或 data:image/..." autocomplete="off" />
+                    <div class="se-inline-actions">
+                        <button data-action="reset-fab">恢复默认图标</button>
+                        <button data-action="reset-position">重置悬浮球位置</button>
+                    </div>
+
+                    <label class="se-check-label">
+                        <input id="se-hide-fab" type="checkbox" />
+                        隐藏桌面悬浮球（隐藏后可通过输入框左侧魔法棒「剧情导演」随时打开）
+                    </label>
+
+                    <label class="se-check-label" style="flex-direction:column; align-items:stretch; gap:6px; cursor:default;">
+                        <span style="font-weight:600; color:var(--se-text-title);">事件生成后如何处理</span>
+                        <select id="se-auto-send" style="width:100%; padding:7px 10px; font-size:13px;">
+                            <option value="auto">自动发送（生成后自动发编号并暗送全文给 AI）</option>
+                            <option value="fill">仅填入对话框（可追加提示词后手动发送）</option>
+                            <option value="none">不发送也不填入（仅保存，之后从事件列表发送）</option>
+                        </select>
+                        <span style="font-size:11px; color:var(--se-text-muted); line-height:1.4;">
+                            想追加自己的提示词再发送？选「仅填入对话框」，生成后事件编号会自动填好，你可以继续打字再手动发送。
+                        </span>
+                    </label>
+                    </div>
+                </div>
+                <div class="se-settings-actions">
+                    <button data-action="save-settings">保存设置</button>
+                    <button data-action="load-models">获取模型列表</button>
+                    <button data-action="test-llm">测试连接</button>
+                </div>
+            </div>
+
+            <div class="se-events" id="se-events" style="display:none">
+                <div class="se-modal-header">
+                    <span>事件列表</span>
+                    <button data-action="close-events">关闭</button>
+                </div>
+                <div class="se-events-tip" style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                    <span>点击事件可以查看/编辑完整内容；默认只显示编号，防止剧透。</span>
+                    <button type="button" class="se-btn-action se-btn-danger" data-action="clear-all-events" style="color:#ef4444; border-color:rgba(239,68,68,0.4); flex-shrink:0;" title="清空并删除当前聊天中的所有事件记录">一键清空事件</button>
+                </div>
+                <div class="se-event-list" id="se-event-list"></div>
+            </div>
+
+            <div class="se-presets" id="se-presets" style="display:none">
+                <div class="se-modal-header">
+                    <span>预设工坊</span>
+                    <button data-action="close-presets">关闭</button>
+                </div>
+                <div class="se-presets-tip">可在此查看和修改创作约定、大事件基础提示词、各细分流派与难度提示词。</div>
+                <div class="se-presets-viewer-entry">
+                    <button type="button" class="se-turn-save-btn" data-action="open-prompt-viewer" style="width:100%; padding:10px 14px; font-size:13px; font-weight:600; display:flex; align-items:center; justify-content:center; gap:8px;">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                        <span>查看副 API 完整提示词（实时预览与复制）</span>
+                    </button>
+                </div>
+                <div class="se-preset-list" id="se-preset-list"></div>
+                <div class="se-settings-actions">
+                    <button data-action="save-presets">保存所有预设</button>
+                    <button data-action="reset-presets">恢复全部默认预设</button>
+                </div>
+            </div>
+
+            <div class="se-api-log" id="se-api-log" style="display:none">
+                <div class="se-modal-header">
+                    <span>API 发送日志</span>
+                    <button data-action="close-api-log">关闭</button>
+                </div>
+                <div class="se-api-log-tip">这里显示插件最近生成事件时，实际发给外部 API 的内容。</div>
+                <div class="se-api-log-list" id="se-api-log-list"></div>
+            </div>
+
+            <div class="se-sub-modal" id="se-sub-modal" style="display:none">
+                <div class="se-modal-header">
+                    <span id="se-sub-title">细分设置</span>
+                    <button data-action="close-sub">关闭</button>
+                </div>
+                <div class="se-sub-tip">可自由配置流派玩法、挑战难度与专属机制。点击「保存细分设置」仅保存，不会触发自动生成。</div>
+                <div class="se-sub-body" id="se-sub-body"></div>
+                <div class="se-settings-actions se-sub-actions">
+                    <button data-action="save-sub" class="se-sub-save-btn">保存细分设置</button>
+                    <button data-action="gen-from-sub" class="se-sub-gen-btn-alt">保存并立即生成</button>
+                </div>
+            </div>
+
+            <div class="se-stage-modal" id="se-stage-modal" style="display:none">
+                <div class="se-modal-header">
+                    <span id="se-stage-modal-title">分轮剧本小纸条与暗箱档案</span>
+                    <button data-action="close-stage-modal">关闭</button>
+                </div>
+                <div class="se-stage-modal-tip">当前事件处于多回合博弈中。可在此查看导演暗设的分轮脉络、破局钥匙与结局惩罚。</div>
+                <div class="se-stage-modal-body" id="se-stage-modal-body"></div>
+            </div>
+
+            <div class="se-prompt-viewer-modal" id="se-prompt-viewer-modal" style="display:none">
+                <div class="se-modal-header" style="padding:12px 20px; border-bottom:1px solid var(--se-border-subtle); display:flex; justify-content:space-between; align-items:center; background:var(--se-bg-panel);">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span id="se-prompt-viewer-title" style="font-weight:700; font-size:14px; color:var(--se-text-title);">提示词查看器</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <button type="button" class="se-pv-row-icon-btn" data-pv-action="toggle-fullscreen" title="全屏切换">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                        </button>
+                        <button type="button" class="se-pv-row-icon-btn" data-action="close-prompt-viewer" title="关闭查看器">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="se-prompt-viewer-body" id="se-prompt-viewer-body"></div>
+            </div>
+
+            <div class="se-world-info-modal" id="se-world-info-modal" style="display:none">
+                <div class="se-modal-header">
+                    <span id="se-wi-modal-title">世界书副 API 注入管理与自定义编辑</span>
+                    <button data-action="close-world-info-modal">关闭</button>
+                </div>
+                <div class="se-presets-tip">
+                    勾选需要注入副 API 的世界书条目（默认自动勾选常驻蓝灯）。可直接修改条目内容或新增自定义世界观，副 API 仅注入已勾选条目。
+                </div>
+                <div class="se-wi-search-row">
+                    <div class="se-wi-search-box">
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input type="text" class="se-wi-search-input" id="se-wi-search-input" placeholder="搜索条目标题、关键词或设定正文..." />
+                    </div>
+                    <span class="se-wi-counter" id="se-wi-counter">共 0 条条目</span>
+                </div>
+                <div class="se-wi-toolbar">
+                    <button type="button" class="se-btn-action" data-action="wi-select-blue">全选蓝灯</button>
+                    <button type="button" class="se-btn-action" data-action="wi-select-all">全选所有</button>
+                    <button type="button" class="se-btn-action" data-action="wi-select-none">清空勾选</button>
+                    <button type="button" class="se-btn-action" data-action="wi-add-custom">新增自定义条目</button>
+                    <button type="button" class="se-btn-action" data-action="wi-refresh-list" style="margin-left:auto;">刷新酒馆世界书</button>
+                </div>
+                <div class="se-wi-list" id="se-wi-list"></div>
+                <div class="se-settings-actions">
+                    <button data-action="save-world-info-modal" class="se-sub-save-btn">保存世界书配置</button>
+                    <button data-action="reset-world-info-modal">恢复默认蓝灯</button>
+                </div>
+            </div>
+        </div>
+<script>
+// 动态容器注入示例内容，验证内滚
+const card = (n) => '<div class="se-preset-card"><div class="se-preset-title">示例条目 ' + n + '</div><div class="se-preset-desc">说明文字：撑高度用，验证内容区内部滚动、顶栏与底栏保持固定。</div><textarea rows="3">示例内容 ' + n + '</textarea></div>';
+['se-preset-list','se-api-log-list','se-event-list','se-sub-body','se-stage-modal-body','se-wi-list'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el && !el.children.length) { let h = ''; for (let i = 1; i <= 10; i++) h += card(i); el.innerHTML = h; }
+});
+const pv = document.getElementById('se-prompt-viewer-body');
+if (pv && !pv.children.length) {
+  let h = '<div class="se-pv-stats-row"><div class="se-pv-stats-left"><span class="se-pv-token-counter">12,345</span><span class="se-pv-msg-counter">示例统计行（固定验证）</span></div></div>';
+  for (let i = 1; i <= 10; i++) h += '<div class="se-preset-card"><div class="se-preset-title">消息块 ' + i + '</div><div class="se-preset-desc">说明文字：撑高度用。</div></div>';
+  pv.innerHTML = h;
+}
+const PANELS = ["se-panel","se-settings","se-events","se-presets","se-api-log","se-sub-modal","se-stage-modal","se-prompt-viewer-modal","se-world-info-modal"];
+function show(id) {
+  PANELS.forEach(p => { const el = document.getElementById(p); if (el) el.style.display = (p === id) ? 'flex' : 'none'; });
+  document.querySelectorAll('[data-show]').forEach(b => b.classList.toggle('on', b.dataset.show === id));
+}
+document.querySelector('.se-preview-bar').addEventListener('click', e => { const b = e.target.closest('[data-show]'); if (b) show(b.dataset.show); });
+show('se-settings');
+</script></body></html>
