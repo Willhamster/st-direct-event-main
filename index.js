@@ -4521,8 +4521,8 @@
         }
 
         let rawEntries = [];
+        let wiModule = null;
         try {
-            let wiModule = null;
             try {
                 wiModule = await import('/scripts/world-info.js');
             } catch (e) {
