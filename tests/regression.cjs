@@ -864,7 +864,7 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         const addRowBlock = css.slice(css.indexOf('.se-btn-group.se-add-row {'), css.indexOf('}', css.indexOf('.se-btn-group.se-add-row {')));
         assert(addRowBlock.includes('overflow: visible'), 'add row container must not clip corner radius');
         const ioBtnBlock = css.slice(css.indexOf('#st-direct-event-root .se-add-row .se-sub-btn {'), css.indexOf('}', css.indexOf('#st-direct-event-root .se-add-row .se-sub-btn {')));
-        assert(ioBtnBlock.includes('border-radius: var(--se-radius-md)') && ioBtnBlock.includes('border: 1px solid') && ioBtnBlock.includes('box-shadow'), 'io button must match event card style');
+        assert(ioBtnBlock.includes('border-radius: var(--se-radius-md)') && ioBtnBlock.includes('1.5px dashed') && ioBtnBlock.includes('background: transparent') && ioBtnBlock.includes('box-shadow: none'), 'io button must match the dashed add-button format (no shadow)');
         // 自定义模板行间隔与战斗/推理/恋爱一致（10px）
         const customRowsBlock = css.slice(css.indexOf('#st-direct-event-root #se-custom-rows {'), css.indexOf('}', css.indexOf('#st-direct-event-root #se-custom-rows {')));
         assert(customRowsBlock.includes('gap: 10px'), 'custom rows must share the 10px rhythm');

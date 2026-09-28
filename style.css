@@ -4967,16 +4967,22 @@
     color: var(--se-accent) !important;
     border-color: var(--se-accent) !important;
 }
-/* 导入/导出按钮：对齐战斗/恋爱/推理的卡片观感（1px 边缘线 + 卡片底 + 同款阴影），覆盖组内小键的无边框直角规则 */
+/* 导入/导出按钮：与新建自定义模板完全同格式（虚线 + 透明底融入背景板 + muted 色，hover 点亮），无阴影 */
 #st-direct-event-root .se-add-row .se-sub-btn {
     gap: 6px;
     font-size: 12.5px;
     font-weight: 600;
     min-height: 54px;
-    border: 1px solid var(--se-border-subtle) !important;
+    border: 1.5px dashed var(--se-border) !important;
     border-radius: var(--se-radius-md);
-    background: var(--se-bg-card) !important;
-    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.45);
+    background: transparent !important;
+    color: var(--se-text-muted) !important;
+    box-shadow: none !important;
+}
+#st-direct-event-root .se-add-row .se-sub-btn:hover {
+    background: var(--se-bg-hover) !important;
+    color: var(--se-accent) !important;
+    border-color: var(--se-accent) !important;
 }
 
 /* 自定义模板行之间的间隔与战斗/推理/恋爱一致（panel-content 的 gap 只作用于直接子元素，模板行包在容器内需自补） */
