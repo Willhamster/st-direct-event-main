@@ -601,8 +601,8 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
     });
     check('Prompt viewer covers custom templates and mirrors real sub settings',()=>{
         const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
-        // 编辑器弹窗可缩放：RESIZE_PANEL_IDS 必须包含自定义模板弹窗
-        assert(src.includes("'se-world-info-modal', 'se-custom-template-modal']"), 'resize list missing custom template modal');
+        // 编辑器弹窗可缩放：RESIZE_PANEL_IDS 必须包含自定义模板弹窗（及其后的导入/导出弹窗）
+        assert(src.includes("'se-world-info-modal', 'se-custom-template-modal'"), 'resize list missing custom template modal');
         // 主类下拉渲染自定义模板选项
         assert(src.includes("getCustomTemplates(s).map(t => `<option"), 'viewer type select missing custom template options');
         // 回合数从真实细节设置同步（打开/切换主类共用同一函数）
@@ -693,6 +693,137 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         // 网格两格底部对齐：某格标签换行时输入框仍同一水平线
         const gridBlock = css.slice(css.indexOf('.se-ct-item-grid {'), css.indexOf('}', css.indexOf('.se-ct-item-grid {')));
         assert(gridBlock.includes('align-items: end'), 'item grid missing bottom alignment');
+    });
+    check('Custom template export payload carries body and workshop overrides',()=>{
+        const he = harness();
+        const tpl = { id: 'ct_ex1', prefix: 'e', name: '导出模板', mainPrompt: '主提示词', turns: 3, genres: [{ id: 'g1', label: '流', badge: '', desc: '', prompt: '流派内容' }], depths: [{ id: 'd1', label: '深', desc: '', prompt: '深度内容' }], extras: [], selectedGenreId: 'g1', selectedDepthId: 'd1', selectedExtraIds: [], createdAt: 1, updatedAt: 2 };
+        const s = { ...he.api.DEFAULT_SETTINGS, customTemplates: [tpl], presets: { ct_ex1: { systemPrompt: '工坊主覆盖' } }, subPrompts: { 'ct_ex1.g1': '工坊流派覆盖', 'ct_gone.g1': '悬空覆盖' } };
+        const p = he.api.buildCustomTemplateExportPayload([tpl], s);
+        assert.equal(p.plugin, 'st-direct-event');
+        assert.equal(p.kind, 'st-direct-event-custom-templates');
+        assert.equal(p.version, 1);
+        assert.equal(p.templates.length, 1);
+        assert.equal(p.templates[0].name, '导出模板');
+        assert.equal(p.templates[0].mainPrompt, '主提示词');
+        assert.equal(p.presets.ct_ex1.systemPrompt, '工坊主覆盖', 'preset override must be exported');
+        assert.equal(p.subPrompts['ct_ex1.g1'], '工坊流派覆盖', 'subPrompt override must be exported');
+        assert.equal(p.subPrompts['ct_gone.g1'], undefined, 'override keys of other templates must not leak');
+        // 无覆盖时省略对应键
+        const p2 = he.api.buildCustomTemplateExportPayload([tpl], he.api.DEFAULT_SETTINGS);
+        assert(!('presets' in p2) && !('subPrompts' in p2), 'empty overrides must be omitted');
+        // 缺字段模板导出后形状稳定（normalize 兜底）
+        const p3 = he.api.buildCustomTemplateExportPayload([{ name: '裸', genres: [{ id: 'g9', label: 'g', prompt: 'p' }], selectedGenreId: 'g9' }], {});
+        assert.equal(p3.templates[0].turns, 2);
+        assert.equal(p3.templates[0].depths.length, 0);
+        assert.equal(p3.templates[0].selectedGenreId, 'g9');
+    });
+    check('Custom template import parses wrapped, bare and single forms',()=>{
+        const hi = harness();
+        const tpl = { id: 'ct_im1', prefix: 'k', name: '导入模板', mainPrompt: '', turns: 2, genres: [{ id: 'g1', label: '流', badge: '', desc: '', prompt: '流派内容' }], depths: [], extras: [], selectedGenreId: 'g1', selectedDepthId: '', selectedExtraIds: [], createdAt: 1, updatedAt: 1 };
+        const wrapped = JSON.stringify({ plugin: 'st-direct-event', kind: 'st-direct-event-custom-templates', version: 1, templates: [tpl] });
+        const s0 = { ...hi.api.DEFAULT_SETTINGS, customTemplates: [] };
+        // 三种形态：完整导出包装 / 裸数组 / 单模板对象；无冲突时 id 与前缀原样保留
+        for (const text of [wrapped, JSON.stringify([tpl]), JSON.stringify(tpl)]) {
+            const r = hi.api.parseCustomTemplateImportPayload(text, s0);
+            assert.equal(r.ok, true, 'form should parse: ' + text.slice(0, 30));
+            assert.equal(r.templates.length, 1);
+            assert.equal(r.templates[0].id, 'ct_im1', 'conflict-free id must be preserved');
+            assert.equal(r.templates[0].prefix, 'k', 'conflict-free prefix must be preserved');
+            assert.equal(r.templates[0].turns, 2);
+        }
+        // 非法 JSON / 无模板数据 / 纯空数组
+        assert.equal(hi.api.parseCustomTemplateImportPayload('not json{', s0).ok, false);
+        assert.equal(hi.api.parseCustomTemplateImportPayload(JSON.stringify({ foo: 1 }), s0).ok, false);
+        assert.equal(hi.api.parseCustomTemplateImportPayload('[]', s0).ok, false);
+        // 空壳条目跳过并提示
+        const rSkip = hi.api.parseCustomTemplateImportPayload(JSON.stringify({ templates: [tpl, { name: '', mainPrompt: '', genres: [], depths: [], extras: [] }] }), s0);
+        assert.equal(rSkip.templates.length, 1);
+        assert(rSkip.warnings.some(w => w.includes('空模板')), 'skipped-empty warning missing');
+    });
+    check('Custom template import reallocates conflicting ids and prefixes',()=>{
+        const hc = harness();
+        const tpl = { id: 'ct_dup1', prefix: 'e', name: '重复模板', mainPrompt: '', turns: 2, genres: [{ id: 'g1', label: '流', badge: '', desc: '', prompt: '流派内容' }], depths: [], extras: [], selectedGenreId: 'g1', selectedDepthId: '', selectedExtraIds: [], createdAt: 1, updatedAt: 1 };
+        const sDup = { ...hc.api.DEFAULT_SETTINGS, customTemplates: [{ ...tpl }] };
+        const r1 = hc.api.parseCustomTemplateImportPayload(JSON.stringify({ templates: [tpl] }), sDup);
+        assert.equal(r1.ok, true);
+        assert.notEqual(r1.templates[0].id, 'ct_dup1', 'conflicting id must be reallocated');
+        assert.notEqual(r1.templates[0].prefix, 'e', 'conflicting prefix must be reallocated');
+        assert.equal(hc.api.isCustomTemplateComplete(r1.templates[0]), true, 'reallocation must not break completeness');
+        // 同一文件两次导入得到不同 id 与不同前缀
+        const sAfter = { ...hc.api.DEFAULT_SETTINGS, customTemplates: sDup.customTemplates.concat(r1.templates) };
+        const r2 = hc.api.parseCustomTemplateImportPayload(JSON.stringify({ templates: [tpl] }), sAfter);
+        assert.notEqual(r2.templates[0].id, r1.templates[0].id, 'second import must get a distinct id');
+        assert.notEqual(r2.templates[0].prefix, r1.templates[0].prefix, 'second import must get a distinct prefix');
+        // 固定 a-d 前缀视为占用（防止与固定模板事件计数串号）
+        const sFixed = { ...hc.api.DEFAULT_SETTINGS, customTemplates: [] };
+        const rFixed = hc.api.parseCustomTemplateImportPayload(JSON.stringify({ templates: [{ ...tpl, id: 'ct_f1', prefix: 'a' }] }), sFixed);
+        assert.equal(rFixed.templates[0].id, 'ct_f1', 'conflict-free id must stay');
+        assert.notEqual(rFixed.templates[0].prefix, 'a', 'fixed a-d prefixes must be treated as taken');
+        assert(!['a', 'b', 'c', 'd'].includes(rFixed.templates[0].prefix), 'reallocated prefix must avoid a-d');
+        // 合法空闲前缀原样保留
+        const rKeep = hc.api.parseCustomTemplateImportPayload(JSON.stringify({ templates: [{ ...tpl, id: 'ct_k1', prefix: 'm' }] }), sFixed);
+        assert.equal(rKeep.templates[0].prefix, 'm', 'free prefix must be kept');
+    });
+    check('Custom template import remaps override keys and reports drafts and name clashes',()=>{
+        const hw = harness();
+        const tpl = { id: 'ct_ov1', prefix: 'e', name: '覆盖模板', mainPrompt: '', turns: 2, genres: [{ id: 'g1', label: '流', badge: '', desc: '', prompt: '流派内容' }], depths: [], extras: [], selectedGenreId: 'g1', selectedDepthId: '', selectedExtraIds: [], createdAt: 1, updatedAt: 1 };
+        const sW = { ...hw.api.DEFAULT_SETTINGS, customTemplates: [{ ...tpl }], presets: { ct_ov1: { systemPrompt: '接收者自己的覆盖' } } };
+        const payload = { templates: [tpl], presets: { ct_ov1: { systemPrompt: '分享者的覆盖' } }, subPrompts: { 'ct_ov1.g1': '分享者的流派覆盖', 'ct_absent.g1': '无主覆盖' } };
+        const r = hw.api.parseCustomTemplateImportPayload(JSON.stringify(payload), sW);
+        assert.equal(r.ok, true);
+        const newId = r.templates[0].id;
+        assert.notEqual(newId, 'ct_ov1', 'same id must be reallocated');
+        assert.equal(r.presets[newId]?.systemPrompt, '分享者的覆盖', 'preset override must follow the remapped id');
+        assert.equal(r.subPrompts[newId + '.g1'], '分享者的流派覆盖', 'subPrompt override key must follow the remapped id');
+        assert.equal(r.subPrompts['ct_absent.g1'], undefined, 'override keys without a matching template must be dropped');
+        assert.equal(r.presets['ct_ov1'], undefined, 'old preset key must not survive remap');
+        // 草稿与同名警告
+        const draftTpl = { ...tpl, name: '覆盖模板', genres: [{ id: 'g1', label: '', badge: '', desc: '', prompt: '流派内容' }] };
+        const rD = hw.api.parseCustomTemplateImportPayload(JSON.stringify({ templates: [draftTpl] }), sW);
+        assert.equal(hw.api.isCustomTemplateComplete(rD.templates[0]), false, 'half-filled import must stay a draft');
+        assert(rD.warnings.some(w => w.includes('草稿')), 'draft warning missing');
+        assert(rD.warnings.some(w => w.includes('同名')), 'name clash warning missing');
+    });
+    check('Template import/export UI is wired end to end',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        const css = fs.readFileSync(path.join(__dirname,'..','style.css'),'utf8');
+        // 行内导出按钮 + 主面板导入入口
+        assert(src.includes('data-action="export-custom" data-template='), 'inline export button missing');
+        assert(src.includes('data-action="open-template-io"'), 'panel import entry missing');
+        assert(src.includes('导出此模板：点击下载 JSON 文件 / 右键或长按复制 JSON'), 'export button hint missing');
+        // 弹窗、粘贴框与文件选择
+        assert(src.includes('id="se-template-io-modal"') && src.includes('id="se-tio-import-text"'), 'io modal missing');
+        assert(src.includes('id="se-tio-file-input"') && src.includes('accept=".json,application/json"'), 'file input missing');
+        assert(src.includes("e.target.id === 'se-tio-file-input'"), 'file input change not wired');
+        // 分发器分支齐全
+        for (const act of ['open-template-io','close-template-io','pick-template-file','import-custom-submit','export-custom','export-all-file','export-all-copy']) {
+            assert(src.includes(`if (action === '${act}')`), 'dispatcher branch missing: ' + act);
+        }
+        // 下载实现与 objectURL 释放
+        assert(src.includes('new Blob([') && src.includes('URL.createObjectURL') && src.includes('URL.revokeObjectURL'), 'file download implementation missing');
+        // 右键/长按复制绑定（与主按钮右键惯例一致）
+        assert(src.includes('.se-sub-btn[data-action="export-custom"]'), 'export button contextmenu binding missing');
+        // 新弹窗进 RESIZE 列表获得缩放把手与尺寸记忆
+        assert(src.includes("'se-custom-template-modal', 'se-template-io-modal'"), 'io modal not in RESIZE_PANEL_IDS');
+        // CSS 接线
+        assert(css.includes('#st-direct-event-root .se-tio-import-text') && css.includes('#st-direct-event-root .se-tio-row'), 'io modal css missing');
+        assert(css.includes('#st-direct-event-root .se-btn-group .se-event-btn.se-custom-add-btn'), 'add btn group css missing');
+        // 前缀占用集合必须包含固定 a-d（防串号关键）
+        assert(src.includes("new Set(['a', 'b', 'c', 'd'])"), 'fixed prefixes must be treated as taken on import');
+        // 行为端到端：parse → apply → 注册进 EVENT_TYPES
+        const hz = harness();
+        hz.api.persistSettings({ ...hz.api.getSettings(), customTemplates: [] });
+        const tplZ = { id: 'ct_e2e', prefix: 'e', name: '端到端', mainPrompt: '', turns: 2, genres: [{ id: 'g1', label: '流', badge: '', desc: '', prompt: '流派内容' }], depths: [], extras: [], selectedGenreId: 'g1', selectedDepthId: '', selectedExtraIds: [], createdAt: 1, updatedAt: 1 };
+        const rZ = hz.api.parseCustomTemplateImportPayload(JSON.stringify({ templates: [tplZ] }), hz.api.getSettings());
+        assert.equal(rZ.ok, true);
+        assert.equal(hz.api.applyCustomTemplateImport(rZ), true, 'apply failed');
+        const after = hz.api.getCustomTemplates(hz.api.getSettings());
+        assert.equal(after.length, 1, 'imported template not persisted');
+        assert.equal(after[0].name, '端到端');
+        assert(hz.api.EVENT_TYPES['ct_e2e'], 'imported template not registered into EVENT_TYPES');
+        // 无效结果不写入
+        assert.equal(hz.api.applyCustomTemplateImport({ ok: false }), false);
+        assert.equal(hz.api.getCustomTemplates(hz.api.getSettings()).length, 1, 'failed apply must not mutate');
     });
     check('Production source contains no pictographs',()=>{for(const file of ['index.js','style.css']) assert(!/\p{Extended_Pictographic}/u.test(fs.readFileSync(path.join(__dirname,'..',file),'utf8')));});
     const report={checks,passed:true,date:new Date().toISOString()};fs.writeFileSync(path.join(__dirname,'regression-result.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));

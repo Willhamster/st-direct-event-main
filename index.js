@@ -580,13 +580,17 @@
     }
 
     // 创建时分配事件计数前缀（a-d 被固定模板占用，e 起取空闲字母）；池耗尽后回退 x2/x3 序列
-    function allocCustomPrefix(existing) {
-        const used = new Set((existing || []).map(t => t.prefix).filter(Boolean));
+    function allocCustomPrefixFromUsed(used) {
         const free = CUSTOM_PREFIX_POOL.find(p => !used.has(p));
         if (free) return free;
         let n = 2;
         while (used.has('x' + n)) n++;
         return 'x' + n;
+    }
+
+    function allocCustomPrefix(existing) {
+        const used = new Set((existing || []).map(t => t.prefix).filter(Boolean));
+        return allocCustomPrefixFromUsed(used);
     }
 
     // 单条流派/深度有效性：名称与提示词非空（标签/备注可选）
@@ -680,6 +684,172 @@
                 title: t.name || '自定义事件',
             };
         }
+    }
+
+    // ========== 自定义模板导入 / 导出（数据层纯函数） ==========
+
+    // 导出包装格式标识：导入侧据此识别完整导出文件，同时兼容裸数组与单模板对象
+    const TEMPLATE_EXPORT_KIND = 'st-direct-event-custom-templates';
+    const TEMPLATE_EXPORT_VERSION = 1;
+
+    // 收集单个模板在预设工坊的覆盖层（主提示词覆盖 + 流派/深度/额外提示词覆盖键）；随模板一起导出才能还原分享者实际生效的提示词
+    function collectCustomTemplateOverrides(templateId, s) {
+        const presets = {};
+        const p = s?.presets?.[templateId];
+        if (p && typeof p === 'object' && typeof p.systemPrompt === 'string' && p.systemPrompt.trim()) {
+            presets[templateId] = p;
+        }
+        const subPrompts = {};
+        const keyPrefix = templateId + '.';
+        const sp = s?.subPrompts;
+        if (sp && typeof sp === 'object') {
+            for (const k of Object.keys(sp)) {
+                if (k.startsWith(keyPrefix) && typeof sp[k] === 'string' && sp[k].trim()) subPrompts[k] = sp[k];
+            }
+        }
+        return { presets, subPrompts };
+    }
+
+    // 构建导出 payload：templates 深拷贝逐条规范化，覆盖层按键聚合；无覆盖时省略对应键
+    function buildCustomTemplateExportPayload(templates, s) {
+        const list = (Array.isArray(templates) ? templates : [])
+            .map(t => normalizeCustomTemplate(t && typeof t === 'object' ? JSON.parse(JSON.stringify(t)) : {}));
+        const presets = {};
+        const subPrompts = {};
+        for (const t of list) {
+            if (!t.id) continue;
+            const ov = collectCustomTemplateOverrides(t.id, s);
+            Object.assign(presets, ov.presets);
+            Object.assign(subPrompts, ov.subPrompts);
+        }
+        const payload = {
+            plugin: PLUGIN_ID,
+            kind: TEMPLATE_EXPORT_KIND,
+            version: TEMPLATE_EXPORT_VERSION,
+            exportedAt: new Date().toISOString(),
+            templates: list,
+        };
+        if (Object.keys(presets).length) payload.presets = presets;
+        if (Object.keys(subPrompts).length) payload.subPrompts = subPrompts;
+        return payload;
+    }
+
+    // 完全空壳（名称/主提示词/三个条目区全空）的导入条目视为垃圾数据跳过
+    function isEmptyCustomTemplateRecord(t) {
+        const cnt = (v) => (Array.isArray(v) ? v.length : 0);
+        return !String(t.name || '').trim() && !String(t.mainPrompt || '').trim()
+            && !cnt(t.genres) && !cnt(t.depths) && !cnt(t.extras);
+    }
+
+    // 解析导入文本 → { ok, error, templates, presets, subPrompts, warnings }；不改任何全局状态。
+    // 容错接受完整导出包装 / 裸数组 / 单模板对象；id 冲突重分配并同步重映射覆盖键；
+    // 事件计数前缀与固定 a-d 或现有模板冲突时重新分配（两模板共用前缀会让事件编号串号）
+    function parseCustomTemplateImportPayload(rawText, s) {
+        const fail = (error) => ({ ok: false, error, templates: [], presets: {}, subPrompts: {}, warnings: [] });
+        let data;
+        try {
+            data = JSON.parse(String(rawText ?? ''));
+        } catch (e) {
+            return fail('导入失败：内容不是合法的 JSON 文本');
+        }
+        let rawList = null;
+        let payloadPresets = {};
+        let payloadSubPrompts = {};
+        if (Array.isArray(data)) {
+            rawList = data;
+        } else if (data && typeof data === 'object') {
+            if (Array.isArray(data.templates)) {
+                rawList = data.templates;
+                if (data.presets && typeof data.presets === 'object') payloadPresets = data.presets;
+                if (data.subPrompts && typeof data.subPrompts === 'object') payloadSubPrompts = data.subPrompts;
+            } else {
+                rawList = [data];
+            }
+        }
+        if (!rawList) return fail('导入失败：文件中没有找到模板数据');
+
+        const warnings = [];
+        const existing = getCustomTemplates(s);
+        const usedIds = new Set(existing.map(t => t.id).filter(Boolean));
+        // 前缀占用 = 固定模板 a-d ∪ 现有自定义模板 ∪ 本批已分配，任一冲突都会导致事件计数串号
+        const usedPrefixes = new Set(['a', 'b', 'c', 'd']);
+        for (const t of existing) if (t.prefix) usedPrefixes.add(t.prefix);
+
+        const templates = [];
+        const idRemap = {};
+        let skipped = 0;
+        for (const raw of rawList) {
+            const t = normalizeCustomTemplate(raw && typeof raw === 'object' ? JSON.parse(JSON.stringify(raw)) : {});
+            if (isEmptyCustomTemplateRecord(t)) { skipped++; continue; }
+            const oldId = t.id;
+            if (!oldId || usedIds.has(oldId)) {
+                t.id = 'ct_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7);
+                while (usedIds.has(t.id)) {
+                    t.id = 'ct_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+                }
+            }
+            usedIds.add(t.id);
+            idRemap[oldId] = t.id;
+            if (!t.prefix || usedPrefixes.has(t.prefix)) {
+                t.prefix = allocCustomPrefixFromUsed(usedPrefixes);
+            }
+            usedPrefixes.add(t.prefix);
+            templates.push(t);
+        }
+        if (!templates.length) {
+            return fail('导入失败：没有可导入的自定义模板' + (skipped ? '（已跳过 ' + skipped + ' 个空模板）' : ''));
+        }
+
+        // 覆盖键随 id 重映射；找不到对应导入模板的键（分享者已删除的模板残留）忽略
+        const presets = {};
+        const subPrompts = {};
+        for (const [k, v] of Object.entries(payloadPresets)) {
+            const newId = idRemap[k];
+            if (newId && v && typeof v === 'object' && typeof v.systemPrompt === 'string' && v.systemPrompt.trim()) {
+                presets[newId] = v;
+            }
+        }
+        for (const [k, v] of Object.entries(payloadSubPrompts)) {
+            const dot = k.indexOf('.');
+            if (dot <= 0 || typeof v !== 'string' || !v.trim()) continue;
+            const newId = idRemap[k.slice(0, dot)];
+            if (newId) subPrompts[newId + k.slice(dot)] = v;
+        }
+
+        const names = new Set(existing.map(t => String(t.name || '').trim()).filter(Boolean));
+        for (const t of templates) {
+            const name = String(t.name || '').trim();
+            if (name && names.has(name)) warnings.push('已存在同名模板「' + name + '」，已作为独立新模板导入');
+            names.add(name);
+            if (!isCustomTemplateComplete(t)) {
+                warnings.push('「' + (name || '未命名模板') + '」配置不完整，导入后为草稿（还差：' + customTemplateMissingText(t) + '）');
+            }
+        }
+        if (skipped) warnings.push('已跳过 ' + skipped + ' 个空模板');
+        return { ok: true, error: '', templates, presets, subPrompts, warnings };
+    }
+
+    // 应用导入结果：追加模板 + 合并覆盖键 + 持久化 + 刷新 UI；返回是否实际写入
+    function applyCustomTemplateImport(result) {
+        if (!result || !result.ok || !Array.isArray(result.templates) || !result.templates.length) return false;
+        const s = getSettings();
+        s.customTemplates = getCustomTemplates(s).concat(result.templates);
+        if (result.presets && Object.keys(result.presets).length) {
+            s.presets = Object.assign({}, (s.presets && typeof s.presets === 'object') ? s.presets : {}, result.presets);
+        }
+        if (result.subPrompts && Object.keys(result.subPrompts).length) {
+            s.subPrompts = Object.assign({}, (s.subPrompts && typeof s.subPrompts === 'object') ? s.subPrompts : {}, result.subPrompts);
+        }
+        persistSettings(s);
+        syncCustomEventTypes(s);
+        refreshCustomRows();
+        if (window.toastr) {
+            const drafts = result.templates.filter(t => !isCustomTemplateComplete(t)).length;
+            const draftNote = drafts ? '（其中 ' + drafts + ' 个为草稿，补齐前不能生成）' : '';
+            toastr.success('已导入 ' + result.templates.length + ' 个自定义模板' + draftNote);
+            if (result.warnings?.length) toastr.warning(result.warnings.join('；'));
+        }
+        return true;
     }
 
     function applyTheme(themeId) {
@@ -1172,6 +1342,9 @@
                             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                             <span class="se-btn-label">新建自定义模板</span>
                         </button>
+                        <button class="se-sub-btn" data-action="open-template-io" title="导入 / 导出自定义模板（分享或接收模板 JSON）">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        </button>
                     </div>
 
                     <div class="se-btn-group">
@@ -1509,6 +1682,37 @@
                     <button data-action="save-custom-template" class="se-sub-save-btn">保存模板</button>
                 </div>
             </div>
+
+            <div class="se-world-info-modal" id="se-template-io-modal" style="display:none">
+                <div class="se-modal-header">
+                    <span id="se-tio-modal-title">导入 / 导出自定义模板</span>
+                    <button data-action="close-template-io">关闭</button>
+                </div>
+                <div class="se-presets-tip">
+                    导出：把自定义模板打包成 JSON 发给其他用户即可共享（含预设工坊里改过的提示词覆盖，对方导入后与你实际生效的完全一致）。导入：选择分享的 JSON 文件或直接粘贴文本，模板会作为新模板追加；与现有模板的编号前缀冲突时自动重新分配，不影响现有模板与历史事件。
+                </div>
+                <div class="se-wi-list" id="se-tio-body">
+                    <div class="se-settings-section" data-section-key="tio-import">
+                        <div class="se-settings-section-title" data-action="toggle-section" title="点击折叠/展开"><span class="se-section-chevron">▾</span>导入模板</div>
+                        <div class="se-tio-row">
+                            <button type="button" class="se-btn-action" data-action="pick-template-file">选择 JSON 文件</button>
+                            <input type="file" id="se-tio-file-input" accept=".json,application/json" style="display:none" />
+                        </div>
+                        <textarea id="se-tio-import-text" class="se-tio-import-text" rows="8" placeholder="也可把分享者发来的模板 JSON 文本直接粘贴到这里，支持完整导出文件、模板数组或单个模板对象…"></textarea>
+                    </div>
+                    <div class="se-settings-section" data-section-key="tio-export">
+                        <div class="se-settings-section-title" data-action="toggle-section" title="点击折叠/展开"><span class="se-section-chevron">▾</span>导出模板</div>
+                        <div class="se-tio-row">
+                            <button type="button" class="se-btn-action" data-action="export-all-file">导出全部（下载文件）</button>
+                            <button type="button" class="se-btn-action" data-action="export-all-copy">导出全部（复制到剪贴板）</button>
+                        </div>
+                        <div class="se-tio-hint">导出单个模板：主面板模板行上的导出按钮（点击下载文件 / 右键或长按复制 JSON）。</div>
+                    </div>
+                </div>
+                <div class="se-settings-actions">
+                    <button data-action="import-custom-submit" class="se-sub-save-btn">导入模板</button>
+                </div>
+            </div>
         `;
         document.body.appendChild(root);
         try {
@@ -1519,6 +1723,11 @@
         } catch (e) { console.warn('[ST Direct] 恢复分区折叠记忆失败:', e); }
         root.addEventListener('click', onRootClick);
         root.addEventListener('change', (e) => {
+            // 导入模板的隐藏 file input：读取所选 JSON 文件填入粘贴框
+            if (e.target.id === 'se-tio-file-input') {
+                handleTemplateImportFile(e.target);
+                return;
+            }
             // DOM 状态类复选框（无 data-pv-action 祖先）必须在此守卫之前处理，
             // 否则下方 if (!pvActionEl) return 会把它们的 change 事件全部吞掉
             const wiCheckbox = e.target.closest('.se-wi-checkbox');
@@ -1815,6 +2024,31 @@
                 }, 450);
             }, { passive: true });
 
+            const clearTimer = () => {
+                if (pressTimer) {
+                    clearTimeout(pressTimer);
+                    pressTimer = null;
+                }
+            };
+            btn.addEventListener('touchend', clearTimer);
+            btn.addEventListener('touchmove', clearTimer);
+            btn.addEventListener('touchcancel', clearTimer);
+        });
+
+        // 模板行导出按钮：右键/长按复制 JSON（左键下载文件走 data-action 分发），与主按钮右键惯例对齐
+        root.querySelectorAll('.se-sub-btn[data-action="export-custom"]').forEach(btn => {
+            if (btn.dataset.seExportBound) return;
+            btn.dataset.seExportBound = '1';
+            const copyJson = () => exportCustomTemplateById(btn.dataset.template, 'copy');
+            btn.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                copyJson();
+            });
+            let pressTimer = null;
+            btn.addEventListener('touchstart', () => {
+                pressTimer = setTimeout(copyJson, 450);
+            }, { passive: true });
             const clearTimer = () => {
                 if (pressTimer) {
                     clearTimeout(pressTimer);
@@ -2497,6 +2731,142 @@
         }
     }
 
+    // ========== 自定义模板导入 / 导出（文件与剪贴板 IO） ==========
+
+    // 导出文件名清洗：过滤文件系统非法字符与空白，限长防超长文件名
+    function sanitizeExportFileName(name) {
+        const cleaned = String(name || '')
+            .replace(/[\\/:*?"<>|]+/g, ' ')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-|-$/g, '')
+            .slice(0, 40);
+        return cleaned || 'template';
+    }
+
+    // 通过 Blob + 隐藏下载链接把 JSON 对象落为文件；完成后延迟释放 objectURL
+    function downloadJsonFile(obj, filename) {
+        try {
+            const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            return true;
+        } catch (e) {
+            console.warn('[ST Direct] 导出模板文件失败:', e);
+            if (window.toastr) toastr.error('导出文件失败，可改用「复制到剪贴板」');
+            return false;
+        }
+    }
+
+    // mode='file' 下载 JSON 文件；mode='copy' 复制 JSON 文本到剪贴板
+    function exportCustomTemplateById(templateId, mode) {
+        const s = getSettings();
+        const t = getCustomTemplate(templateId, s);
+        if (!t) return;
+        const payload = buildCustomTemplateExportPayload([t], s);
+        if (mode === 'copy') {
+            copyTextWithToast(JSON.stringify(payload, null, 2), '已复制模板「' + (t.name || '未命名') + '」的 JSON，可直接发给其他用户导入');
+            return;
+        }
+        const filename = 'st-direct-event-自定义模板-' + sanitizeExportFileName(t.name) + '.json';
+        if (downloadJsonFile(payload, filename) && window.toastr) {
+            toastr.success('已导出模板「' + (t.name || '未命名') + '」');
+        }
+    }
+
+    function exportAllCustomTemplates(mode) {
+        const s = getSettings();
+        const list = getCustomTemplates(s);
+        if (!list.length) {
+            if (window.toastr) toastr.warning('暂无可导出的自定义模板');
+            return;
+        }
+        const payload = buildCustomTemplateExportPayload(list, s);
+        if (mode === 'copy') {
+            copyTextWithToast(JSON.stringify(payload, null, 2), '已复制 ' + list.length + ' 个模板的 JSON，可直接发给其他用户导入');
+            return;
+        }
+        const d = new Date();
+        const dateStr = d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
+        const filename = 'st-direct-event-自定义模板-全部-' + dateStr + '.json';
+        if (downloadJsonFile(payload, filename) && window.toastr) {
+            toastr.success('已导出 ' + list.length + ' 个自定义模板');
+        }
+    }
+
+    // ========== 自定义模板导入 / 导出弹窗 ==========
+
+    function openTemplateIoModal() {
+        if (!root) return;
+        const modal = root.querySelector('#se-template-io-modal');
+        if (!modal) return;
+        const textarea = modal.querySelector('#se-tio-import-text');
+        if (textarea) textarea.value = '';
+        const fileInput = modal.querySelector('#se-tio-file-input');
+        if (fileInput) fileInput.value = '';
+        modal.style.display = 'flex';
+        modal.scrollTop = 0;
+        const panel = root.querySelector('#se-panel');
+        if (panel) panel.style.display = 'none';
+        const stageModal = root?.querySelector('#se-stage-modal');
+        if (stageModal) stageModal.style.display = 'none';
+    }
+
+    function closeTemplateIoModal() {
+        if (!root) return;
+        const modal = root.querySelector('#se-template-io-modal');
+        if (modal) modal.style.display = 'none';
+        const panel = root.querySelector('#se-panel');
+        if (panel) panel.style.display = 'flex';
+    }
+
+    // 「选择 JSON 文件」：触发隐藏 file input
+    function pickTemplateImportFile() {
+        if (!root) return;
+        const fileInput = root.querySelector('#se-tio-file-input');
+        if (fileInput) fileInput.click();
+    }
+
+    // file input change：读取所选 JSON 文件内容填入粘贴框，与粘贴路径汇合
+    function handleTemplateImportFile(fileInput) {
+        const file = fileInput?.files?.[0];
+        if (!file) return;
+        const textarea = root?.querySelector('#se-tio-import-text');
+        if (!textarea) return;
+        file.text().then((text) => {
+            textarea.value = String(text || '');
+            if (window.toastr) toastr.info('已读取文件「' + file.name + '」，点击下方「导入模板」完成导入');
+        }).catch(() => {
+            if (window.toastr) toastr.error('读取文件失败，请直接把内容粘贴到文本框');
+        }).finally(() => {
+            fileInput.value = '';
+        });
+    }
+
+    // 导入提交：解析 → 应用 → 清空输入并关弹窗；错误与警告由底层函数 toast
+    function submitTemplateImport() {
+        if (!root) return;
+        const textarea = root.querySelector('#se-tio-import-text');
+        const raw = textarea ? textarea.value : '';
+        if (!String(raw).trim()) {
+            if (window.toastr) toastr.warning('请先选择 JSON 文件或粘贴模板 JSON 文本');
+            return;
+        }
+        const result = parseCustomTemplateImportPayload(raw, getSettings());
+        if (!result.ok) {
+            if (window.toastr) toastr.error(result.error);
+            return;
+        }
+        if (applyCustomTemplateImport(result) && textarea) textarea.value = '';
+        closeTemplateIoModal();
+    }
+
     function newCustomTemplateItem() {
         return { id: 'cti_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7), label: '', badge: '', desc: '', prompt: '' };
     }
@@ -2938,6 +3308,9 @@
                         <button class="se-sub-btn" data-action="open-custom-edit" data-template="${escapeHtml(t.id)}" title="编辑自定义模板">
                             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                         </button>
+                        <button class="se-sub-btn" data-action="export-custom" data-template="${escapeHtml(t.id)}" title="导出此模板：点击下载 JSON 文件 / 右键或长按复制 JSON">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        </button>
                         <button class="se-sub-btn se-sub-btn-del" data-action="delete-custom" data-template="${escapeHtml(t.id)}" title="删除自定义模板">
                             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                         </button>
@@ -3307,7 +3680,7 @@
 
     // ========== 面板右下角调整大小（全局唯一把手，对齐当前可见面板；悬浮胶囊与悬浮球不参与） ==========
 
-    const RESIZE_PANEL_IDS = ['se-panel', 'se-settings', 'se-events', 'se-presets', 'se-api-log', 'se-sub-modal', 'se-stage-modal', 'se-prompt-viewer-modal', 'se-world-info-modal', 'se-custom-template-modal'];
+    const RESIZE_PANEL_IDS = ['se-panel', 'se-settings', 'se-events', 'se-presets', 'se-api-log', 'se-sub-modal', 'se-stage-modal', 'se-prompt-viewer-modal', 'se-world-info-modal', 'se-custom-template-modal', 'se-template-io-modal'];
     let resizePanelObserver = null;
     let resizePanelSizeObserver = null;
 
@@ -3713,6 +4086,41 @@
 
         if (action === 'save-custom-template') {
             saveCustomTemplate();
+            return;
+        }
+
+        if (action === 'open-template-io') {
+            openTemplateIoModal();
+            return;
+        }
+
+        if (action === 'close-template-io') {
+            closeTemplateIoModal();
+            return;
+        }
+
+        if (action === 'pick-template-file') {
+            pickTemplateImportFile();
+            return;
+        }
+
+        if (action === 'import-custom-submit') {
+            submitTemplateImport();
+            return;
+        }
+
+        if (action === 'export-custom') {
+            exportCustomTemplateById(el.dataset.template, 'file');
+            return;
+        }
+
+        if (action === 'export-all-file') {
+            exportAllCustomTemplates('file');
+            return;
+        }
+
+        if (action === 'export-all-copy') {
+            exportAllCustomTemplates('copy');
             return;
         }
 
