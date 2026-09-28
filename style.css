@@ -4927,22 +4927,35 @@
 
 /* ========== 自定义模板导入 / 导出 ========== */
 
-/* 主面板「＋ 新建自定义模板」与导入 sub-btn 并排：full 按钮改 flex 占据剩余宽度，并保留虚线弱化样式
-   （.se-btn-group .se-event-btn 的 border:0/background 实底规则特异性更高，需以同级更特异规则恢复） */
-#st-direct-event-root .se-btn-group .se-event-btn.se-event-btn-full {
+/* 「＋ 新建自定义模板」与「导入 / 导出」等宽各半：组容器去卡片底融入背景板（面板底色），
+   新建按钮对齐编辑器「复制模板」的虚线弱化样式（transparent 底直接透出面板底） */
+#st-direct-event-root .se-btn-group.se-add-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+}
+#st-direct-event-root .se-add-row > button {
+    flex: 1 1 0;
     width: auto;
-    flex: 1 1 auto;
     min-width: 0;
 }
-#st-direct-event-root .se-btn-group .se-event-btn.se-custom-add-btn {
+#st-direct-event-root .se-add-row .se-event-btn.se-custom-add-btn {
     border: 1.5px dashed var(--se-border) !important;
     background: transparent !important;
-    border-radius: 0;
+    border-radius: var(--se-radius-md);
 }
-#st-direct-event-root .se-btn-group .se-event-btn.se-custom-add-btn:hover {
+#st-direct-event-root .se-add-row .se-event-btn.se-custom-add-btn:hover {
     background: var(--se-bg-hover) !important;
     color: var(--se-accent) !important;
     border-color: var(--se-accent) !important;
+}
+#st-direct-event-root .se-add-row .se-sub-btn {
+    gap: 6px;
+    font-size: 12.5px;
+    font-weight: 600;
 }
 
 /* 导入 / 导出弹窗内部 */
@@ -4965,9 +4978,70 @@
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     word-break: break-all;
 }
-#st-direct-event-root .se-tio-hint {
-    margin-top: 8px;
+
+/* 导出勾选列表（对齐世界书/变量弹窗的勾选交互） */
+#st-direct-event-root .se-tio-export-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+#st-direct-event-root .se-tio-toggle-all {
+    flex: 0 0 auto;
+    min-height: 26px;
+    padding: 4px 12px;
     font-size: 11.5px;
-    line-height: 1.6;
+}
+#st-direct-event-root .se-tio-export-hint {
+    flex: 1;
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--se-text-muted);
+}
+#st-direct-event-root .se-tio-export-list {
+    margin-top: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid var(--se-border-subtle);
+    border-radius: var(--se-radius-md);
+    padding: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+#st-direct-event-root .se-tio-export-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: var(--se-radius-sm);
+    cursor: pointer;
+    font-size: 12.5px;
+    color: var(--se-text-main);
+}
+#st-direct-event-root .se-tio-export-item:hover {
+    background: var(--se-bg-hover);
+}
+#st-direct-event-root .se-tio-export-item.se-tio-item-on {
+    background: var(--se-bg-hover);
+}
+#st-direct-event-root .se-tio-export-check {
+    width: 14px;
+    height: 14px;
+    flex: 0 0 auto;
+    cursor: pointer;
+    accent-color: var(--se-accent);
+}
+#st-direct-event-root .se-tio-item-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+#st-direct-event-root .se-tio-empty {
+    padding: 14px 8px;
+    text-align: center;
+    font-size: 11.5px;
     color: var(--se-text-muted);
 }

@@ -1337,13 +1337,14 @@
 
                     <div id="se-custom-rows"></div>
 
-                    <div class="se-btn-group">
+                    <div class="se-btn-group se-add-row">
                         <button class="se-event-btn se-event-btn-full se-custom-add-btn" data-action="create-custom" title="新建自定义事件模板（流派、深度与提示词自由配置）">
                             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                             <span class="se-btn-label">新建自定义模板</span>
                         </button>
-                        <button class="se-sub-btn" data-action="open-template-io" title="导入 / 导出自定义模板（分享或接收模板 JSON）">
+                        <button class="se-sub-btn se-tio-open-btn" data-action="open-template-io" title="导入 / 导出自定义模板（分享或接收模板 JSON）">
                             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            <span class="se-btn-label">导入 / 导出</span>
                         </button>
                     </div>
 
@@ -1702,11 +1703,15 @@
                     </div>
                     <div class="se-settings-section" data-section-key="tio-export">
                         <div class="se-settings-section-title" data-action="toggle-section" title="点击折叠/展开"><span class="se-section-chevron">▾</span>导出模板</div>
-                        <div class="se-tio-row">
-                            <button type="button" class="se-btn-action" data-action="export-all-file">导出全部（下载文件）</button>
-                            <button type="button" class="se-btn-action" data-action="export-all-copy">导出全部（复制到剪贴板）</button>
+                        <div class="se-tio-export-head">
+                            <button type="button" class="se-btn-action se-tio-toggle-all" data-action="tio-export-toggle-all">全选</button>
+                            <span class="se-tio-export-hint">勾选要导出的自定义模板（默认全不选），不勾直接导出会提示</span>
                         </div>
-                        <div class="se-tio-hint">导出单个模板：主面板模板行上的导出按钮（点击下载文件 / 右键或长按复制 JSON）。</div>
+                        <div class="se-tio-export-list" id="se-tio-export-list"></div>
+                        <div class="se-tio-row">
+                            <button type="button" class="se-btn-action" data-action="export-selected-file">导出勾选（下载文件）</button>
+                            <button type="button" class="se-btn-action" data-action="export-selected-copy">导出勾选（复制到剪贴板）</button>
+                        </div>
                     </div>
                 </div>
                 <div class="se-settings-actions">
@@ -1726,6 +1731,14 @@
             // 导入模板的隐藏 file input：读取所选 JSON 文件填入粘贴框
             if (e.target.id === 'se-tio-file-input') {
                 handleTemplateImportFile(e.target);
+                return;
+            }
+            // 导出勾选列表：实时更新勾选集合并重渲染（与世界书/变量弹窗的勾选交互同构）
+            const tioCheck = e.target.closest('.se-tio-export-check');
+            if (tioCheck && tioCheck.dataset.templateId) {
+                if (tioCheck.checked) templateExportSel.add(tioCheck.dataset.templateId);
+                else templateExportSel.delete(tioCheck.dataset.templateId);
+                renderTemplateExportList();
                 return;
             }
             // DOM 状态类复选框（无 data-pv-action 祖先）必须在此守卫之前处理，
@@ -2024,31 +2037,6 @@
                 }, 450);
             }, { passive: true });
 
-            const clearTimer = () => {
-                if (pressTimer) {
-                    clearTimeout(pressTimer);
-                    pressTimer = null;
-                }
-            };
-            btn.addEventListener('touchend', clearTimer);
-            btn.addEventListener('touchmove', clearTimer);
-            btn.addEventListener('touchcancel', clearTimer);
-        });
-
-        // 模板行导出按钮：右键/长按复制 JSON（左键下载文件走 data-action 分发），与主按钮右键惯例对齐
-        root.querySelectorAll('.se-sub-btn[data-action="export-custom"]').forEach(btn => {
-            if (btn.dataset.seExportBound) return;
-            btn.dataset.seExportBound = '1';
-            const copyJson = () => exportCustomTemplateById(btn.dataset.template, 'copy');
-            btn.addEventListener('contextmenu', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                copyJson();
-            });
-            let pressTimer = null;
-            btn.addEventListener('touchstart', () => {
-                pressTimer = setTimeout(copyJson, 450);
-            }, { passive: true });
             const clearTimer = () => {
                 if (pressTimer) {
                     clearTimeout(pressTimer);
@@ -2764,43 +2752,73 @@
         }
     }
 
-    // mode='file' 下载 JSON 文件；mode='copy' 复制 JSON 文本到剪贴板
-    function exportCustomTemplateById(templateId, mode) {
+    // mode='file' 下载 JSON 文件；mode='copy' 复制 JSON 文本到剪贴板。
+    // 导出入口统一在「导入 / 导出」弹窗：按勾选集合导出（对齐世界书/变量弹窗的勾选交互），行内不再设按钮
+    function exportCustomTemplatesByIds(ids, mode) {
+        const wanted = new Set((Array.isArray(ids) ? ids : []).filter(v => typeof v === 'string'));
         const s = getSettings();
-        const t = getCustomTemplate(templateId, s);
-        if (!t) return;
-        const payload = buildCustomTemplateExportPayload([t], s);
-        if (mode === 'copy') {
-            copyTextWithToast(JSON.stringify(payload, null, 2), '已复制模板「' + (t.name || '未命名') + '」的 JSON，可直接发给其他用户导入');
-            return;
-        }
-        const filename = 'st-direct-event-自定义模板-' + sanitizeExportFileName(t.name) + '.json';
-        if (downloadJsonFile(payload, filename) && window.toastr) {
-            toastr.success('已导出模板「' + (t.name || '未命名') + '」');
-        }
-    }
-
-    function exportAllCustomTemplates(mode) {
-        const s = getSettings();
-        const list = getCustomTemplates(s);
+        const list = getCustomTemplates(s).filter(t => t.id && wanted.has(t.id));
         if (!list.length) {
-            if (window.toastr) toastr.warning('暂无可导出的自定义模板');
-            return;
+            if (window.toastr) toastr.warning('请先勾选要导出的自定义模板');
+            return null;
         }
         const payload = buildCustomTemplateExportPayload(list, s);
         if (mode === 'copy') {
             copyTextWithToast(JSON.stringify(payload, null, 2), '已复制 ' + list.length + ' 个模板的 JSON，可直接发给其他用户导入');
-            return;
+            return payload;
         }
         const d = new Date();
         const dateStr = d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
-        const filename = 'st-direct-event-自定义模板-全部-' + dateStr + '.json';
+        const filename = list.length === 1
+            ? 'st-direct-event-自定义模板-' + sanitizeExportFileName(list[0].name) + '.json'
+            : 'st-direct-event-自定义模板-共' + list.length + '个-' + dateStr + '.json';
         if (downloadJsonFile(payload, filename) && window.toastr) {
             toastr.success('已导出 ' + list.length + ' 个自定义模板');
         }
+        return payload;
     }
 
     // ========== 自定义模板导入 / 导出弹窗 ==========
+
+    // 导出勾选集合：打开弹窗默认全不选，与世界书/变量弹窗的勾选交互同构
+    let templateExportSel = new Set();
+
+    function renderTemplateExportList() {
+        if (!root) return;
+        const wrap = root.querySelector('#se-tio-export-list');
+        if (!wrap) return;
+        const list = getCustomTemplates(getSettings());
+        const allSelected = list.length > 0 && list.every(t => templateExportSel.has(t.id));
+        const toggleBtn = root.querySelector('[data-action="tio-export-toggle-all"]');
+        if (toggleBtn) toggleBtn.textContent = allSelected ? '全不选' : '全选';
+        if (!list.length) {
+            wrap.innerHTML = '<div class="se-tio-empty">暂无自定义模板可导出，先在主面板新建一个吧。</div>';
+            return;
+        }
+        wrap.innerHTML = list.map(t => {
+            const complete = isCustomTemplateComplete(t);
+            const genres = Array.isArray(t.genres) ? t.genres : [];
+            const sel = genres.find(g => g.id === t.selectedGenreId) || genres[0];
+            const badge = complete ? (sel ? (sel.badge || sel.label) : '') : '草稿';
+            const checked = templateExportSel.has(t.id) ? ' checked' : '';
+            return `
+                        <label class="se-tio-export-item${templateExportSel.has(t.id) ? ' se-tio-item-on' : ''}" title="${templateExportSel.has(t.id) ? '已勾选：导出时包含该模板' : '未勾选：导出时不包含该模板'}">
+                            <input type="checkbox" class="se-tio-export-check" data-template-id="${escapeHtml(t.id)}"${checked} />
+                            <span class="se-tio-item-name">${escapeHtml(t.name || '未命名模板')}</span>
+                            ${badge ? `<span class="se-badge">${escapeHtml(badge)}</span>` : ''}
+                            <span class="se-badge se-badge-turns">${resolveEventTurns(t.id, getSettings())}回合</span>
+                        </label>`;
+        }).join('');
+    }
+
+    // 全选 / 全不选切换：已全选则清空，否则勾满全部（按钮文字由 renderTemplateExportList 按状态刷新）
+    function toggleTemplateExportAll() {
+        const list = getCustomTemplates(getSettings());
+        const allSelected = list.length > 0 && list.every(t => templateExportSel.has(t.id));
+        if (allSelected) templateExportSel.clear();
+        else list.forEach(t => t.id && templateExportSel.add(t.id));
+        renderTemplateExportList();
+    }
 
     function openTemplateIoModal() {
         if (!root) return;
@@ -2810,6 +2828,8 @@
         if (textarea) textarea.value = '';
         const fileInput = modal.querySelector('#se-tio-file-input');
         if (fileInput) fileInput.value = '';
+        templateExportSel = new Set();
+        renderTemplateExportList();
         modal.style.display = 'flex';
         modal.scrollTop = 0;
         const panel = root.querySelector('#se-panel');
@@ -3307,9 +3327,6 @@
                         </button>
                         <button class="se-sub-btn" data-action="open-custom-edit" data-template="${escapeHtml(t.id)}" title="编辑自定义模板">
                             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-                        </button>
-                        <button class="se-sub-btn" data-action="export-custom" data-template="${escapeHtml(t.id)}" title="导出此模板：点击下载 JSON 文件 / 右键或长按复制 JSON">
-                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                         </button>
                         <button class="se-sub-btn se-sub-btn-del" data-action="delete-custom" data-template="${escapeHtml(t.id)}" title="删除自定义模板">
                             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
@@ -4109,18 +4126,18 @@
             return;
         }
 
-        if (action === 'export-custom') {
-            exportCustomTemplateById(el.dataset.template, 'file');
+        if (action === 'export-selected-file') {
+            exportCustomTemplatesByIds([...templateExportSel], 'file');
             return;
         }
 
-        if (action === 'export-all-file') {
-            exportAllCustomTemplates('file');
+        if (action === 'export-selected-copy') {
+            exportCustomTemplatesByIds([...templateExportSel], 'copy');
             return;
         }
 
-        if (action === 'export-all-copy') {
-            exportAllCustomTemplates('copy');
+        if (action === 'tio-export-toggle-all') {
+            toggleTemplateExportAll();
             return;
         }
 

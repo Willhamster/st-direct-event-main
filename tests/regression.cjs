@@ -787,27 +787,36 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
     check('Template import/export UI is wired end to end',()=>{
         const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
         const css = fs.readFileSync(path.join(__dirname,'..','style.css'),'utf8');
-        // 行内导出按钮 + 主面板导入入口
-        assert(src.includes('data-action="export-custom" data-template='), 'inline export button missing');
+        // 主面板导入入口（无行内导出按钮：导出统一收敛进弹窗勾选式）
         assert(src.includes('data-action="open-template-io"'), 'panel import entry missing');
-        assert(src.includes('导出此模板：点击下载 JSON 文件 / 右键或长按复制 JSON'), 'export button hint missing');
+        assert(!src.includes('data-action="export-custom" data-template='), 'inline export button should be removed');
+        assert(!src.includes("if (action === 'export-custom')"), 'inline export dispatcher branch should be removed');
+        assert(!src.includes('seExportBound'), 'inline export contextmenu binding should be removed');
         // 弹窗、粘贴框与文件选择
         assert(src.includes('id="se-template-io-modal"') && src.includes('id="se-tio-import-text"'), 'io modal missing');
         assert(src.includes('id="se-tio-file-input"') && src.includes('accept=".json,application/json"'), 'file input missing');
         assert(src.includes("e.target.id === 'se-tio-file-input'"), 'file input change not wired');
-        // 分发器分支齐全
-        for (const act of ['open-template-io','close-template-io','pick-template-file','import-custom-submit','export-custom','export-all-file','export-all-copy']) {
+        // 勾选式导出：列表容器 / 复选框 / 全选切换 / 默认全不选
+        assert(src.includes('id="se-tio-export-list"') && src.includes('class="se-tio-export-check"'), 'export selection list missing');
+        assert(src.includes('templateExportSel = new Set()') && src.includes('templateExportSel.clear()'), 'export selection set reset missing');
+        assert(src.includes('data-action="tio-export-toggle-all"') && src.includes('function toggleTemplateExportAll'), 'select-all toggle missing');
+        assert(src.includes("e.target.closest('.se-tio-export-check')"), 'export checkbox change delegate missing');
+        // 分发器分支齐全（按勾选导出，无 export-all-*）
+        for (const act of ['open-template-io','close-template-io','pick-template-file','import-custom-submit','export-selected-file','export-selected-copy','tio-export-toggle-all']) {
             assert(src.includes(`if (action === '${act}')`), 'dispatcher branch missing: ' + act);
         }
+        assert(!src.includes("if (action === 'export-all-file')") && !src.includes("if (action === 'export-all-copy')"), 'legacy export-all branches should be removed');
         // 下载实现与 objectURL 释放
         assert(src.includes('new Blob([') && src.includes('URL.createObjectURL') && src.includes('URL.revokeObjectURL'), 'file download implementation missing');
-        // 右键/长按复制绑定（与主按钮右键惯例一致）
-        assert(src.includes('.se-sub-btn[data-action="export-custom"]'), 'export button contextmenu binding missing');
         // 新弹窗进 RESIZE 列表获得缩放把手与尺寸记忆
         assert(src.includes("'se-custom-template-modal', 'se-template-io-modal'"), 'io modal not in RESIZE_PANEL_IDS');
-        // CSS 接线
-        assert(css.includes('#st-direct-event-root .se-tio-import-text') && css.includes('#st-direct-event-root .se-tio-row'), 'io modal css missing');
-        assert(css.includes('#st-direct-event-root .se-btn-group .se-event-btn.se-custom-add-btn'), 'add btn group css missing');
+        // 新建/导入行等宽各半 + 新建按钮虚线透明融入背景板（组容器去卡片底）
+        assert(src.includes('se-btn-group se-add-row'), 'add row group class missing');
+        assert(css.includes('.se-btn-group.se-add-row') && css.includes('#st-direct-event-root .se-add-row > button'), 'equal-width add row css missing');
+        const addRowBlock = css.slice(css.indexOf('.se-btn-group.se-add-row {'), css.indexOf('}', css.indexOf('.se-btn-group.se-add-row {')));
+        assert(addRowBlock.includes('background: transparent') && addRowBlock.includes('border: 0') && addRowBlock.includes('box-shadow: none') && addRowBlock.includes('gap: 8px'), 'add row container must be transparent to reveal panel background');
+        assert(css.includes('#st-direct-event-root .se-add-row .se-event-btn.se-custom-add-btn') && css.includes('1.5px dashed'), 'add button dashed style missing');
+        assert(css.includes('#st-direct-event-root .se-tio-export-list') && css.includes('#st-direct-event-root .se-tio-export-check'), 'export list css missing');
         // 前缀占用集合必须包含固定 a-d（防串号关键）
         assert(src.includes("new Set(['a', 'b', 'c', 'd'])"), 'fixed prefixes must be treated as taken on import');
         // 行为端到端：parse → apply → 注册进 EVENT_TYPES
@@ -824,6 +833,13 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         // 无效结果不写入
         assert.equal(hz.api.applyCustomTemplateImport({ ok: false }), false);
         assert.equal(hz.api.getCustomTemplates(hz.api.getSettings()).length, 1, 'failed apply must not mutate');
+        // 勾选式导出：未勾选警告返回 null；按勾选过滤 payload；未勾选模板不泄漏
+        const tplZ2 = { ...tplZ, id: 'ct_e2e2', prefix: 'f', name: '端到端2' };
+        hz.api.persistSettings({ ...hz.api.getSettings(), customTemplates: [tplZ, tplZ2] });
+        assert.equal(hz.api.exportCustomTemplatesByIds([], 'file'), null, 'empty selection must warn and return null');
+        const picked = hz.api.exportCustomTemplatesByIds(['ct_e2e2'], 'file');
+        assert(picked && Array.isArray(picked.templates) && picked.templates.length === 1, 'selected-only export failed');
+        assert.equal(picked.templates[0].id, 'ct_e2e2', 'unselected template leaked into export payload');
     });
     check('Production source contains no pictographs',()=>{for(const file of ['index.js','style.css']) assert(!/\p{Extended_Pictographic}/u.test(fs.readFileSync(path.join(__dirname,'..',file),'utf8')));});
     const report={checks,passed:true,date:new Date().toISOString()};fs.writeFileSync(path.join(__dirname,'regression-result.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));
