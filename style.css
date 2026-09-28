@@ -4862,6 +4862,8 @@
 .se-ct-item-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
+    /* 两格底部对齐：某格标签换行时输入框仍在同一水平线 */
+    align-items: end;
     gap: 8px;
 }
 /* 编辑器分区工具栏：复制范例（虚线次级）+ 添加条目（描边主动作）等宽并排，统一起伏手感 */

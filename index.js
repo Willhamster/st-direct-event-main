@@ -1129,7 +1129,6 @@
                         <div class="se-stage-engine-actions" id="se-engine-actions">
                             <button type="button" class="se-cap-btn" data-action="open-stage-overview">查看剧本</button>
                             <button type="button" class="se-cap-btn" data-action="open-last-raw-output" style="margin-left:6px;" title="查看模型原始生成的完整正文">原始档案</button>
-                            <button type="button" class="se-cap-btn" data-action="open-prompt-viewer" style="margin-left:6px;" title="查看副API完整提示词">提示词查看</button>
                         </div>
                     </div>
 
@@ -2642,8 +2641,8 @@
                     </div>
                     <div class="se-ct-item-grid">
                         <div>
-                            <label class="se-ct-field-label">名称（必填，如：死亡危险 / 敌方势力 / 恋爱目标）</label>
-                            <input type="text" class="se-sub-input se-ct-extra-name" placeholder="例如：恋爱目标锁定" value="${escapeHtml(e.label)}" />
+                            <label class="se-ct-field-label">名称（必填）</label>
+                            <input type="text" class="se-sub-input se-ct-extra-name" placeholder="例如：死亡危险 / 敌方势力 / 恋爱目标" value="${escapeHtml(e.label)}" />
                         </div>
                         <div>
                             <label class="se-ct-field-label">备注（可选）</label>
@@ -3922,12 +3921,18 @@
         }
 
         if (action === 'load-models') {
-            loadModelList(collectSettingsForm());
+            // 先落盘当前表单再请求模型列表：部分用户改完配置不点保存直接点「获取模型列表」，改动会丢失
+            const form = collectSettingsForm();
+            persistSettings(form);
+            loadModelList(form);
             return;
         }
 
         if (action === 'test-llm') {
-            testLLMConnection(collectSettingsForm());
+            // 同 load-models：请求前先保存当前表单，保证连接测试与已存配置一致
+            const form = collectSettingsForm();
+            persistSettings(form);
+            testLLMConnection(form);
             return;
         }
 
@@ -8273,7 +8278,6 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
             actionsEl.innerHTML = `
                 <button type="button" class="se-cap-btn" data-action="open-stage-overview">查看剧本</button>
                 <button type="button" class="se-cap-btn" data-action="open-last-raw-output" style="margin-left:6px;">原始档案</button>
-                <button type="button" class="se-cap-btn" data-action="open-prompt-viewer" style="margin-left:6px;" title="查看副API完整提示词">提示词查看</button>
                 ${active ? `<button type="button" class="se-cap-btn" data-capsule-action="reactivate" style="margin-left:6px; color:var(--se-accent); border-color:var(--se-accent);">重启本事件推演</button>` : ''}
             `;
         }

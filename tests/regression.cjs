@@ -665,6 +665,35 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         assert.equal(hx.api.isCustomTemplateComplete({ ...baseC, extras: [validExtra], selectedExtraIds: ['e1'] }), true, 'valid selected extra must pass');
         assert.equal(hx.api.isCustomTemplateComplete({ ...baseC, extras: [validExtra], selectedExtraIds: ['nope'] }), false, 'dangling extra selection must fail');
     });
+    check('Model request actions persist the form before requesting',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        // load-models / test-llm 必须先保存当前表单再发起请求：用户不点「保存设置」直接请求时改动不应丢失
+        const loadModelsStart = src.indexOf("if (action === 'load-models')");
+        const loadModelsBlock = src.slice(loadModelsStart, src.indexOf("if (action === 'test-llm')", loadModelsStart));
+        assert(loadModelsBlock.includes('persistSettings(form)'), 'load-models does not persist before requesting');
+        assert(loadModelsBlock.indexOf('persistSettings(form)') < loadModelsBlock.indexOf('loadModelList(form)'), 'load-models requests before persisting');
+        const testLlmBlock = src.slice(src.indexOf("if (action === 'test-llm')"), src.indexOf("if (action === 'reset-fab')"));
+        assert(testLlmBlock.includes('persistSettings(form)'), 'test-llm does not persist before requesting');
+        assert(testLlmBlock.indexOf('persistSettings(form)') < testLlmBlock.indexOf('testLLMConnection(form)'), 'test-llm requests before persisting');
+    });
+    check('Idle engine card hides prompt viewer but workshop entry remains',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        // 场景进度空闲态（mountUI 静态模板 + updateEnginePanelCard 空闲分支）不再显示「提示词查看」按钮
+        assert(!src.includes('data-action="open-prompt-viewer" style="margin-left:6px;'), 'idle engine card still renders prompt viewer button');
+        // 预设工坊查看器入口必须保留（功能仍可访问）
+        assert(src.includes('class="se-presets-viewer-entry"') && src.includes('data-action="open-prompt-viewer" style="width:100%'), 'workshop prompt viewer entry missing');
+    });
+    check('Extra template entry labels are short and grid bottom-aligned',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        const css = fs.readFileSync(path.join(__dirname,'..','style.css'),'utf8');
+        // 额外条目名称标签不再内联长示例（换行导致输入框错位），示例改放 placeholder
+        assert(!src.includes('名称（必填，如：死亡危险 / 敌方势力 / 恋爱目标）'), 'extra name label still carries long inline examples');
+        assert(src.includes('class="se-ct-field-label">名称（必填）'), 'extra name label not shortened');
+        assert(src.includes('placeholder="例如：死亡危险 / 敌方势力 / 恋爱目标"'), 'extra examples not moved to placeholder');
+        // 网格两格底部对齐：某格标签换行时输入框仍同一水平线
+        const gridBlock = css.slice(css.indexOf('.se-ct-item-grid {'), css.indexOf('}', css.indexOf('.se-ct-item-grid {')));
+        assert(gridBlock.includes('align-items: end'), 'item grid missing bottom alignment');
+    });
     check('Production source contains no pictographs',()=>{for(const file of ['index.js','style.css']) assert(!/\p{Extended_Pictographic}/u.test(fs.readFileSync(path.join(__dirname,'..',file),'utf8')));});
     const report={checks,passed:true,date:new Date().toISOString()};fs.writeFileSync(path.join(__dirname,'regression-result.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));
 })().catch(err=>{console.error(err.stack);process.exitCode=1;});
