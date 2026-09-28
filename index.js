@@ -1302,6 +1302,7 @@
                         </div>
                     </div>
 
+                    <div class="se-panel-scroll" id="se-panel-scroll">
                     <div class="se-btn-group">
                         <button class="se-event-btn" data-action="generate" data-event="combat" title="点击生成 / 右键或长按设置细分">
                             <span class="se-btn-label">战斗</span>
@@ -1336,6 +1337,7 @@
                     </div>
 
                     <div id="se-custom-rows"></div>
+                    </div><!-- /se-panel-scroll -->
 
                     <div class="se-btn-group se-add-row">
                         <button class="se-event-btn se-event-btn-full se-custom-add-btn" data-action="create-custom" title="新建自定义事件模板（流派、深度与提示词自由配置）">
@@ -3981,34 +3983,6 @@
                 s.novelBypassPrompt = newText;
                 persistSettings(s);
                 if (window.toastr) toastr.success('已成功保存为全局小说破限（所有事件主类统一生效）');
-                return;
-            }
-            if (pvAction === 'save-to-preset') {
-                const idx = Number(pvActionEl.dataset.msgIdx);
-                const textarea = root?.querySelector(`.se-pv-msg-content[data-msg-idx="${idx}"]`);
-                if (!textarea) return;
-                const newText = textarea.value.trim();
-                const curTypeKey = promptViewerState.typeKey || 'combat';
-                const s = getSettings();
-                s.presets ||= {};
-                s.presets[curTypeKey] ||= {};
-                s.presets[curTypeKey].systemPrompt = newText;
-                persistSettings(s);
-                if (window.toastr) toastr.success(`已保存为【${EVENT_TYPES[curTypeKey]?.label || curTypeKey}】主类系统预设`);
-                return;
-            }
-            if (pvAction === 'save-sub-prompt') {
-                const idx = Number(pvActionEl.dataset.msgIdx);
-                const textarea = root?.querySelector(`.se-pv-msg-content[data-msg-idx="${idx}"]`);
-                if (!textarea) return;
-                const newText = textarea.value.trim();
-                const curTypeKey = promptViewerState.typeKey || 'combat';
-                const curGenreKey = promptViewerState.genreKey;
-                const s = getSettings();
-                s.subPrompts ||= {};
-                s.subPrompts[`${curTypeKey}.${curGenreKey}`] = newText;
-                persistSettings(s);
-                if (window.toastr) toastr.success(`已保存为【${curGenreKey}】流派专精提示词`);
                 return;
             }
             if (pvAction === 'jump-presets') {
@@ -9159,10 +9133,7 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
                         <option value="1" ${promptViewerState.turns === 1 ? 'selected' : ''}>1 回合 (开放即决)</option>
                         <option value="2" ${promptViewerState.turns === 2 ? 'selected' : ''}>2 回合 (双纸条二分支)</option>
                         <option value="3" ${promptViewerState.turns === 3 ? 'selected' : ''}>3 回合 (四分支决策树)</option>
-                        <option value="4" ${promptViewerState.turns === 4 ? 'selected' : ''}>4 回合 (连续大纲)</option>
-                        <option value="5" ${promptViewerState.turns === 5 ? 'selected' : ''}>5 回合 (连续大纲)</option>
-                        <option value="6" ${promptViewerState.turns === 6 ? 'selected' : ''}>6 回合 (连续大纲)</option>
-                        ${promptViewerState.turns > 6 ? `<option value="${promptViewerState.turns}" selected>${promptViewerState.turns} 回合（当前设置）</option>` : ''}
+                        <option value="${Math.max(4, promptViewerState.turns)}" ${promptViewerState.turns >= 4 ? 'selected' : ''}>多回合 (连续大纲)</option>
                     </select>
                 </div>
 
@@ -9281,8 +9252,6 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
                             <span class="se-pv-char-count">${textContent.length} 字符 · 约 ${msgTokens} Tokens</span>
                             <div style="display:flex; gap:6px;">
                                 ${isNovelBypass ? `<button type="button" class="se-turn-save-btn" data-pv-action="save-global-novel" data-msg-idx="${idx}" style="padding:3px 8px; font-size:11px;" title="保存为所有事件主类统一生效的全局头部小说破限">保存为全局小说破限</button>` : ''}
-                                ${isSystemPresetCard ? `<button type="button" class="se-turn-save-btn" data-pv-action="save-to-preset" data-msg-idx="${idx}" style="padding:3px 8px; font-size:11px;" title="将修改直接保存为当前主类系统预设">保存为主类系统预设</button>` : ''}
-                                ${isSubPromptCard ? `<button type="button" class="se-turn-save-btn" data-pv-action="save-sub-prompt" data-msg-idx="${idx}" style="padding:3px 8px; font-size:11px;" title="保存当前修改的细分流派/难度提示词">保存为流派与难度设定</button>` : ''}
                                 <button type="button" class="se-turn-step-btn" data-pv-action="copy-part" data-msg-idx="${idx}" style="width:auto; height:auto; padding:3px 8px; font-size:11px;">复制此条</button>
                             </div>
                         </div>

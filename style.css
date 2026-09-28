@@ -2021,6 +2021,10 @@
     #st-direct-event-root .se-panel-content {
         flex: 1 1 auto !important;
         min-height: 0 !important;
+        overflow: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+    #st-direct-event-root .se-panel-scroll {
         overflow-y: auto !important;
         -webkit-overflow-scrolling: touch !important;
     }
@@ -3078,7 +3082,7 @@
     padding: 16px;
     border-bottom: 1px solid var(--se-border-subtle);
 }
-#st-direct-event-root .se-panel-content { padding: 14px; overflow-y: auto; min-height: 0; }
+#st-direct-event-root .se-panel-content { padding: 14px; overflow: hidden; min-height: 0; }
 #st-direct-event-root .se-panel-brand { font-size: 17px; letter-spacing: .04em; }
 #st-direct-event-root .se-theme-pill { box-shadow: none; font-weight: 500; }
 #st-direct-event-root .se-stage-engine-card {
@@ -3252,6 +3256,16 @@
 }
 #st-direct-event-root .se-panel-content {
     padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 0;
+}
+/* 主面板三段式：上（场景进度）固定 / 中（事件按钮区）滚动 / 下（新建·导入与导航）固定，对齐设置与工坊弹窗结构 */
+#st-direct-event-root .se-panel-scroll {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -4936,6 +4950,7 @@
     background: transparent;
     border: 0;
     box-shadow: none;
+    overflow: visible;
 }
 #st-direct-event-root .se-add-row > button {
     flex: 1 1 0;
@@ -4952,10 +4967,23 @@
     color: var(--se-accent) !important;
     border-color: var(--se-accent) !important;
 }
+/* 导入/导出按钮：对齐战斗/恋爱/推理的卡片观感（1px 边缘线 + 卡片底 + 同款阴影），覆盖组内小键的无边框直角规则 */
 #st-direct-event-root .se-add-row .se-sub-btn {
     gap: 6px;
     font-size: 12.5px;
     font-weight: 600;
+    min-height: 54px;
+    border: 1px solid var(--se-border-subtle) !important;
+    border-radius: var(--se-radius-md);
+    background: var(--se-bg-card) !important;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.45);
+}
+
+/* 自定义模板行之间的间隔与战斗/推理/恋爱一致（panel-content 的 gap 只作用于直接子元素，模板行包在容器内需自补） */
+#st-direct-event-root #se-custom-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 /* 导入 / 导出弹窗内部 */

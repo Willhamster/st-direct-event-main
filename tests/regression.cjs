@@ -609,7 +609,9 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         assert(src.includes('function syncPromptViewerStateForType'), 'viewer state sync missing');
         const syncBody = src.slice(src.indexOf('function syncPromptViewerStateForType'), src.indexOf('function buildPromptViewerTempSettings'));
         assert(syncBody.includes('Number(t?.turns)') && syncBody.includes('Number(curSub.turns)'), 'turns not synced from sub settings / template');
-        assert(src.includes('回合（当前设置）'), 'current-turn option missing');
+        // 回合下拉四档（与细分设置一致）：1/2/3/多回合；多回合取 max(4, 当前值) 保证当前多回合设置零失真预览
+        assert(src.includes('多回合 (连续大纲)') && src.includes('Math.max(4, promptViewerState.turns)'), 'four-tier turn options missing');
+        assert(!src.includes('5 回合 (连续大纲)') && !src.includes('回合（当前设置）'), 'legacy 1-6 turn options should be removed');
         // 预览与「复制全部文本/JSON」共用同一镜像设置（1 处渲染 + 2 处复制）
         assert(src.includes('function buildPromptViewerTempSettings'), 'shared mirror settings helper missing');
         assert((src.match(/buildPromptViewerTempSettings\(s\)/g) || []).length >= 3, 'copy handlers not using shared mirror settings');
@@ -840,6 +842,32 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         const picked = hz.api.exportCustomTemplatesByIds(['ct_e2e2'], 'file');
         assert(picked && Array.isArray(picked.templates) && picked.templates.length === 1, 'selected-only export failed');
         assert.equal(picked.templates[0].id, 'ct_e2e2', 'unselected template leaked into export payload');
+    });
+    check('Main panel three-tier layout and viewer cleanup',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        const css = fs.readFileSync(path.join(__dirname,'..','style.css'),'utf8');
+        // 查看器只留预览职责：两个保存按钮与其处理分支删除（全局小说破限保存保留）
+        assert(!src.includes('保存为主类系统预设') && !src.includes("pvAction === 'save-to-preset'"), 'preset save button should be removed');
+        assert(!src.includes('保存为流派与难度设定') && !src.includes("pvAction === 'save-sub-prompt'"), 'sub prompt save button should be removed');
+        assert(src.includes('保存为全局小说破限') && src.includes("pvAction === 'save-global-novel'"), 'global novel save must stay');
+        // 主面板三段式：上（场景进度）固定 / 中间 .se-panel-scroll 滚动 / 下（新建导入与导航）固定
+        assert(src.includes('<div class="se-panel-scroll" id="se-panel-scroll">'), 'panel scroll wrapper missing');
+        const scrollStart = src.indexOf('<div class="se-panel-scroll"');
+        const customRowsAt = src.indexOf('<div id="se-custom-rows">');
+        const scrollCloseAt = src.indexOf('<!-- /se-panel-scroll -->');
+        const addRowAt = src.indexOf('se-btn-group se-add-row');
+        assert(scrollStart > 0 && scrollStart < customRowsAt && customRowsAt < scrollCloseAt && scrollCloseAt < addRowAt, 'scroll wrapper must wrap event rows only (new/import row stays fixed below)');
+        assert(css.includes('#st-direct-event-root .se-panel-scroll') && css.includes('overflow-y: auto'), 'panel scroll css missing');
+        const contentRule = css.slice(css.indexOf('#st-direct-event-root .se-panel-content { padding: 14px'), css.indexOf('}', css.indexOf('#st-direct-event-root .se-panel-content { padding: 14px')));
+        assert(contentRule.includes('overflow: hidden'), 'panel content must not scroll as a whole');
+        // 新建/导入行：容器不裁切圆角，导入按钮对齐战斗卡片（边线+圆角+阴影）
+        const addRowBlock = css.slice(css.indexOf('.se-btn-group.se-add-row {'), css.indexOf('}', css.indexOf('.se-btn-group.se-add-row {')));
+        assert(addRowBlock.includes('overflow: visible'), 'add row container must not clip corner radius');
+        const ioBtnBlock = css.slice(css.indexOf('#st-direct-event-root .se-add-row .se-sub-btn {'), css.indexOf('}', css.indexOf('#st-direct-event-root .se-add-row .se-sub-btn {')));
+        assert(ioBtnBlock.includes('border-radius: var(--se-radius-md)') && ioBtnBlock.includes('border: 1px solid') && ioBtnBlock.includes('box-shadow'), 'io button must match event card style');
+        // 自定义模板行间隔与战斗/推理/恋爱一致（10px）
+        const customRowsBlock = css.slice(css.indexOf('#st-direct-event-root #se-custom-rows {'), css.indexOf('}', css.indexOf('#st-direct-event-root #se-custom-rows {')));
+        assert(customRowsBlock.includes('gap: 10px'), 'custom rows must share the 10px rhythm');
     });
     check('Production source contains no pictographs',()=>{for(const file of ['index.js','style.css']) assert(!/\p{Extended_Pictographic}/u.test(fs.readFileSync(path.join(__dirname,'..',file),'utf8')));});
     const report={checks,passed:true,date:new Date().toISOString()};fs.writeFileSync(path.join(__dirname,'regression-result.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));
