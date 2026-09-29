@@ -1301,6 +1301,32 @@
     color: var(--se-text-title);
 }
 
+/* 标题行右侧标签（图 2 红框位）：仅卡片标题带标签时套用，基础 .se-preset-title 不受影响 */
+.se-preset-title-with-tag {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.se-preset-name {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.se-preset-tag {
+    flex-shrink: 0;
+    font-size: 10.5px;
+    font-weight: 600;
+    line-height: 1.4;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: var(--se-badge-bg);
+    color: var(--se-badge-color);
+    border: 1px solid var(--se-border-subtle);
+    white-space: nowrap;
+}
+
 .se-preset-card textarea {
     width: 100%;
     min-height: 75px;

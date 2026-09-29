@@ -76,7 +76,7 @@ SillyTavern 的高沉浸感分轮事件推演扩展。采用独特的**“一轮
 # 语法与结构检查
 node --check index.js
 
-# 94 项全量行为回归测试 (含保密性、轮次推进、注入隔离与 0 Emoji 审查)
+# 107 项全量行为回归测试 (含保密性、轮次推进、注入隔离与 0 Emoji 审查)
 node tests/regression.cjs
 
 # 系统契约与上下文纯度验证

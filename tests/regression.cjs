@@ -968,6 +968,61 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         const presetFn = src.slice(src.indexOf('function customTemplatePreset'), src.indexOf('function syncCustomEventTypes'));
         assert(!presetFn.includes('settings?.presets?.[t?.id]'), 'customTemplatePreset must not read the retired override layer');
     });
+    check('Import submit button lives inside the import collapsible section',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        const tioStart = src.indexOf('id="se-template-io-modal"');
+        const importKey = src.indexOf('data-section-key="tio-import"');
+        const exportKey = src.indexOf('data-section-key="tio-export"');
+        const submitBtn = src.indexOf('data-action="import-custom-submit"');
+        assert(tioStart > -1 && importKey > tioStart && exportKey > importKey, 'io modal sections missing');
+        assert(submitBtn > importKey && submitBtn < exportKey, 'import submit button must be inside the tio-import section');
+        const tioBlock = src.slice(tioStart, src.indexOf('id="se-conflict-modal"'));
+        assert(!tioBlock.includes('se-settings-actions'), 'io modal must no longer carry a footer action bar');
+        assert(src.includes('点击「导入事件包」完成导入') && !src.includes('点击下方「导入事件包」完成导入'), 'file-read toast must drop the stale 下方 wording');
+    });
+    check('Workshop custom cards use plain names with desc lines and right-side tag badges',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        const css = fs.readFileSync(path.join(__dirname,'..','style.css'),'utf8');
+        // 三卡标题去掉「流派：/深度：/额外：」前缀与括号备注，回落名同步换新词
+        assert(!src.includes('流派：${escapeHtml') && !src.includes('深度：${escapeHtml') && !src.includes('额外：${escapeHtml'), 'card title prefixes must be gone');
+        assert(!src.includes('未命名流派') && !src.includes('未命名深度'), 'stale fallback names must be gone');
+        // 四处「同源」说明行删除（含主提示词卡与附加卡的勾选提示）
+        assert(!src.includes('与事件包编辑器中的'), 'same-source note lines must be removed');
+        assert(!src.includes('该条仅在事件包编辑器中勾选后随生成注入'), 'extra gating note must be removed');
+        // badge 标签右置：自定义流派卡 + 内置流派卡（subCardHtml 查 SUB_CONFIGS badge）
+        assert(src.includes('se-preset-title-with-tag'), 'tagged title class missing');
+        assert(src.includes('se-preset-tag">${escapeHtml(g.badge)}'), 'custom genre badge tag missing');
+        assert(src.includes('SUB_CONFIGS[pKey]?.genres?.find(g => g.key === cKey)?.badge'), 'built-in genre badge lookup missing');
+        assert(src.includes('se-preset-tag">${escapeHtml(badge)}'), 'built-in badge tag render missing');
+        // 深度/额外卡补条件备注行（与流派卡同构）
+        const workshop = src.slice(src.indexOf('function renderPresets'), src.indexOf('function savePresets'));
+        assert(workshop.includes("${d.desc ? `<div class=\"se-preset-desc\">${escapeHtml(d.desc)}</div>` : ''}"), 'depth card conditional desc missing');
+        assert(workshop.includes("${e.desc ? `<div class=\"se-preset-desc\">${escapeHtml(e.desc)}</div>` : ''}"), 'extra card conditional desc missing');
+        // CSS：标题行 flex 两端对齐、标签胶囊不收缩、名称 span 可收缩断词
+        const titleTagBlock = css.slice(css.indexOf('.se-preset-title-with-tag {'), css.indexOf('}', css.indexOf('.se-preset-title-with-tag {')));
+        assert(titleTagBlock.includes('display: flex') && titleTagBlock.includes('justify-content: space-between'), 'tagged title flex css missing');
+        const tagBlock = css.slice(css.indexOf('.se-preset-tag {'), css.indexOf('}', css.indexOf('.se-preset-tag {')));
+        assert(tagBlock.includes('flex-shrink: 0') && tagBlock.includes('white-space: nowrap') && tagBlock.includes('border-radius: 999px'), 'tag pill css missing');
+        const nameBlock = css.slice(css.indexOf('.se-preset-name {'), css.indexOf('}', css.indexOf('.se-preset-name {')));
+        assert(nameBlock.includes('min-width: 0') && nameBlock.includes('overflow-wrap: anywhere'), 'name span shrink css missing');
+    });
+    check('Custom pack terminology sweep: new terms replace old in UI copy only',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        // 新词在位：编辑器分区/工具栏/空提示/卡片序号、复制范例 toast、缺项校验、工坊分组标题、冲突弹窗、查看器、主面板
+        for (const s of ['风格（至少一条，生成时单选其一）','添加风格','还没有风格，点击「添加风格」开始。','档位（可选，生成时单选其一，不添加则不注入档位设定）','添加档位','还没有档位，不需要可不添加。','附加（可选，可多选，勾选的全部同时注入）','添加附加','还没有附加条目。','已复制风格提示词范例','已复制档位提示词范例','已复制附加提示词范例','至少一条风格','风格名称与提示词须填完整','默认风格选择','档位名称与提示词须填完整','默认档位选择','附加名称与提示词须填完整','风格预设（${genres.length} 条）','档位预设（${depths.length} 档）','附加预设（${extras.length} 条）','风格 ${index + 1}','档位 ${index + 1}','新建自定义事件包（风格、档位与提示词自由配置）','${genreCount} 风格 · ',"customTemplate ? '风格' : '流派'","customTemplate ? '档位' : '难度'",'se-pv-quick-label">附加:']) {
+            assert(src.includes(s), 'terminology missing: ' + s);
+        }
+        // 旧词不得残留在自定义上下文（内置「小事件流派预设」、注释与 LLM 提示词正文不在此列）
+        assert(!src.includes('流派预设（${genres.length}') && !src.includes('深度预设（${depths.length}') && !src.includes('额外预设（${extras.length}'), 'old workshop group titles should be gone');
+        assert(!src.includes('添加流派') && !src.includes('添加深度') && !src.includes('添加额外'), 'old editor toolbar labels should be gone');
+        assert(!src.includes('已复制流派提示词范例') && !src.includes('已复制深度提示词范例') && !src.includes('已复制额外提示词范例'), 'old copy-example toasts should be gone');
+        assert(!src.includes('至少一条流派') && !src.includes('流派名称与提示词须填完整') && !src.includes('深度名称与提示词须填完整') && !src.includes('额外名称与提示词须填完整'), 'old validation toasts should be gone');
+        assert(!src.includes('流派 / 风格（至少一条'), 'old editor section title should be gone');
+        assert(!src.includes('流派 ${index + 1}') && !src.includes('深度 ${index + 1}') && !src.includes('>额外</span>'), 'old editor card index tags should be gone');
+        assert(!src.includes('${genreCount} 流派') && !src.includes('se-pv-quick-label">额外:') && !src.includes('se-pv-quick-label">难度:') && !src.includes('新建自定义事件包（流派、深度'), 'old conflict/viewer/add-button wording should be gone');
+        // LLM 提示词正文与注入头保持原样（生成注入与查看器检测串依赖）
+        assert(src.includes('【专属细分流派与难度设定（'), 'injection header must stay untouched');
+    });
     check('Main panel three-tier layout and viewer cleanup',()=>{
         const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
         const css = fs.readFileSync(path.join(__dirname,'..','style.css'),'utf8');

@@ -114,7 +114,7 @@ button{font:inherit}
                     </div><!-- /se-panel-scroll -->
 
                     <div class="se-btn-group se-add-row">
-                        <button class="se-event-btn se-event-btn-full se-custom-add-btn" data-action="create-custom" title="新建自定义事件包（流派、深度与提示词自由配置）">
+                        <button class="se-event-btn se-event-btn-full se-custom-add-btn" data-action="create-custom" title="新建自定义事件包（风格、档位与提示词自由配置）">
                             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                             <span class="se-btn-label">新建事件包</span>
                         </button>
@@ -382,6 +382,7 @@ button{font:inherit}
                         <button type="button" class="se-pv-row-icon-btn" data-action="close-prompt-viewer" title="关闭查看器">
                             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                         </button>
+                        <button type="button" class="se-pv-header-close" data-action="close-prompt-viewer" title="关闭查看器">关闭</button>
                     </div>
                 </div>
                 <div class="se-prompt-viewer-body" id="se-prompt-viewer-body"></div>
@@ -452,7 +453,7 @@ button{font:inherit}
                     <button data-action="close-custom-template">关闭</button>
                 </div>
                 <div class="se-presets-tip">
-                    配置专属事件包：事件包名与至少一条流派/风格（名称+提示词）填写完整后事件包按钮才会生效，深度可选。设置到一半可直接保存，主界面按钮会保持草稿置灰状态，随时点铅笔继续编辑。各区块的「复制范例」按钮可复制提示词范例（按内置流派/深度的写法给出，可直接使用或照此改写）。
+                    配置专属事件包：事件包名与至少一条风格（名称+提示词）填写完整后事件包按钮才会生效，档位可选。设置到一半可直接保存，主界面按钮会保持草稿置灰状态，随时点铅笔继续编辑。各区块的「复制范例」按钮可复制提示词范例（按内置风格/档位的写法给出，可直接使用或照此改写）。
                 </div>
                 <div class="se-wi-list" id="se-ct-editor-body"></div>
                 <div class="se-settings-actions">
@@ -476,6 +477,9 @@ button{font:inherit}
                             <input type="file" id="se-tio-file-input" accept=".json,application/json" style="display:none" />
                         </div>
                         <textarea id="se-tio-import-text" class="se-tio-import-text" rows="8" placeholder="也可把分享者发来的事件包 JSON 文本直接粘贴到这里，支持完整导出文件、事件包数组或单个事件包对象…"></textarea>
+                        <div class="se-tio-row">
+                            <button data-action="import-custom-submit" class="se-sub-save-btn">导入事件包</button>
+                        </div>
                     </div>
                     <div class="se-settings-section" data-section-key="tio-export">
                         <div class="se-settings-section-title" data-action="toggle-section" title="点击折叠/展开"><span class="se-section-chevron">▾</span>导出事件包</div>
@@ -489,9 +493,6 @@ button{font:inherit}
                             <button type="button" class="se-btn-action" data-action="export-selected-copy">导出勾选（复制到剪贴板）</button>
                         </div>
                     </div>
-                </div>
-                <div class="se-settings-actions">
-                    <button data-action="import-custom-submit" class="se-sub-save-btn">导入事件包</button>
                 </div>
             </div>
 
