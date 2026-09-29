@@ -5302,8 +5302,4 @@
 #st-direct-event-root .se-conflict-choices label.se-conflict-choice-disabled {
     cursor: not-allowed;
 }
-#st-direct-event-root .se-conflict-cancel-btn {
-    flex: 0 0 auto;
-    min-width: 88px;
-}
 

@@ -61,14 +61,14 @@ if (wiList && !wiList.children.length) {
 const pl = document.getElementById('se-preset-list');
 if (pl && !pl.children.length) {
   pl.innerHTML =
-    genre('jailbreak', '破限与防审查提示词（置顶注入与外审破限）',
-      pcard('头部小说破限（雪融雪降 · 过外审预填充）', '针对 build、gcli、one-api 等严格外审渠道。在对话最前端以 User 身份预填充万字纯文学小说样本，由 Assistant 虚假确认承接，使模型在首轮审查时误判为文学品读分析，彻底瓦解拒答与道德过滤。', 8, longText(12)) +
-      pcard('系统级破限与创作准则（Dramatron 深度缝合版）', '源自 Kemini Dramatron 特化破限与私密沙盒豁免架构，深度缝合不媚 USER 去主角化、防机械化生活对白、防全知有限视角。', 12, longText(16))) +
-    genre('combat', '战斗预设（大事件导演 / 小事件流派 / 难度 / 死线）', genreBody('战斗') +
-      subSec('death', '死亡危险死线提示词（极高死亡危险模式注入）', pcard('', '开启「极高死亡危险模式」时注入的死线与因果判定准则。', 5, longText(8)))) +
-    genre('reasoning', '推理预设（大事件导演 / 小事件流派 / 难度）', genreBody('推理')) +
-    genre('romance', '恋爱预设（大事件导演 / 小事件流派 / 浓度）', genreBody('恋爱')) +
-    genre('random', '随机事件预设（大事件导演）', subSec('main', '大事件基础导演预设', pcard('', '', 7, longText(14))));
+    genre('jailbreak', '破限与防审查提示词',
+      pcard('头部小说破限', '针对 build、gcli、one-api 等严格外审渠道。在对话最前端以 User 身份预填充万字纯文学小说样本，由 Assistant 虚假确认承接，使模型在首轮审查时误判为文学品读分析，彻底瓦解拒答与道德过滤。', 8, longText(12)) +
+      pcard('系统级破限与创作准则', '源自 Kemini Dramatron 特化破限与私密沙盒豁免架构，深度缝合不媚 USER 去主角化、防机械化生活对白、防全知有限视角。', 12, longText(16))) +
+    genre('combat', '战斗预设', genreBody('战斗') +
+      subSec('death', '死亡危险死线提示词', pcard('', '开启「极高死亡危险模式」时注入的死线与因果判定准则。', 5, longText(8)))) +
+    genre('reasoning', '推理预设', genreBody('推理')) +
+    genre('romance', '恋爱预设', genreBody('恋爱')) +
+    genre('random', '随机事件预设', subSec('main', '大事件基础导演预设', pcard('', '', 7, longText(14))));
 }
 const pv = document.getElementById('se-prompt-viewer-body');
 if (pv && !pv.children.length) {

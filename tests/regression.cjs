@@ -980,6 +980,18 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         assert(!tioBlock.includes('se-settings-actions'), 'io modal must no longer carry a footer action bar');
         assert(src.includes('点击「导入事件包」完成导入') && !src.includes('点击下方「导入事件包」完成导入'), 'file-read toast must drop the stale 下方 wording');
     });
+    check('Import submit matches export action style; conflict footer drops duplicate cancel',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        const css = fs.readFileSync(path.join(__dirname,'..','style.css'),'utf8');
+        // 导入提交按钮与导出区两枚按钮同款 se-btn-action（通栏撑满+文字居中由 .se-tio-row .se-btn-action 的 flex:1 提供）
+        assert(src.includes('data-action="import-custom-submit" class="se-btn-action"'), 'import submit must use se-btn-action');
+        assert(!src.includes('class="se-sub-save-btn">导入事件包'), 'stale primary-style import button must be gone');
+        // 冲突弹窗取消语义由头部按钮 + 逐行「取消导入/返回编辑改名」承担，页脚只留主操作（对齐编辑器弹窗页脚惯例）
+        assert((src.match(/data-action="conflict-cancel"/g) || []).length === 1, 'conflict-cancel must exist only once (modal header)');
+        assert(src.includes('<button data-action="conflict-cancel">取消</button>'), 'conflict header cancel missing');
+        assert(src.includes('id="se-conflict-confirm-btn"'), 'conflict confirm button missing');
+        assert(!src.includes('se-conflict-cancel-btn') && !css.includes('.se-conflict-cancel-btn'), 'footer duplicate cancel (markup+css) must be gone');
+    });
     check('Workshop custom cards use plain names with desc lines and right-side tag badges',()=>{
         const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
         const css = fs.readFileSync(path.join(__dirname,'..','style.css'),'utf8');
@@ -1008,8 +1020,9 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
     });
     check('Custom pack terminology sweep: new terms replace old in UI copy only',()=>{
         const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
-        // 新词在位：编辑器分区/工具栏/空提示/卡片序号、复制范例 toast、缺项校验、工坊分组标题、冲突弹窗、查看器、主面板
-        for (const s of ['风格（至少一条，生成时单选其一）','添加风格','还没有风格，点击「添加风格」开始。','档位（可选，生成时单选其一，不添加则不注入档位设定）','添加档位','还没有档位，不需要可不添加。','附加（可选，可多选，勾选的全部同时注入）','添加附加','还没有附加条目。','已复制风格提示词范例','已复制档位提示词范例','已复制附加提示词范例','至少一条风格','风格名称与提示词须填完整','默认风格选择','档位名称与提示词须填完整','默认档位选择','附加名称与提示词须填完整','风格预设（${genres.length} 条）','档位预设（${depths.length} 档）','附加预设（${extras.length} 条）','风格 ${index + 1}','档位 ${index + 1}','新建自定义事件包（风格、档位与提示词自由配置）','${genreCount} 风格 · ',"customTemplate ? '风格' : '流派'","customTemplate ? '档位' : '难度'",'se-pv-quick-label">附加:']) {
+        // 新词在位：编辑器工具栏/空提示/卡片序号、复制范例 toast、缺项校验、工坊分组标题、冲突弹窗、查看器、主面板
+        // （分区标题已改裸名、规则移入 se-presets-tip 提示框，由 'Editor section hints' 专门 check 覆盖）
+        for (const s of ['添加风格','还没有风格，点击「添加风格」开始。','添加档位','还没有档位，不需要可不添加。','添加附加','还没有附加条目。','已复制风格提示词范例','已复制档位提示词范例','已复制附加提示词范例','至少一条风格','风格名称与提示词须填完整','默认风格选择','档位名称与提示词须填完整','默认档位选择','附加名称与提示词须填完整','风格预设（${genres.length} 条）','档位预设（${depths.length} 档）','附加预设（${extras.length} 条）','风格 ${index + 1}','档位 ${index + 1}','新建自定义事件包（风格、档位与提示词自由配置）','${genreCount} 风格 · ',"customTemplate ? '风格' : '流派'","customTemplate ? '档位' : '难度'",'se-pv-quick-label">附加:']) {
             assert(src.includes(s), 'terminology missing: ' + s);
         }
         // 旧词不得残留在自定义上下文（内置「小事件流派预设」、注释与 LLM 提示词正文不在此列）
@@ -1022,6 +1035,54 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         assert(!src.includes('${genreCount} 流派') && !src.includes('se-pv-quick-label">额外:') && !src.includes('se-pv-quick-label">难度:') && !src.includes('新建自定义事件包（流派、深度'), 'old conflict/viewer/add-button wording should be gone');
         // LLM 提示词正文与注入头保持原样（生成注入与查看器检测串依赖）
         assert(src.includes('【专属细分流派与难度设定（'), 'injection header must stay untouched');
+    });
+    check('Editor section hints replace title parentheticals',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        // 三分区标题裸名，规则移入分区顶部 se-presets-tip 提示框（与编辑器顶部说明段同款样式，随分区折叠隐藏）
+        assert(src.includes('<div class="se-presets-tip">至少一条，生成时单选其一。</div>'), 'genre section hint missing');
+        assert(src.includes('<div class="se-presets-tip">可选，生成时单选其一，不添加则不注入档位设定。</div>'), 'depth section hint missing');
+        assert(src.includes('<div class="se-presets-tip">可选，可多选，勾选的全部同时注入。</div>'), 'extra section hint missing');
+        assert(!src.includes('风格（至少一条') && !src.includes('档位（可选') && !src.includes('附加（可选'), 'section title parentheticals must be gone');
+        // 提示框须位于分区标题之后、工具栏调用之前（se-ct-section-toolbar class 字面量在 sectionToolbar
+        // 函数定义里、位于模板之前，slice 内须用调用点定位）
+        const genres = src.slice(src.indexOf('data-section-key="ct-genres"'), src.indexOf('data-section-key="ct-depths"'));
+        const titlePos = genres.indexOf('se-settings-section-title');
+        const hintPos = genres.indexOf('se-presets-tip');
+        const toolbarPos = genres.indexOf("sectionToolbar('ct-copy-genre-template'");
+        assert(titlePos > -1 && hintPos > titlePos && toolbarPos > hintPos, 'hint must sit between section title and toolbar');
+    });
+    check('Sub modal and settings titles drop meta parentheticals',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        assert(!src.includes('展开可直接微调预设提示词'), 'genre section meta hint must be gone');
+        assert(!src.includes('右键/长按可随时切换'), 'long-press meta hint must be gone');
+        assert(src.includes('▾</span>选择流派 / 玩法风格</div>'), 'sub modal genre section title must stay');
+        assert(src.includes('title.textContent = conf.title;'), 'sub modal title suffix must be gone');
+        assert(!src.includes('势力库与自定义对手') && src.includes('▾</span>敌方势力与战力基准设定</div>'), 'faction section note must be gone, title kept');
+        assert(!src.includes('支持卡片点击或下拉切换') && src.includes('>主题风格</label>'), 'theme usage hint must be gone, label kept');
+        // 设置面板两个破限开关与工坊卡同名去括号（技术名信息由工坊卡 desc 行承载）
+        assert(src.includes('启用全套缝合破限与创作约定') && !src.includes('启用全套缝合破限与创作约定（'), 'jailbreak toggle label must be plain');
+        assert(src.includes('启用头部小说破限') && !src.includes('启用头部小说破限（'), 'novel bypass toggle label must be plain');
+    });
+    check('Workshop group titles and difficulty cards drop parenthetical remarks',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        // 组标题裸名（内容说明已由卡内 desc 行承载）；计数类括号保留（N 档 + 自定义 等）
+        assert(src.includes("genreAccordion('combat', '战斗预设'"), 'combat group title must be plain');
+        assert(src.includes("genreAccordion('reasoning', '推理预设'"), 'reasoning group title must be plain');
+        assert(src.includes("genreAccordion('romance', '恋爱预设'"), 'romance group title must be plain');
+        assert(src.includes('破限与防审查提示词</summary>') && src.includes('随机事件预设</summary>'), 'jailbreak/random group titles must be plain');
+        assert(src.includes("subSection('presets-combat-death', '死亡危险死线提示词'"), 'death section title must be plain');
+        assert(!src.includes('（大事件导演 / 小事件流派') && !src.includes('（极高死亡危险模式注入）') && !src.includes('（置顶注入与外审破限）') && !src.includes('随机事件预设（大事件导演）'), 'stale group title notes must be gone');
+        // 两张破限卡标题裸名（「头部小说破限（」字样仍存在于代码注释，负向断言只针对括号备注内容串）
+        assert(src.includes('<div class="se-preset-title">头部小说破限</div>'), 'novel bypass card title must be plain');
+        assert(src.includes('<div class="se-preset-title">系统级破限与创作准则</div>'), 'jailbreak card title must be plain');
+        assert(!src.includes('（雪融雪降 · 过外审预填充）') && !src.includes('（Dramatron 深度缝合版）'), 'stale card title notes must be gone');
+        // 难度卡改「名称+小字」：普通档/自定义档标题裸名 se-preset-name，desc 移入条件小字行（depth/diff 共 3 处同构）
+        const workshop = src.slice(src.indexOf('function renderPresets'), src.indexOf('function savePresets'));
+        assert(workshop.includes('<div class="se-preset-title"><span class="se-preset-name">${escapeHtml(d.label)}</span></div>'), 'difficulty card title must be a plain name span');
+        assert(workshop.includes("<span class=\"se-preset-name\">自定义${pKey === 'romance' ? '浓度' : '难度'}</span>"), 'custom difficulty card title must be a plain name span');
+        const descLine = "${d.desc ? `<div class=\"se-preset-desc\">${escapeHtml(d.desc)}</div>` : ''}";
+        assert(workshop.split(descLine).length - 1 >= 3, 'difficulty conditional desc lines missing');
+        assert(!workshop.includes('双向同源'), 'stale same-source note must be gone');
     });
     check('Main panel three-tier layout and viewer cleanup',()=>{
         const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
