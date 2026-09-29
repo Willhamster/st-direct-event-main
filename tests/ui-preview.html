@@ -38,10 +38,10 @@
                         <div class="se-stage-engine-actions" id="se-engine-actions">
                             <button type="button" class="se-cap-btn" data-action="open-stage-overview">查看剧本</button>
                             <button type="button" class="se-cap-btn" data-action="open-last-raw-output" style="margin-left:6px;" title="查看模型原始生成的完整正文">原始档案</button>
-                            <button type="button" class="se-cap-btn" data-action="open-prompt-viewer" style="margin-left:6px;" title="查看副API完整提示词">提示词查看</button>
                         </div>
                     </div>
 
+                    <div class="se-panel-scroll" id="se-panel-scroll">
                     <div class="se-btn-group">
                         <button class="se-event-btn" data-action="generate" data-event="combat" title="点击生成 / 右键或长按设置细分">
                             <span class="se-btn-label">战斗</span>
@@ -76,11 +76,16 @@
                     </div>
 
                     <div id="se-custom-rows"></div>
+                    </div><!-- /se-panel-scroll -->
 
-                    <div class="se-btn-group">
-                        <button class="se-event-btn se-event-btn-full se-custom-add-btn" data-action="create-custom" title="新建自定义事件模板（流派、深度与提示词自由配置）">
+                    <div class="se-btn-group se-add-row">
+                        <button class="se-event-btn se-event-btn-full se-custom-add-btn" data-action="create-custom" title="新建自定义事件包（流派、深度与提示词自由配置）">
                             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                            <span class="se-btn-label">新建自定义模板</span>
+                            <span class="se-btn-label">新建事件包</span>
+                        </button>
+                        <button class="se-sub-btn se-tio-open-btn" data-action="open-template-io" title="导入 / 导出自定义事件包（分享或接收事件包 JSON）">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            <span class="se-btn-label">导入 / 导出</span>
                         </button>
                     </div>
 

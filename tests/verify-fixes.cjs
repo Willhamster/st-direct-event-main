@@ -11,7 +11,7 @@ const raw = '<event_archive>ARCHIVE_A</event_archive><segment_1 title="one">SLIP
     const merged = h.api.getSettings();
     assert.equal(merged.apiKey, 'FAKE_KEY_B', 'Local storage must not overwrite backend server credentials');
     assert.equal(merged.baseUrl, 'https://account-b.invalid', 'Local storage must not overwrite backend server baseUrl');
-    // 自定义模板：默认空数组且合并后形状稳定（跨 vm realm 数组不能用 deepStrictEqual 比较原型，用序列化比较）
+    // 自定义事件包：默认空数组且合并后形状稳定（跨 vm realm 数组不能用 deepStrictEqual 比较原型，用序列化比较）
     assert.equal(JSON.stringify(merged.customTemplates ?? null), '[]', 'customTemplates must default to an empty array');
     console.log('PASS: R1 Cross-account settings isolation verified');
 

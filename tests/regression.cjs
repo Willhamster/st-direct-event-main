@@ -377,7 +377,7 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         const getSettings = src.slice(src.indexOf('function getSettings'), src.indexOf('function getJailbreakPrompt'));
         assert(getSettings.includes('configVersion = 9'), 'v9 migration version bump missing');
         assert(getSettings.includes('endsWith(LEGACY_CAUSAL_TAIL)'), 'v8 migration strip missing');
-        // v9：自定义模板覆盖层折叠进本体（本体唯一事实源），须在 presets 赋值之后执行
+        // v9：自定义事件包覆盖层折叠进本体（本体唯一事实源），须在 presets 赋值之后执行
         assert(getSettings.includes('foldCustomOverridesIntoBodies(merged)'), 'v9 fold wiring missing in getSettings');
         assert(src.includes('configVersion: 9'), 'persistSettings must stamp configVersion 9');
     });
@@ -568,7 +568,7 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         const confirmIdx = src.indexOf("if (!el.dataset.confirming)", delIdx);
         const execIdx = src.indexOf('deleteCustomTemplate(el.dataset.template)', delIdx);
         assert(delIdx > 0 && confirmIdx > 0 && execIdx > confirmIdx, 'delete confirm flow missing');
-        // 未完成模板不得触发生成：handleGenerate 内必须有完成度守卫
+        // 未完成事件包不得触发生成：handleGenerate 内必须有完成度守卫
         const genHead = src.slice(src.indexOf('async function handleGenerate'), src.indexOf('async function handleGenerate') + 900);
         assert(genHead.includes('isCustomTemplateComplete'), 'handleGenerate completeness guard missing');
     });
@@ -584,7 +584,7 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         assert.equal(h6.api.isCustomTemplateComplete({ ...base, depths: [{ id: 'd1', label: '深', badge: '', desc: '', prompt: '' }] }), false, 'half-filled depth must fail');
         assert.equal(h6.api.isCustomTemplateComplete({ ...base, depths: [{ id: 'd1', label: '深', badge: '', desc: '', prompt: '深度规则' }], selectedDepthId: 'd1' }), true, 'valid depth must pass');
         assert.equal(h6.api.isCustomTemplateComplete({ ...base, selectedDepthId: '' }), true, 'depth is optional');
-        assert(h6.api.customTemplateMissingText({ ...base, name: '' }).includes('模板名'), 'missing text should name the field');
+        assert(h6.api.customTemplateMissingText({ ...base, name: '' }).includes('事件包名'), 'missing text should name the field');
     });
 
     check('Custom templates register into EVENT_TYPES and build prompts',()=>{
@@ -610,7 +610,7 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         const text2 = msgs2.map(m => m.content).join('\n');
         assert(text2.includes('流派提示词内容'), 'genre prompt missing without depth');
         assert(!text2.includes('浅层深度内容'), 'depth prompt leaked after removal');
-        // 删除模板后注册同步摘除
+        // 删除事件包后注册同步摘除
         h7.api.syncCustomEventTypes({ customTemplates: [] });
         assert(!h7.api.EVENT_TYPES['ct_test2'], 'deleted custom type still registered');
     });
@@ -630,15 +630,15 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         assert.equal(back[0].id, 'ct_rt1');
         assert.equal(back[0].turns, 5);
         assert.equal(h8.api.isCustomTemplateComplete(back[0]), true, 'round-tripped template must stay complete');
-        // collectSettingsForm 必须原样回带，避免保存全局设置时清空模板
+        // collectSettingsForm 必须原样回带，避免保存全局设置时清空事件包
         const collected = h8.api.collectSettingsForm();
         assert(Array.isArray(collected.customTemplates) && collected.customTemplates.length === 1, 'collectSettingsForm drops customTemplates');
     });
     check('Prompt viewer covers custom templates and mirrors real sub settings',()=>{
         const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
-        // 编辑器弹窗可缩放：RESIZE_PANEL_IDS 必须包含自定义模板弹窗（及其后的导入/导出弹窗）
+        // 编辑器弹窗可缩放：RESIZE_PANEL_IDS 必须包含自定义事件包弹窗（及其后的导入/导出弹窗）
         assert(src.includes("'se-world-info-modal', 'se-variable-modal', 'se-custom-template-modal'"), 'resize list missing custom template modal');
-        // 主类下拉渲染自定义模板选项
+        // 主类下拉渲染自定义事件包选项
         assert(src.includes("getCustomTemplates(s).map(t => `<option"), 'viewer type select missing custom template options');
         // 回合数从真实细节设置同步（打开/切换主类共用同一函数）
         assert(src.includes('function syncPromptViewerStateForType'), 'viewer state sync missing');
@@ -653,10 +653,10 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         // 死亡危险开关与只读锁定徽标
         assert(src.includes('data-pv-action="toggle-death"'), 'death toggle missing');
         assert(src.includes('已锁对手：') && src.includes('已锁女主：'), 'lock badges missing');
-        // 示例模板：不再包含填空说明文案
+        // 示例范例：不再包含填空说明文案
         assert(!src.includes('复制后逐项改写') && !src.includes('用两三句写明'), 'genre template still placeholder-style');
         assert(!src.includes('（深度提示词模板'), 'depth template still placeholder-style');
-        // 行为：自定义模板 20 回合经 buildEventPrompt 输出「总计 20 回合」
+        // 行为：自定义事件包 20 回合经 buildEventPrompt 输出「总计 20 回合」
         const h9 = harness();
         const tpl20 = { id: 'ct_t20', prefix: 'e', name: '长线模板', mainPrompt: '', turns: 20, genres: [{ id: 'g1', label: '长线', badge: '', desc: '', prompt: '长线流派内容' }], depths: [], selectedGenreId: 'g1', selectedDepthId: '', createdAt: 1, updatedAt: 1 };
         const type20 = { key: 'ct_t20', prefix: 'e', label: '长线模板', title: '长线模板' };
@@ -677,7 +677,7 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         assert(src.includes('ct-add-extra') && src.includes('ct-del-extra') && src.includes('se-ct-extra-check'), 'editor extra section missing');
         // 查看器
         assert(src.includes('extraKeys: []') && src.includes("pvAction === 'toggle-extra'"), 'viewer extra multi-select missing');
-        // 预设工坊：自定义模板组 + 主提示词同源写回
+        // 预设工坊：自定义事件包组 + 主提示词同源写回
         assert(src.includes('const customPresetsHtml = getCustomTemplates(s).map') && src.includes('data-ct-main-prompt'), 'presets workshop custom groups missing');
         assert(src.includes("textarea.dataset.ctMainPrompt") && src.includes('mainPrompt: String(textarea.value'), 'presets workshop main prompt source missing');
         // 行为：多选注入、工坊覆盖层、完成后门判定
@@ -747,7 +747,7 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         // 多余的 settings 实参兼容旧调用（签名改为单参也不报错）
         const p2 = he.api.buildCustomTemplateExportPayload([tpl]);
         assert(!('presets' in p2) && !('subPrompts' in p2), 'export must not carry override layers');
-        // 缺字段模板导出后形状稳定（normalize 兜底）
+        // 缺字段事件包导出后形状稳定（normalize 兜底）
         const p3 = he.api.buildCustomTemplateExportPayload([{ name: '裸', genres: [{ id: 'g9', label: 'g', prompt: 'p' }], selectedGenreId: 'g9' }]);
         assert.equal(p3.templates[0].turns, 2);
         assert.equal(p3.templates[0].depths.length, 0);
@@ -774,7 +774,7 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         // 空壳条目跳过并提示
         const rSkip = hi.api.parseCustomTemplateImportPayload(JSON.stringify({ templates: [tpl, { name: '', mainPrompt: '', genres: [], depths: [], extras: [] }] }), s0);
         assert.equal(rSkip.templates.length, 1);
-        assert(rSkip.warnings.some(w => w.includes('空模板')), 'skipped-empty warning missing');
+        assert(rSkip.warnings.some(w => w.includes('空事件包')), 'skipped-empty warning missing');
     });
     check('Custom template import reallocates conflicting ids and prefixes',()=>{
         const hc = harness();
@@ -883,7 +883,7 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         // 无效结果不写入
         assert.equal(hz.api.applyCustomTemplateImport({ ok: false }), false);
         assert.equal(hz.api.getCustomTemplates(hz.api.getSettings()).length, 1, 'failed apply must not mutate');
-        // 勾选式导出：未勾选警告返回 null；按勾选过滤 payload；未勾选模板不泄漏
+        // 勾选式导出：未勾选警告返回 null；按勾选过滤 payload；未勾选事件包不泄漏
         const tplZ2 = { ...tplZ, id: 'ct_e2e2', prefix: 'f', name: '端到端2' };
         hz.api.persistSettings({ ...hz.api.getSettings(), customTemplates: [tplZ, tplZ2] });
         assert.equal(hz.api.exportCustomTemplatesByIds([], 'file'), null, 'empty selection must warn and return null');
@@ -949,13 +949,13 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         assert(src.includes('function removeCustomTemplateRecord') && src.includes('removeCustomTemplateRecord(s, ctx.existingId)'), 'overwrite must reuse the shared removal helper');
         // 导入提示文案不再宣称导出携带覆盖层
         assert(!src.includes('含预设工坊里改过的提示词覆盖'), 'io modal tip must reflect body-only export');
-        // 编辑器标题：编辑态「自定义事件：X」、新建态「新建自定义事件」；行内 tooltip 同步
-        assert(src.includes('`自定义事件：${t.name || \'未命名\'}`'), 'editor title should be 自定义事件：X');
-        assert(src.includes("'新建自定义事件'"), 'new-template editor title should be 新建自定义事件');
+        // 编辑器标题：编辑态「事件包：X」、新建态「新建事件包」；行内 tooltip 同步
+        assert(src.includes('`事件包：${t.name || \'未命名\'}`'), 'editor title should be 事件包：X');
+        assert(src.includes("'新建事件包'"), 'new-pack editor title should be 新建事件包');
         assert(!src.includes('编辑自定义模板：'), 'old editor title should be gone');
-        assert(src.includes('title="编辑自定义事件"'), 'row pencil tooltip should be 编辑自定义事件');
-        // 工坊手风琴摘要直接用模板名（不再冠「自定义模板预设：」前缀）
-        assert(src.includes('<summary class="se-preset-accordion-summary">${escapeHtml(t.name || \'未命名模板\')}</summary>'), 'workshop summary should be the bare template name');
+        assert(src.includes('title="编辑自定义事件包"'), 'row pencil tooltip should be 编辑自定义事件包');
+        // 工坊手风琴摘要直接用事件包名（不再冠「自定义模板预设：」前缀）
+        assert(src.includes('<summary class="se-preset-accordion-summary">${escapeHtml(t.name || \'未命名事件包\')}</summary>'), 'workshop summary should be the bare pack name');
         assert(!src.includes('自定义模板预设：'), 'old workshop summary prefix should be gone');
         // 工坊自定义组与编辑器同源：data-ct-entry-key 直写条目本体，savePresets 对应收集
         assert(src.includes('data-ct-entry-key="${escapeHtml(t.id)}.${escapeHtml(g.id)}"'), 'workshop genre card must bind ct entry key');
@@ -990,7 +990,7 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         assert(addRowBlock.includes('overflow: visible'), 'add row container must not clip corner radius');
         const ioBtnBlock = css.slice(css.indexOf('#st-direct-event-root .se-add-row .se-sub-btn {'), css.indexOf('}', css.indexOf('#st-direct-event-root .se-add-row .se-sub-btn {')));
         assert(ioBtnBlock.includes('border-radius: var(--se-radius-md)') && ioBtnBlock.includes('1.5px dashed') && ioBtnBlock.includes('background: transparent') && ioBtnBlock.includes('box-shadow: none'), 'io button must match the dashed add-button format (no shadow)');
-        // 自定义模板行间隔与战斗/推理/恋爱一致（10px）
+        // 自定义事件包行间隔与战斗/推理/恋爱一致（10px）
         const customRowsBlock = css.slice(css.indexOf('#st-direct-event-root #se-custom-rows {'), css.indexOf('}', css.indexOf('#st-direct-event-root #se-custom-rows {')));
         assert(customRowsBlock.includes('gap: 10px'), 'custom rows must share the 10px rhythm');
     });
@@ -1043,7 +1043,7 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         assert(src.includes('longPressFired = true') && src.includes('if (!longPressFired) return;'), 'long-press synthetic click swallow missing');
         assert(src.includes('id.match(/[a-z]') && !src.includes('[abcd]'), 'short-id whitelist not widened');
         assert(src.includes('sendNotice + escapeHtml(event.id)') && src.includes('已删除事件 ${escapeHtml(eventId)}'), 'event.id must be escaped in toasts');
-        assert(src.includes("已删除自定义模板「' + escapeHtml(name) + '」"), 'template name must be escaped in delete toast');
+        assert(src.includes("已删除自定义事件包「' + escapeHtml(name) + '」"), 'template name must be escaped in delete toast');
         assert(src.split('data-id="${CSS.escape(id)}"').length - 1 === 2, 'turn inputs must CSS.escape event id');
         assert(src.includes('entry.seq = ++apiLogSeq') && src.includes('expandedApiLogs.has(log.seq)') && !src.includes('expandedApiLogs.has(index)'), 'api log expand state must key by seq');
         assert(src.includes('attemptTimedOut') && src.includes('&& attemptTimedOut)'), 'timeout classification missing');

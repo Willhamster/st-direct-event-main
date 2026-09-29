@@ -73,10 +73,10 @@ button{font:inherit}
                         <div class="se-stage-engine-actions" id="se-engine-actions">
                             <button type="button" class="se-cap-btn" data-action="open-stage-overview">查看剧本</button>
                             <button type="button" class="se-cap-btn" data-action="open-last-raw-output" style="margin-left:6px;" title="查看模型原始生成的完整正文">原始档案</button>
-                            <button type="button" class="se-cap-btn" data-action="open-prompt-viewer" style="margin-left:6px;" title="查看副API完整提示词">提示词查看</button>
                         </div>
                     </div>
 
+                    <div class="se-panel-scroll" id="se-panel-scroll">
                     <div class="se-btn-group">
                         <button class="se-event-btn" data-action="generate" data-event="combat" title="点击生成 / 右键或长按设置细分">
                             <span class="se-btn-label">战斗</span>
@@ -111,11 +111,16 @@ button{font:inherit}
                     </div>
 
                     <div id="se-custom-rows"></div>
+                    </div><!-- /se-panel-scroll -->
 
-                    <div class="se-btn-group">
-                        <button class="se-event-btn se-event-btn-full se-custom-add-btn" data-action="create-custom" title="新建自定义事件模板（流派、深度与提示词自由配置）">
+                    <div class="se-btn-group se-add-row">
+                        <button class="se-event-btn se-event-btn-full se-custom-add-btn" data-action="create-custom" title="新建自定义事件包（流派、深度与提示词自由配置）">
                             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                            <span class="se-btn-label">新建自定义模板</span>
+                            <span class="se-btn-label">新建事件包</span>
+                        </button>
+                        <button class="se-sub-btn se-tio-open-btn" data-action="open-template-io" title="导入 / 导出自定义事件包（分享或接收事件包 JSON）">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            <span class="se-btn-label">导入 / 导出</span>
                         </button>
                     </div>
 
@@ -443,15 +448,65 @@ button{font:inherit}
 
             <div class="se-world-info-modal" id="se-custom-template-modal" style="display:none">
                 <div class="se-modal-header">
-                    <span id="se-ct-modal-title">自定义事件模板</span>
+                    <span id="se-ct-modal-title">新建事件包</span>
                     <button data-action="close-custom-template">关闭</button>
                 </div>
                 <div class="se-presets-tip">
-                    配置专属事件模板：模板名与至少一条流派/风格（名称+提示词）填写完整后模板按钮才会生效，深度可选。设置到一半可直接保存，主界面按钮会保持草稿置灰状态，随时点铅笔继续编辑。各区块的「复制模板」按钮可复制提示词骨架，粘贴到提示词框后改写。
+                    配置专属事件包：事件包名与至少一条流派/风格（名称+提示词）填写完整后事件包按钮才会生效，深度可选。设置到一半可直接保存，主界面按钮会保持草稿置灰状态，随时点铅笔继续编辑。各区块的「复制范例」按钮可复制提示词范例（按内置流派/深度的写法给出，可直接使用或照此改写）。
                 </div>
                 <div class="se-wi-list" id="se-ct-editor-body"></div>
                 <div class="se-settings-actions">
-                    <button data-action="save-custom-template" class="se-sub-save-btn">保存模板</button>
+                    <button data-action="save-custom-template" class="se-sub-save-btn">保存事件包</button>
+                </div>
+            </div>
+
+            <div class="se-world-info-modal" id="se-template-io-modal" style="display:none">
+                <div class="se-modal-header">
+                    <span id="se-tio-modal-title">导入 / 导出自定义事件包</span>
+                    <button data-action="close-template-io">关闭</button>
+                </div>
+                <div class="se-presets-tip">
+                    导出：把自定义事件包打包成 JSON 发给其他用户即可共享（事件包本体即全部生效提示词，与预设工坊/事件包编辑器同源，对方导入后与你实际生效的完全一致）。导入：选择分享的 JSON 文件或直接粘贴文本；与现有事件包同名时会逐条让你选择覆盖或另存，编号前缀冲突时自动重新分配，不影响现有事件包与历史事件。
+                </div>
+                <div class="se-wi-list" id="se-tio-body">
+                    <div class="se-settings-section" data-section-key="tio-import">
+                        <div class="se-settings-section-title" data-action="toggle-section" title="点击折叠/展开"><span class="se-section-chevron">▾</span>导入事件包</div>
+                        <div class="se-tio-row">
+                            <button type="button" class="se-btn-action" data-action="pick-template-file">选择 JSON 文件</button>
+                            <input type="file" id="se-tio-file-input" accept=".json,application/json" style="display:none" />
+                        </div>
+                        <textarea id="se-tio-import-text" class="se-tio-import-text" rows="8" placeholder="也可把分享者发来的事件包 JSON 文本直接粘贴到这里，支持完整导出文件、事件包数组或单个事件包对象…"></textarea>
+                    </div>
+                    <div class="se-settings-section" data-section-key="tio-export">
+                        <div class="se-settings-section-title" data-action="toggle-section" title="点击折叠/展开"><span class="se-section-chevron">▾</span>导出事件包</div>
+                        <div class="se-tio-export-head">
+                            <button type="button" class="se-btn-action se-tio-toggle-all" data-action="tio-export-toggle-all">全选</button>
+                            <span class="se-tio-export-hint">勾选要导出的自定义事件包（默认全不选），不勾直接导出会提示</span>
+                        </div>
+                        <div class="se-tio-export-list" id="se-tio-export-list"></div>
+                        <div class="se-tio-row">
+                            <button type="button" class="se-btn-action" data-action="export-selected-file">导出勾选（下载文件）</button>
+                            <button type="button" class="se-btn-action" data-action="export-selected-copy">导出勾选（复制到剪贴板）</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="se-settings-actions">
+                    <button data-action="import-custom-submit" class="se-sub-save-btn">导入事件包</button>
+                </div>
+            </div>
+
+            <div class="se-world-info-modal" id="se-conflict-modal" style="display:none;z-index:10006">
+                <div class="se-modal-header">
+                    <span id="se-conflict-modal-title">检测到同名事件包</span>
+                    <button data-action="conflict-cancel">取消</button>
+                </div>
+                <div class="se-presets-tip" id="se-conflict-modal-tip">
+                    以下事件包与现有事件包或本批次内同名，请逐个选择处理方式；未列出的事件包将直接导入。
+                </div>
+                <div class="se-wi-list" id="se-conflict-body"></div>
+                <div class="se-settings-actions">
+                    <button data-action="conflict-confirm" class="se-sub-save-btn" id="se-conflict-confirm-btn">确认导入</button>
+                    <button data-action="conflict-cancel" class="se-btn-action se-conflict-cancel-btn">取消</button>
                 </div>
             </div>
         </div>

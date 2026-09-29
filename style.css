@@ -3263,7 +3263,7 @@
 }
 /* 主面板三段式：上（场景进度）固定 / 中（事件按钮区）滚动 / 下（新建·导入与导航）固定，对齐设置与工坊弹窗结构 */
 #st-direct-event-root .se-panel-scroll {
-    flex: 1 1 0;
+    flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto;
     display: flex;
@@ -4768,9 +4768,9 @@
     filter: invert(1) brightness(1.6) !important;
 }
 
-/* ========== 自定义事件模板 ========== */
+/* ========== 自定义事件包 ========== */
 
-/* 主面板「＋ 新建自定义模板」整行按钮：虚线框弱化存在感，悬停点亮 */
+/* 主面板「＋ 新建事件包」整行按钮：虚线框弱化存在感，悬停点亮 */
 #st-direct-event-root .se-custom-add-btn {
     justify-content: center;
     gap: 8px;
@@ -4788,7 +4788,7 @@
     letter-spacing: .05em;
 }
 
-/* 草稿模板按钮：置灰禁用，明确不可生成 */
+/* 草稿事件包按钮：置灰禁用，明确不可生成 */
 #st-direct-event-root .se-event-btn.se-event-btn-incomplete,
 #st-direct-event-root .se-event-btn:disabled {
     opacity: 0.55;
@@ -4925,7 +4925,7 @@
     background: var(--se-accent) !important;
     color: var(--se-bg-panel) !important;
 }
-/* 模板主提示词右侧的复制按钮沿用次级态但不拉伸 */
+/* 主提示词右侧的复制范例按钮沿用次级态但不拉伸 */
 #st-direct-event-root .se-ct-field-label-row .se-ct-btn-copy {
     flex: 0 0 auto !important;
     min-height: 24px !important;
@@ -4939,10 +4939,10 @@
     }
 }
 
-/* ========== 自定义模板导入 / 导出 ========== */
+/* ========== 自定义事件包导入 / 导出 ========== */
 
-/* 「＋ 新建自定义模板」与「导入 / 导出」等宽各半：组容器去卡片底融入背景板（面板底色），
-   新建按钮对齐编辑器「复制模板」的虚线弱化样式（transparent 底直接透出面板底） */
+/* 「＋ 新建事件包」与「导入 / 导出」等宽各半：组容器去卡片底融入背景板（面板底色），
+   新建按钮对齐编辑器「复制范例」的虚线弱化样式（transparent 底直接透出面板底） */
 #st-direct-event-root .se-btn-group.se-add-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -4967,7 +4967,7 @@
     color: var(--se-accent) !important;
     border-color: var(--se-accent) !important;
 }
-/* 导入/导出按钮：与新建自定义模板完全同格式（虚线 + 透明底融入背景板 + muted 色，hover 点亮），无阴影 */
+/* 导入/导出按钮：与新建事件包完全同格式（虚线 + 透明底融入背景板 + muted 色，hover 点亮），无阴影 */
 #st-direct-event-root .se-add-row .se-sub-btn {
     gap: 6px;
     font-size: 12.5px;
@@ -4985,7 +4985,7 @@
     border-color: var(--se-accent) !important;
 }
 
-/* 自定义模板行之间的间隔与战斗/推理/恋爱一致（panel-content 的 gap 只作用于直接子元素，模板行包在容器内需自补） */
+/* 自定义事件包行之间的间隔与战斗/推理/恋爱一致（panel-content 的 gap 只作用于直接子元素，事件包行包在容器内需自补） */
 #st-direct-event-root #se-custom-rows {
     display: flex;
     flex-direction: column;
