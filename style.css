@@ -2053,6 +2053,22 @@
         padding: 0 !important;
     }
 
+    /* 提示词查看器头部（≤768）：改用「关闭」文字按钮对齐其他弹窗惯例，隐藏图标钮
+       （× 与文字钮功能重复；全屏切换在移动端被钉顶规则整体覆盖、本就无效） */
+    #st-direct-event-root .se-prompt-viewer-modal .se-modal-header .se-pv-row-icon-btn {
+        display: none !important;
+    }
+    #st-direct-event-root .se-prompt-viewer-modal .se-modal-header .se-pv-header-close {
+        display: inline-flex !important;
+        align-items: center;
+        justify-content: center;
+        padding: 8px 14px !important;
+        font-size: 13px !important;
+        font-weight: 600;
+        min-height: 36px;
+        border-radius: var(--se-radius-sm);
+    }
+
     /* 弹窗内容区内部滚动：顶栏与底部按钮栏固定，不随内容滚动 */
     #st-direct-event-root :is(.se-settings-body, .se-sub-body, .se-preset-list, .se-api-log-list, .se-event-list, .se-stage-modal-body, .se-prompt-viewer-body, .se-wi-list) {
         flex: 1 1 auto !important;
@@ -3964,6 +3980,11 @@
         align-items: center;
         justify-content: center;
         transition: all 0.15s ease;
+    }
+
+    /* 查看器头部「关闭」文字按钮：仅移动端显示（≤768 媒体查询内放开），桌面沿用图标按钮 */
+    .se-pv-header-close {
+        display: none;
     }
 
     .se-pv-row-icon-btn:hover {

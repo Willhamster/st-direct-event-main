@@ -1030,6 +1030,17 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         assert.equal(hb3.api.findTriggeredEvent('x20001') && hb3.api.findTriggeredEvent('x20001').id, '校园异闻x20001', 'x2-prefix short id must trigger');
         assert.equal(hb3.api.findTriggeredEvent('我觉得刚才e0001这个事件不错'), null, 'incidental mentions must not trigger');
     });
+    check('Prompt viewer mobile stacking fix and header close reach',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        const openFn = src.slice(src.indexOf('async function openPromptViewerModal'), src.indexOf('function filterPromptViewerMessages'));
+        assert(openFn.includes('if (isMobileView()) {') && openFn.includes("['se-settings', 'se-events', 'se-presets', 'se-api-log'].forEach"), 'viewer must hide source sub-panels on mobile before showing');
+        assert(src.includes('class="se-pv-header-close" data-action="close-prompt-viewer"'), 'viewer header text close button missing');
+        const css = fs.readFileSync(path.join(__dirname,'..','style.css'),'utf8').replace(/\r\n/g, '\n');
+        const mq = css.slice(css.indexOf('@media (max-width: 768px)'), css.indexOf('/* 滚动条（主面板内容区 + 各二级弹窗内滚容器） */'));
+        assert(css.includes('.se-pv-header-close {\n        display: none;\n    }'), 'pv header close must default to hidden on desktop');
+        assert(mq.includes('.se-prompt-viewer-modal .se-modal-header .se-pv-row-icon-btn') && mq.includes('display: none !important'), 'viewer icon buttons must be hidden on mobile');
+        assert(mq.includes('.se-prompt-viewer-modal .se-modal-header .se-pv-header-close') && mq.includes('display: inline-flex !important'), 'viewer text close must show on mobile');
+    });
     check('PLUGIN_VERSION matches manifest and stale version strings are gone',()=>{
         const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
         const mf = JSON.parse(fs.readFileSync(path.join(__dirname,'..','manifest.json'),'utf8'));
