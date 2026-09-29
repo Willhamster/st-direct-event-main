@@ -1083,6 +1083,10 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         const descLine = "${d.desc ? `<div class=\"se-preset-desc\">${escapeHtml(d.desc)}</div>` : ''}";
         assert(workshop.split(descLine).length - 1 >= 3, 'difficulty conditional desc lines missing');
         assert(!workshop.includes('双向同源'), 'stale same-source note must be gone');
+        // 流派组不含 death_risk 冗余卡：它不是真流派（SUB_CONFIGS.combat.genres 无此项），且与独立死线小节
+        // 同键 combat.death_risk，savePresets 按 DOM 序后者覆盖前者会静默吞掉流派组卡上的编辑
+        assert(!workshop.includes("key: 'combat.death_risk'"), 'genre list must not carry the death_risk duplicate card');
+        assert(workshop.includes('data-sub-prompt-key="combat.death_risk"'), 'dedicated death section card must stay');
     });
     check('Main panel three-tier layout and viewer cleanup',()=>{
         const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
