@@ -375,8 +375,43 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         const subBlock = src.slice(src.indexOf('const DEFAULT_SUB_PROMPTS'), src.indexOf('const SUB_CONFIGS'));
         assert(!subBlock.includes('因果边界'), 'sub prompts still contain causal boundary');
         const getSettings = src.slice(src.indexOf('function getSettings'), src.indexOf('function getJailbreakPrompt'));
-        assert(getSettings.includes('configVersion = 8') || getSettings.includes('configVersion: 8'), 'v8 migration version bump missing');
+        assert(getSettings.includes('configVersion = 9'), 'v9 migration version bump missing');
         assert(getSettings.includes('endsWith(LEGACY_CAUSAL_TAIL)'), 'v8 migration strip missing');
+        // v9：自定义模板覆盖层折叠进本体（本体唯一事实源），须在 presets 赋值之后执行
+        assert(getSettings.includes('foldCustomOverridesIntoBodies(merged)'), 'v9 fold wiring missing in getSettings');
+        assert(src.includes('configVersion: 9'), 'persistSettings must stamp configVersion 9');
+    });
+    check('Custom template overrides fold into bodies (v9 migration)',()=>{
+        const hf = harness();
+        // 纯函数直调：烤入覆盖折叠进本体、孤儿键与空值键删除、源对象不被穿透污染
+        const tpl = { id: 'ct_f1', prefix: 'e', name: '折叠模板', mainPrompt: '', turns: 2, genres: [{ id: 'g1', label: '流', badge: '', desc: '', prompt: '旧流派' }], depths: [{ id: 'd1', label: '深', desc: '', prompt: '旧深度' }], extras: [{ id: 'x1', label: '额', desc: '', prompt: '旧额外' }], selectedGenreId: 'g1', selectedDepthId: 'd1', selectedExtraIds: ['x1'], createdAt: 1, updatedAt: 1 };
+        const sourcePresets = { ct_f1: { systemPrompt: '工坊主覆盖' }, ct_gone: { systemPrompt: '孤儿主覆盖' } };
+        const sourceSubs = { 'ct_f1.g1': '工坊流派覆盖', 'ct_f1.diff_d1': '工坊深度覆盖', 'ct_f1.extra_x1': '工坊额外覆盖', 'ct_f1.g999': '无主条目覆盖', 'ct_gone.g1': '孤儿流派覆盖' };
+        const target = { customTemplates: [JSON.parse(JSON.stringify(tpl))], presets: sourcePresets, subPrompts: sourceSubs };
+        hf.api.foldCustomOverridesIntoBodies(target);
+        const folded = target.customTemplates[0];
+        assert.equal(folded.mainPrompt, '工坊主覆盖', 'main prompt override must fold into body');
+        assert.equal(folded.genres[0].prompt, '工坊流派覆盖', 'genre override must fold into entry');
+        assert.equal(folded.depths[0].prompt, '工坊深度覆盖', 'depth override must fold into entry');
+        assert.equal(folded.extras[0].prompt, '工坊额外覆盖', 'extra override must fold into entry');
+        assert(target.presets && !('ct_f1' in target.presets) && !('ct_gone' in target.presets), 'folded preset keys must be removed');
+        assert(target.subPrompts && Object.keys(target.subPrompts).length === 0, 'folded/orphan subPrompt keys must be removed');
+        assert.deepEqual(sourcePresets, { ct_f1: { systemPrompt: '工坊主覆盖' }, ct_gone: { systemPrompt: '孤儿主覆盖' } }, 'fold must not mutate the source presets object');
+        // 空串覆盖是「已清空」状态：仅删键、不写本体
+        const emptyFold = { customTemplates: [JSON.parse(JSON.stringify(tpl))], presets: { ct_f1: { systemPrompt: '   ' } }, subPrompts: { 'ct_f1.g1': '' } };
+        hf.api.foldCustomOverridesIntoBodies(emptyFold);
+        assert.equal(emptyFold.customTemplates[0].mainPrompt, '', 'empty main override must not overwrite body');
+        assert.equal(emptyFold.customTemplates[0].genres[0].prompt, '旧流派', 'empty genre override must not overwrite body');
+        // 端到端：旧存档（configVersion 8 + 烤入覆盖）经 getSettings 读出即完成折叠
+        hf.api.persistSettings({ ...hf.api.DEFAULT_SETTINGS, customTemplates: [tpl], presets: { ct_f1: { systemPrompt: '主覆盖' } }, subPrompts: { 'ct_f1.g1': '流派覆盖' } });
+        // 手动把存档版本退回 v8 模拟旧数据（persistSettings 总是写 v9）
+        const ctxSettings = hf.ctx.extensionSettings['st-direct-event'];
+        ctxSettings.configVersion = 8;
+        const loaded = hf.api.getSettings();
+        assert.equal(loaded.customTemplates[0].mainPrompt, '主覆盖', 'migration must fold main override on read');
+        assert.equal(loaded.customTemplates[0].genres[0].prompt, '流派覆盖', 'migration must fold genre override on read');
+        assert(!loaded.presets?.ct_f1, 'migration must drop folded preset key');
+        assert(!loaded.subPrompts?.['ct_f1.g1'], 'migration must drop folded subPrompt key');
     });
     check('Engine actions use uniform segmented grid',()=>{
         const css = fs.readFileSync(path.join(__dirname,'..','style.css'),'utf8');
@@ -696,10 +731,11 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         const gridBlock = css.slice(css.indexOf('.se-ct-item-grid {'), css.indexOf('}', css.indexOf('.se-ct-item-grid {')));
         assert(gridBlock.includes('align-items: end'), 'item grid missing bottom alignment');
     });
-    check('Custom template export payload carries body and workshop overrides',()=>{
+    check('Custom template export payload carries normalized bodies only',()=>{
         const he = harness();
         const tpl = { id: 'ct_ex1', prefix: 'e', name: '导出模板', mainPrompt: '主提示词', turns: 3, genres: [{ id: 'g1', label: '流', badge: '', desc: '', prompt: '流派内容' }], depths: [{ id: 'd1', label: '深', desc: '', prompt: '深度内容' }], extras: [], selectedGenreId: 'g1', selectedDepthId: 'd1', selectedExtraIds: [], createdAt: 1, updatedAt: 2 };
-        const s = { ...he.api.DEFAULT_SETTINGS, customTemplates: [tpl], presets: { ct_ex1: { systemPrompt: '工坊主覆盖' } }, subPrompts: { 'ct_ex1.g1': '工坊流派覆盖', 'ct_gone.g1': '悬空覆盖' } };
+        // v9 起本体是唯一事实源：即使存档里残留覆盖键，导出也只带 templates（覆盖在导入侧折叠）
+        const s = { ...he.api.DEFAULT_SETTINGS, customTemplates: [tpl], presets: { ct_ex1: { systemPrompt: '残留主覆盖' } }, subPrompts: { 'ct_ex1.g1': '残留流派覆盖' } };
         const p = he.api.buildCustomTemplateExportPayload([tpl], s);
         assert.equal(p.plugin, 'st-direct-event');
         assert.equal(p.kind, 'st-direct-event-custom-templates');
@@ -707,14 +743,12 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         assert.equal(p.templates.length, 1);
         assert.equal(p.templates[0].name, '导出模板');
         assert.equal(p.templates[0].mainPrompt, '主提示词');
-        assert.equal(p.presets.ct_ex1.systemPrompt, '工坊主覆盖', 'preset override must be exported');
-        assert.equal(p.subPrompts['ct_ex1.g1'], '工坊流派覆盖', 'subPrompt override must be exported');
-        assert.equal(p.subPrompts['ct_gone.g1'], undefined, 'override keys of other templates must not leak');
-        // 无覆盖时省略对应键
-        const p2 = he.api.buildCustomTemplateExportPayload([tpl], he.api.DEFAULT_SETTINGS);
-        assert(!('presets' in p2) && !('subPrompts' in p2), 'empty overrides must be omitted');
+        assert(!('presets' in p) && !('subPrompts' in p), 'export must not carry override layers');
+        // 多余的 settings 实参兼容旧调用（签名改为单参也不报错）
+        const p2 = he.api.buildCustomTemplateExportPayload([tpl]);
+        assert(!('presets' in p2) && !('subPrompts' in p2), 'export must not carry override layers');
         // 缺字段模板导出后形状稳定（normalize 兜底）
-        const p3 = he.api.buildCustomTemplateExportPayload([{ name: '裸', genres: [{ id: 'g9', label: 'g', prompt: 'p' }], selectedGenreId: 'g9' }], {});
+        const p3 = he.api.buildCustomTemplateExportPayload([{ name: '裸', genres: [{ id: 'g9', label: 'g', prompt: 'p' }], selectedGenreId: 'g9' }]);
         assert.equal(p3.templates[0].turns, 2);
         assert.equal(p3.templates[0].depths.length, 0);
         assert.equal(p3.templates[0].selectedGenreId, 'g9');
@@ -779,12 +813,25 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         assert.equal(r.subPrompts[newId + '.g1'], '分享者的流派覆盖', 'subPrompt override key must follow the remapped id');
         assert.equal(r.subPrompts['ct_absent.g1'], undefined, 'override keys without a matching template must be dropped');
         assert.equal(r.presets['ct_ov1'], undefined, 'old preset key must not survive remap');
-        // 草稿与同名警告
+        // 草稿警告保留；同名冲突改由 computeImportConflicts + 冲突弹窗逐条决策，parse 不再产同名 warning
         const draftTpl = { ...tpl, name: '覆盖模板', genres: [{ id: 'g1', label: '', badge: '', desc: '', prompt: '流派内容' }] };
         const rD = hw.api.parseCustomTemplateImportPayload(JSON.stringify({ templates: [draftTpl] }), sW);
         assert.equal(hw.api.isCustomTemplateComplete(rD.templates[0]), false, 'half-filled import must stay a draft');
         assert(rD.warnings.some(w => w.includes('草稿')), 'draft warning missing');
-        assert(rD.warnings.some(w => w.includes('同名')), 'name clash warning missing');
+        assert(!rD.warnings.some(w => w.includes('同名')), 'name clash is resolved via conflict dialog, no warning');
+        // 冲突计算：本地同名 → existingId 指向现有模板；批内重名（本地无同名）→ existingId 空串且仅第二个起算冲突
+        const tplB = { ...tpl, id: 'ct_b1', prefix: 'f', name: '批次重名' };
+        const tplB2 = { ...tpl, id: 'ct_b2', prefix: 'g', name: '批次重名' };
+        const rB = hw.api.parseCustomTemplateImportPayload(JSON.stringify({ templates: [tplB, tplB2] }), { ...hw.api.DEFAULT_SETTINGS, customTemplates: [] });
+        const conflictsB = hw.api.computeImportConflicts(rB, { ...hw.api.DEFAULT_SETTINGS, customTemplates: [] });
+        assert.equal(conflictsB.length, 1, 'batch-internal duplicate must conflict from the second occurrence');
+        assert.equal(conflictsB[0].index, 1, 'first occurrence keeps the name without asking');
+        assert.equal(conflictsB[0].existingId, '', 'batch-internal duplicate has no local overwrite target');
+        const rC = hw.api.parseCustomTemplateImportPayload(JSON.stringify({ templates: [tpl] }), sW);
+        const conflictsC = hw.api.computeImportConflicts(rC, sW);
+        assert.equal(conflictsC.length, 1, 'local same-name must be detected as conflict');
+        assert.equal(conflictsC[0].existingId, 'ct_ov1', 'conflict must point at the local template id');
+        assert.equal(hw.api.computeImportConflicts({ ok: false }, sW).length, 0, 'invalid parse result has no conflicts');
     });
     check('Template import/export UI is wired end to end',()=>{
         const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
@@ -803,15 +850,16 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         assert(src.includes('templateExportSel = new Set()') && src.includes('templateExportSel.clear()'), 'export selection set reset missing');
         assert(src.includes('data-action="tio-export-toggle-all"') && src.includes('function toggleTemplateExportAll'), 'select-all toggle missing');
         assert(src.includes("e.target.closest('.se-tio-export-check')"), 'export checkbox change delegate missing');
-        // 分发器分支齐全（按勾选导出，无 export-all-*）
-        for (const act of ['open-template-io','close-template-io','pick-template-file','import-custom-submit','export-selected-file','export-selected-copy','tio-export-toggle-all']) {
+        // 分发器分支齐全（按勾选导出，无 export-all-*；含同名冲突弹窗分支）
+        for (const act of ['open-template-io','close-template-io','pick-template-file','import-custom-submit','export-selected-file','export-selected-copy','tio-export-toggle-all','conflict-confirm','conflict-cancel']) {
             assert(src.includes(`if (action === '${act}')`), 'dispatcher branch missing: ' + act);
         }
         assert(!src.includes("if (action === 'export-all-file')") && !src.includes("if (action === 'export-all-copy')"), 'legacy export-all branches should be removed');
         // 下载实现与 objectURL 释放
         assert(src.includes('new Blob([') && src.includes('URL.createObjectURL') && src.includes('URL.revokeObjectURL'), 'file download implementation missing');
-        // 新弹窗进 RESIZE 列表获得缩放把手与尺寸记忆
+        // 新弹窗进 RESIZE 列表获得缩放把手与尺寸记忆（冲突弹窗追加在尾部）
         assert(src.includes("'se-custom-template-modal', 'se-template-io-modal'"), 'io modal not in RESIZE_PANEL_IDS');
+        assert(src.includes("'se-template-io-modal', 'se-conflict-modal']"), 'conflict modal not in RESIZE_PANEL_IDS');
         // 新建/导入行等宽各半 + 新建按钮虚线透明融入背景板（组容器去卡片底）
         assert(src.includes('se-btn-group se-add-row'), 'add row group class missing');
         assert(css.includes('.se-btn-group.se-add-row') && css.includes('#st-direct-event-root .se-add-row > button'), 'equal-width add row css missing');
@@ -842,6 +890,83 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         const picked = hz.api.exportCustomTemplatesByIds(['ct_e2e2'], 'file');
         assert(picked && Array.isArray(picked.templates) && picked.templates.length === 1, 'selected-only export failed');
         assert.equal(picked.templates[0].id, 'ct_e2e2', 'unselected template leaked into export payload');
+    });
+    check('Import dispositions: overwrite takes over id and prefix, skip drops, new auto-renames',()=>{
+        const hd = harness();
+        hd.api.persistSettings({ ...hd.api.DEFAULT_SETTINGS, customTemplates: [] });
+        const mkTpl = (id, prefix, name, genrePrompt) => ({ id, prefix, name, mainPrompt: '', turns: 2, genres: [{ id: 'g1', label: '流', badge: '', desc: '', prompt: genrePrompt }], depths: [], extras: [], selectedGenreId: 'g1', selectedDepthId: '', selectedExtraIds: [], createdAt: 1, updatedAt: 1 });
+        // 本地已有「悬疑」（事件编号前缀 b）；导入批次含三个同名「悬疑」+ 一个无冲突「日常」
+        hd.api.persistSettings({ ...hd.api.getSettings(), customTemplates: [mkTpl('ct_local', 'b', '悬疑', '本地流派')] });
+        const payload = { templates: [mkTpl('ct_new', 'e', '悬疑', '覆盖来源'), mkTpl('ct_dup', 'f', '悬疑', '新增来源'), mkTpl('ct_dup2', 'g', '悬疑', '取消来源'), mkTpl('ct_daily', 'h', '日常', '日常流派')], presets: { ct_new: { systemPrompt: '分享者主覆盖' } }, subPrompts: { 'ct_dup.g1': '分享者流派覆盖' } };
+        const r = hd.api.parseCustomTemplateImportPayload(JSON.stringify(payload), hd.api.getSettings());
+        assert.equal(r.ok, true);
+        const conflicts = hd.api.computeImportConflicts(r, hd.api.getSettings());
+        assert.equal(conflicts.length, 3, 'three same-name templates must conflict');
+        // 处置：0=覆盖（接手 ct_local 的 id/前缀）、1=新增（自动编号）、2=取消导入；「日常」不在名单直接导入
+        const dispositions = { 0: 'overwrite', 1: 'new', 2: 'skip' };
+        assert.equal(hd.api.applyCustomTemplateImport(r, dispositions), true, 'apply with dispositions failed');
+        const after = hd.api.getCustomTemplates(hd.api.getSettings());
+        const names = after.map(t => t.name);
+        assert.equal(after.length, 3, 'skip must drop its template; overwrite must not add');
+        // 覆盖：接手被覆盖者的 id 与事件计数前缀（历史事件编号、短编号触发不断链），且分享者覆盖键折叠进本体
+        const over = after.find(t => t.id === 'ct_local');
+        assert(over, 'overwrite must keep the local template id');
+        assert.equal(over.prefix, 'b', 'overwrite must take over the local prefix');
+        assert.equal(over.genres[0].prompt, '覆盖来源', 'overwrite body must come from the import');
+        assert.equal(over.mainPrompt, '分享者主覆盖', 'old-format payload preset override must fold into the imported body');
+        // 新增：自动编号避免与本地现有名冲突；旧格式 payload 的流派覆盖折叠进本体
+        const added = after.find(t => t.name === '悬疑1');
+        assert(added, 'conflicting new template must be auto-renamed 悬疑1');
+        assert.notEqual(added.id, 'ct_local', 'added template must keep its own id');
+        assert.equal(added.genres[0].prompt, '分享者流派覆盖', 'old-format payload subPrompt override must fold into the imported body');
+        assert(!after.some(t => t.name === '悬疑2'), 'skipped template must not be imported');
+        assert(names.includes('日常'), 'conflict-free template imports without asking');
+        assert(!hd.api.getSettings().presets?.ct_local && !Object.keys(hd.api.getSettings().subPrompts || {}).some(k => k.startsWith('ct_local.') || k.startsWith(added.id + '.')), 'overrides must be folded into bodies, never stored');
+        // 无处置参数（缺省全按新增）：同名自动编号、不覆盖
+        const r2 = hd.api.parseCustomTemplateImportPayload(JSON.stringify({ templates: [mkTpl('ct_x', 'i', '悬疑', '再导入')] }), hd.api.getSettings());
+        assert.equal(hd.api.applyCustomTemplateImport(r2), true, 'default-disposition apply failed');
+        const after2 = hd.api.getCustomTemplates(hd.api.getSettings());
+        assert(after2.some(t => t.name === '悬疑2'), 'default disposition auto-renames instead of overwriting');
+        assert.equal(after2.filter(t => t.id === 'ct_local').length, 1, 'default disposition must not overwrite local template');
+        // 全部取消 → 不写入
+        const r3 = hd.api.parseCustomTemplateImportPayload(JSON.stringify({ templates: [mkTpl('ct_y', 'j', '全新', '全新流派')] }), hd.api.getSettings());
+        const before3 = JSON.stringify(hd.api.getCustomTemplates(hd.api.getSettings()));
+        assert.equal(hd.api.applyCustomTemplateImport(r3, { 0: 'skip' }), false, 'all-skip apply must be a no-op');
+        assert.equal(JSON.stringify(hd.api.getCustomTemplates(hd.api.getSettings())), before3, 'all-skip must not mutate');
+    });
+    check('Name conflict dialog and unified titles are wired',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        const css = fs.readFileSync(path.join(__dirname,'..','style.css'),'utf8');
+        // 冲突弹窗壳与行渲染、确认/取消、来源弹窗恢复
+        assert(src.includes('id="se-conflict-modal"') && src.includes('id="se-conflict-body"'), 'conflict modal shell missing');
+        assert(src.includes('function openConflictModal') && src.includes('function closeConflictModal') && src.includes('function handleConflictConfirm'), 'conflict modal functions missing');
+        assert(src.includes("openConflictModal('import', { result, conflicts })"), 'import flow must route conflicts to the dialog');
+        assert(src.includes('openConflictModal(\'editor\', { existingId: dup.id'), 'editor save must route name clashes to the dialog');
+        assert(src.includes('applyCustomTemplateImport(ctx.result, dispositions)'), 'confirm must apply dispositions');
+        assert(src.includes('returnModalId: source === \'import\' ? \'se-template-io-modal\' : \'se-custom-template-modal\''), 'conflict dialog must remember its source modal');
+        assert(css.includes('#st-direct-event-root .se-conflict-row'), 'conflict row css missing');
+        // 覆盖语义复用：删除与「覆盖同名」共用同一清理函数（对称清覆盖键）
+        assert(src.includes('function removeCustomTemplateRecord') && src.includes('removeCustomTemplateRecord(s, ctx.existingId)'), 'overwrite must reuse the shared removal helper');
+        // 导入提示文案不再宣称导出携带覆盖层
+        assert(!src.includes('含预设工坊里改过的提示词覆盖'), 'io modal tip must reflect body-only export');
+        // 编辑器标题：编辑态「自定义事件：X」、新建态「新建自定义事件」；行内 tooltip 同步
+        assert(src.includes('`自定义事件：${t.name || \'未命名\'}`'), 'editor title should be 自定义事件：X');
+        assert(src.includes("'新建自定义事件'"), 'new-template editor title should be 新建自定义事件');
+        assert(!src.includes('编辑自定义模板：'), 'old editor title should be gone');
+        assert(src.includes('title="编辑自定义事件"'), 'row pencil tooltip should be 编辑自定义事件');
+        // 工坊手风琴摘要直接用模板名（不再冠「自定义模板预设：」前缀）
+        assert(src.includes('<summary class="se-preset-accordion-summary">${escapeHtml(t.name || \'未命名模板\')}</summary>'), 'workshop summary should be the bare template name');
+        assert(!src.includes('自定义模板预设：'), 'old workshop summary prefix should be gone');
+        // 工坊自定义组与编辑器同源：data-ct-entry-key 直写条目本体，savePresets 对应收集
+        assert(src.includes('data-ct-entry-key="${escapeHtml(t.id)}.${escapeHtml(g.id)}"'), 'workshop genre card must bind ct entry key');
+        assert(src.includes('data-ct-entry-key="${escapeHtml(t.id)}.diff_${escapeHtml(d.id)}"'), 'workshop depth card must bind ct entry key');
+        assert(src.includes('data-ct-entry-key="${escapeHtml(t.id)}.extra_${escapeHtml(e.id)}"'), 'workshop extra card must bind ct entry key');
+        const savePresets = src.slice(src.indexOf('function savePresets'), src.indexOf('function resetPresets'));
+        assert(savePresets.includes("textarea[data-ct-entry-key]") && savePresets.includes('entry.prompt = String(textarea.value'), 'savePresets must write ct entries back to the body');
+        assert(savePresets.includes('if (presets[tid]) delete presets[tid];'), 'savePresets must drop stale main-prompt override keys');
+        // 主提示词取值不再读覆盖层
+        const presetFn = src.slice(src.indexOf('function customTemplatePreset'), src.indexOf('function syncCustomEventTypes'));
+        assert(!presetFn.includes('settings?.presets?.[t?.id]'), 'customTemplatePreset must not read the retired override layer');
     });
     check('Main panel three-tier layout and viewer cleanup',()=>{
         const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
