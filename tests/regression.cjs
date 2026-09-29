@@ -602,7 +602,7 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
     check('Prompt viewer covers custom templates and mirrors real sub settings',()=>{
         const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
         // 编辑器弹窗可缩放：RESIZE_PANEL_IDS 必须包含自定义模板弹窗（及其后的导入/导出弹窗）
-        assert(src.includes("'se-world-info-modal', 'se-custom-template-modal'"), 'resize list missing custom template modal');
+        assert(src.includes("'se-world-info-modal', 'se-variable-modal', 'se-custom-template-modal'"), 'resize list missing custom template modal');
         // 主类下拉渲染自定义模板选项
         assert(src.includes("getCustomTemplates(s).map(t => `<option"), 'viewer type select missing custom template options');
         // 回合数从真实细节设置同步（打开/切换主类共用同一函数）
@@ -868,6 +868,67 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         // 自定义模板行间隔与战斗/推理/恋爱一致（10px）
         const customRowsBlock = css.slice(css.indexOf('#st-direct-event-root #se-custom-rows {'), css.indexOf('}', css.indexOf('#st-direct-event-root #se-custom-rows {')));
         assert(customRowsBlock.includes('gap: 10px'), 'custom rows must share the 10px rhythm');
+    });
+    check('Sub-prompt saves skip unchanged defaults and heal baked overrides',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        assert(src.includes('function getSubPromptFallback'), 'fallback resolver missing');
+        assert(src.includes('return getSubPromptFallback(eventKey, genreOrFeatureKey, s);'), 'getSubPrompt must delegate to fallback');
+        assert(src.split('=== String(getSubPromptFallback(evKey, subKey, s)).trim()').length - 1 === 2, 'both save paths must compare against fallback before writing');
+        const hb = harness();
+        const s = hb.api.getSettings();
+        s.customTemplates = [{id:'ct_bfx', name:'行为测试', prefix:'e', turns:2, genres:[{id:'g1', label:'流派一', badge:'', desc:'', prompt:'条目原文'}], depths:[], extras:[]}];
+        assert.equal(hb.api.getSubPromptFallback('ct_bfx','g1',s), '条目原文', 'fallback must resolve to template entry prompt');
+        assert.equal(hb.api.getSubPrompt('ct_bfx','g1',s), '条目原文', 'no override must fall back to entry prompt');
+        s.subPrompts = {'ct_bfx.g1':'用户覆盖'};
+        assert.equal(hb.api.getSubPrompt('ct_bfx','g1',s), '用户覆盖', 'override must still win');
+    });
+    check('Deleting a custom template cleans its override keys but spares others',()=>{
+        const hb2 = harness();
+        const s2 = hb2.api.getSettings();
+        s2.customTemplates = [{id:'ct_del1', name:'删除测试', prefix:'f', turns:2, genres:[{id:'g1', label:'流派', badge:'', desc:'', prompt:'p'}], depths:[], extras:[]}];
+        s2.presets = {ct_del1:{systemPrompt:'主覆盖'}};
+        s2.subPrompts = {'ct_del1.g1':'流派覆盖','ct_keep.g1':'其他模板覆盖'};
+        hb2.api.persistSettings(s2);
+        hb2.api.deleteCustomTemplate('ct_del1');
+        const after = hb2.api.getSettings();
+        assert(!after.presets || !after.presets.ct_del1, 'presets[templateId] must be cleaned');
+        assert(!Object.keys(after.subPrompts||{}).some(k=>k.startsWith('ct_del1.')), 'subPrompts prefix keys must be cleaned');
+        assert.equal(after.subPrompts['ct_keep.g1'], '其他模板覆盖', 'other template overrides must survive');
+        assert(!after.customTemplates.some(t=>t.id==='ct_del1'), 'template must be removed');
+    });
+    check('Custom template events trigger by short id like fixed ones',()=>{
+        const hb3 = harness();
+        const st = hb3.api.getChatState();
+        st.events.push({id:'校园异闻e0001', title:'校园异闻', type:'ct_bfx', content:'', maxTurns:2, stages:[{content:'x'}]});
+        st.events.push({id:'校园异闻x20001', title:'校园异闻', type:'ct_bfx', content:'', maxTurns:2, stages:[{content:'x'}]});
+        assert.equal(hb3.api.findTriggeredEvent('e0001') && hb3.api.findTriggeredEvent('e0001').id, '校园异闻e0001', 'e-prefix short id must trigger');
+        assert.equal(hb3.api.findTriggeredEvent('x20001') && hb3.api.findTriggeredEvent('x20001').id, '校园异闻x20001', 'x2-prefix short id must trigger');
+        assert.equal(hb3.api.findTriggeredEvent('我觉得刚才e0001这个事件不错'), null, 'incidental mentions must not trigger');
+    });
+    check('PLUGIN_VERSION matches manifest and stale version strings are gone',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        const mf = JSON.parse(fs.readFileSync(path.join(__dirname,'..','manifest.json'),'utf8'));
+        const m = src.match(/const PLUGIN_VERSION = '([^']+)'/);
+        assert(m, 'PLUGIN_VERSION constant missing');
+        assert.equal(m[1], mf.version, 'PLUGIN_VERSION must match manifest version');
+        assert(!src.includes('v0.6.0'), 'stale v0.6.0 strings must be removed');
+    });
+    check('Bugfix wiring across generation/ui/data layers',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        assert(src.includes('longPressFired = true') && src.includes('if (!longPressFired) return;'), 'long-press synthetic click swallow missing');
+        assert(src.includes('id.match(/[a-z]') && !src.includes('[abcd]'), 'short-id whitelist not widened');
+        assert(src.includes('sendNotice + escapeHtml(event.id)') && src.includes('已删除事件 ${escapeHtml(eventId)}'), 'event.id must be escaped in toasts');
+        assert(src.includes("已删除自定义模板「' + escapeHtml(name) + '」"), 'template name must be escaped in delete toast');
+        assert(src.split('data-id="${CSS.escape(id)}"').length - 1 === 2, 'turn inputs must CSS.escape event id');
+        assert(src.includes('entry.seq = ++apiLogSeq') && src.includes('expandedApiLogs.has(log.seq)') && !src.includes('expandedApiLogs.has(index)'), 'api log expand state must key by seq');
+        assert(src.includes('attemptTimedOut') && src.includes('&& attemptTimedOut)'), 'timeout classification missing');
+        assert(src.includes('hasContentOverride') && src.includes('hasTitleOverride'), 'world-info empty override handling missing');
+        assert(src.includes('回合上限已达 30 回合'), 'cap-reached toast missing');
+        assert(src.includes('modelListLoading') && src.includes('connectionTestLoading'), 'request locks missing');
+        assert(src.includes('wandKeepAliveTimer') && src.includes('drawerWaitTimer'), 'init retry guards missing');
+        const bindHead = src.slice(src.indexOf('function bindSTEvents'), src.indexOf('MESSAGE_SENT'));
+        assert(bindHead.includes('stEventsBound = true'), 'stEventsBound must be set before first registration');
+        assert(src.includes('setGeneratingUI(currentGeneratingTypeKey, true)'), 'generating visual restore missing');
     });
     check('Production source contains no pictographs',()=>{for(const file of ['index.js','style.css']) assert(!/\p{Extended_Pictographic}/u.test(fs.readFileSync(path.join(__dirname,'..',file),'utf8')));});
     const report={checks,passed:true,date:new Date().toISOString()};fs.writeFileSync(path.join(__dirname,'regression-result.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));

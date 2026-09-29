@@ -102,6 +102,8 @@
 
     // 头部小说破限（雪融雪降万字纯文学预填充）
     const DEFAULT_NOVEL_BYPASS_PROMPT = "冬马和纱，很讨厌天空。\n\n春天，当她翘掉自己今后每天都要去的峰城大学附属学园的入学仪式，在河边草丛上躺下来的时候，头顶那片苍蓝澄净的天空，与自己心中的漆黑阴暗显得是那么地格格不入，令她感到十分反感。\n回朔到几天前，和纱的母亲刚刚向她道别。\n那既是日本甚至世界都引以为傲的充满情欲的钢琴师，也是自己唯一一位亲人的曜子，在滔滔不绝地向她女儿诉说了很多自私的理由后，就将和纱一个人抛下，自己坐飞机去了维也纳，将活动据点转移到了欧洲。\n从和纱小时候起，她就没有在大赛以外的活动中来看过和纱。也从来没有做过饭给和纱。还经常以演奏旅行为借口将和纱丢在家里，虽然和纱也知道，演奏会只是理由之一，她其实只是为了和当时的情人去度蜜月而已。\n即使如此，对于这么放荡的母亲，和纱也从来没有过不满。\n那是因为，在一年之中，她还是有一半的时间和自己待在同一个家里，围着同一张餐桌，自己如果在大赛上取得优胜她也会温柔地抚摸自己的头。\n那是因为，她打从心底里相信，自己对于母亲来说是必要的，自己也被母亲深爱着。\n但是……\n「即使带着现在的你去，也是没有意义的」\n在那本应是自己母亲的人说出这句毫无仁慈的话语时，至今为止的冬马和纱就已经消失了。现在依然名为冬马和纱的少女有着这样的感觉。\n新生的冬马和纱，对于这个世界来说是不必要的。\n虽然这不是事实，而只是她自己的看法改变了，但对于正直青春期的她来说，这样的道理她自然是不屑一顾。\n从那以后，他人面对和纱的任何声音、表情、感情……\n不，即使不是人，甚至连生物都不是的物体的颜色、声音、气味、味道、触感，各种显露于外的表现，似乎都隐含着另一层意思，并且，这些全都化为恶意袭向她，嘲笑她，监视她，但是却又在无视她。和纱开始有了这样的感觉。\n所以，和纱就对自己身周的一切……以目前的情况来说，就是她眼前那片广阔的天空，怀有了憎恶之情。\n比起憎恶母亲来，这样要来得轻松一些。\n\n冬马和纱，很讨厌老师。\n\n在开学典礼的第二天，对来上学了的和纱表示热烈欢迎的音乐科班主任女老师，对于只是一个新学生的和纱露出了满脸卑微的笑容，并且在放学后将她带到了另外一栋教学楼的三楼。\n镇坐在挂有第二音乐室金属牌的教室中央的崭新的古典钢琴上，和纱一眼就看见了雕刻在钢琴上的，「寄赠　冬马曜子」几个金光闪闪的字。\n面对一直沉默不语，只是偶尔发出叹息的和纱，班主任老师开始滔滔不绝地诉说着峰城大附属学园，尤其是音乐科对于只不过一个新生的冬马有着多大的期待，并且还光明正大地提出了「校方会全力支持你今后一切的音乐活动」这样的特殊待遇。\n所以和纱，马上就接受了这样的协助。\n「我现在要开始练习了，所以你马上给我从这里出去」\n如果班主任老师在这时候生气了，并且提醒和纱要她注意她那没有礼貌的言行的话，也许和纱就会意识到自己只是在赌气，并且会像以往那样老老实实地反省，于是两人对对方的第一印象以及今后的关系也许就会有所好转。\n但是，已经年过三十戴着黑框眼镜的女老师，只是在一瞬间吓得瞪圆了眼，之后马上拼命地装回了那卑微的笑容，说着「既然这样，那你要在练习结束之后到办公室来哦。因为我要来锁门」这样的话，将比自己小了十多岁的学生那粗暴的言语完全容忍了。\n所以，和纱就对成为了自己老师的班主任，以及让这位班主任表现出这种「大人的态度」的学校管理人员，顺带连同本来没有任何关系的学校老师一起，全都怀有了憎恶之情。\n因为要一个一个去区分敌人和朋友，实在是太麻烦了。\n\n冬马和纱，很讨厌同级生。\n\n在开学典礼之后不久，终于正式开始上课之后，每到实习时间，就会有一个男生很亲热地与和纱搭话。\n那个自报家门，名叫松川贵纪的同班同学，很自豪地说着自己以前与和纱在大会上同场竞技的事迹，接着又很自豪地说着自己和和纱是班上仅有的两个被选上去参加下个月的春季全国大赛的人，只是和纱对于前半部分完全没有印象，对后半部分也完全没有兴趣，所以对他的态度也极其地冷淡。\n松川完全没有想到自己「唯一的好对手」会是这种反应，但是他还是把和纱这种反应擅自当成了傲娇的表现，并且开始更加变本加厉地纠缠起了和纱。\n毕竟，他完全想不到，和纱有讨厌自己的理由。\n以「一流的人就要有一流的朋友」这种论点为基础展开行动的他，觉得她是能在钢琴技巧与人生道路上和自己一起成长的唯一的好伙伴。并且，他毫不怀疑地认为，她也有一样的想法。\n这样对牛弹琴的时间持续了一会儿之后，事件发生了。\n黄昏的校舍里，伫立在教室里的两人……\n虽然导致那个结果的过程，除了那两人之外谁也不知道，但是从结果上来说，就是松川额头上冒着冷汗，捂着自己的股间满地打滚，而和纱就像是想要消除留在自己脚上那令人不悦的感触一般，将周围的桌椅全部踢翻了。\n顺带一提，对于和纱来说，不用拳头只是出于钢琴家保护手的习惯，而对准股间出脚也并没有什么特殊的理由。\n先不管这些，那场黄昏中的骚动，由于校方的「宽大处理」，双方都没有受到任何处罚。\n但是……也可以说是由于这件事的缘故，和纱与其他所有音乐科的同学之间，在仅仅过了一个月之后，就已经形成了不可弥补的裂痕。\n所以，和纱对于教室里所有的人都抱持着平等的憎恶。\n如果特别憎恶松川的话，那就像是满足了他那过剩的自我意识一般，这令和纱很是反感，而且更重要的是，班上已经没有任何人会和她说话了。\n\n于是，一个月之后，春季全国大赛。\n入学不到两个月的一年级生就获得了第一名，这个建校以来史无前例的壮举，使得特意赶到比赛现场去了的校长以及董事长、教导主任以及年级主任都一致对一名女学生大加赞赏。\n班主任老师也依然用那卑微的笑容附和着自己的上司们。\n同样参加了大赛，并且闯入了决赛的高年级学生们，只是低着头，机械地鼓了掌。\n至于因为同级生进入了全国大赛而前来助威的一年级学生……这样的人，连一个也没有。\n仅仅只用了两个月，和纱与周围世界的关系，就被碾压，撕裂，最后完全隔绝了。\n但是和纱，只是将自己周围那些令人不悦的反应当作耳边风，面无表情地接过奖状，无言地打断了赞赏之声，无视所有人的制止，将奖状和奖杯都留在身后离开了会场。\n那个时候，她心中充满的感情，既不是欣喜，也不是成就感，甚至连愤怒、虚无感都不是，只是十分平淡的感觉。\n本应该，是这样的。\n\n那天晚上，回到家，打开家门，之后的事情，和纱已经记不太清楚了。\n自己将放在门口的大包航空邮件打开的事情也好，从包中拿出了与自己年龄不相符的小狗玩偶的事情也好，玩偶上贴着一张写有母亲的名字以及「生日快乐」的纸条的事情也好，自己在大赛上获得优胜的时候自己的生日已经过了一个星期的事情也好，从正面盯着自己看的玩偶的眼睛显得格外地圆的事情也好……\n自己不知何时就嘶吼起来的事情也好，将母亲送的迟了一个星期的生日礼物摔到墙上的事情也好，接着又将它捡起来疯狂地捶打撕扯着的事情也好，自己的视野已经变得一片模糊的事情也好，自己内心中决堤而出的丑恶的情绪已经无法制御地化为言语从自己口中吐出的事情也好，满心以为自己已经一无所有的事情也好，这一切的一切，她真的，真的都记不清了……\n\n和纱获得优胜这件事，在第二天就成为了话题，甚至还在报纸上刊登了照片。\n理所当然的，在那些新闻记事当中，包括标题在内「冬马曜子」的名字一共出现了五次，但是和纱既没有注意到，甚至连去读这些记事的想法都没有。\n\n冬马和纱，开始讨厌钢琴了。\n对当时的她来说，这就等于憎恶全世界。\n第一章　春\n\n「冬马」\n「……」\n和纱做了个梦。\n在梦中，那些和纱再也不愿想起的往事如同走马灯一般一个接着一个地从脑海中闪过。这实在是一个再糟糕不过的梦了。\n「冬马…喂…不好意思，不过你还是先起来一下」\n「…嗯？」\n醒来的感觉当然也十分不好，所以即使面对着那让自己脱离恶梦的，本应称之为恩人的对象，当时的和纱心中所有的也只是愤怒。\n…虽然是这么说，但这几年的和纱，对任何人都不可能怀有好意。\n「啊…」\n「…？」\n和纱抬起头，发现一个穿着制服的男生睁圆了眼，目不转睛地看着她。\n…他的表情已经僵硬到了，会让和纱做出这种解释的地步。\n「………」\n各种情报开始流入和纱的头脑之中，比如现在已经是那个梦的两年之后，现在自己正处于普通科三年级的教室里，现在的时间应该是第六节课…不，从周围的喧嚣来看，应该已经放学了，等等。这些情报，让她逐渐回到了现实之中。\n「………咝」\n虽然是这样，但是那个男学生只是呆呆地站在和纱面前，所以她一边觉得庆幸，一边再次将头埋到了桌子上…\n「啊啊！？抱歉抱歉，你是冬马和纱对吧？」\n\n「…嗯～」\n接着马上又被叫起来，导致她心情越来越不好了。\n身体状况暂且不提，由于恶梦而变得极其不佳的心情，再加上中途被人叫醒，使得和纱将自己的愤怒与不满毫无保留地写在了脸上。\n「从开学典礼以来你一直都没来上学吧？身体状况，还好吗？」\n「…哈？」\n和纱对他的第一印象…说实话，没有任何印象。\n没有特点的身高，没有特点的体型，没有特点的发型，没有特点的面孔。\n「所有科目的教科书。学生证。各种各样的申请表。都帮你按照上交的顺序整理好了」\n唯一一处勉强可以称之为特征的地方，就是他扣上了其他男学生全都没有扣上的第一粒纽扣。\n「在冬马休息的这段期间，虽然课程上没什么进展，但是各种通知却很多…」\n「………」\n他不再像最开始那样瞪着和纱看，而是用沉稳、亲切、关心对方的态度，似乎是在努力地想要解除对方的警惕。\n只是，他的视线依然没有要离开和纱双眼的意思，这还是让至今为止从来都没有和别人四目相对的和纱感到不快。\n「还有这个…以防万一，我还帮你拿了学生票的申请表。你家住岩津町，所以是搭电车上学的吧？」\n「………」\n他依然盯着和纱的双眼，开始在和纱的桌上堆积起了各种书和通知单。\n「然后，最不能忘的就是这个。家长见面会的通知。下周就要开始了所以今天就要交给监护人」\n「监护人…」\n「本来我打算直接送到你家里的，但是我还有很多其他事情…抱歉」\n他明明对和纱的事情一无所知，言行却戳到了和纱的痛处，让和纱感到更加不悦了。\n他那自以为亲切的强加于人的态度，让和纱觉得很讨厌。\n那助长他强加于人势头的见风使舵的道歉，让和纱觉得很恼火。\n「那么到目前为止，有什么问题吗？只要是我知道的都会回答的」\n「………」\n那名男生的态度正在让和纱心中的怒火不断增幅，但是和纱只是轻轻地对他摇了摇头。\n和刚入学的时候，那对所有令自己不满的事物都针锋相对的态度比起来，和纱也许是已经获得了经验，但是更多的只是嫌麻烦而已。\n「是吗，太好了。那么…」\n「呼…」\n但是，眼前这位厚颜无耻的男生，却将和纱难得的让步当作字面意思上的「没有问题」理解了。\n「…怎么了？」\n「……烦」\n「唔？」\n「你很烦啊」\n他非常地烦人。\n和纱最近好不容易克制自己，不要直接将自己的负面感情毫不掩饰地表露出来。\n虽然这么做的原因是「跟人争吵真是麻烦」这种完全的消极理由，但是多亏了这一点，她至少没有和周围产生摩擦了。\n「我经常被人这么说，但这都是必须的事。如果觉得我烦那你一次性记住比较好哦」\n「………」\n但是，但是…\n眼前这位男生却是一副完全不看对方的反应、既蛮横又傲慢的态度。他以为他自己是谁啊！？\n「啊…对了。我们还是第一次见面啊。我叫北原春希。姑且算是Ｅ班前期的班长」\n「我没有问你的名字」\n「可你从刚才起就摆出一副『你哪根葱啊？』的脸」\n「…」\n而且和纱连他的名字也不知道，虽然刚才似乎听到了，但是她完全没有要记住这名字的想法…\n「…身体还是不舒服吗？要不要去保健室？我陪你去也可以啊？」\n「…不要碰我」\n「？　不，我还哪里都没有碰啊」\n「………」\n他明明只是一个路旁的小石子一般的存在，为什么偏偏狂妄自大地想要成为自己人生中的障碍呢？而且，这颗石子既不大又不重又不尖锐，甚至还没有挡在道路中间。\n在和纱心中，这样久违了的纯粹的愤怒…\n「…我知道了。这些事情延后。啊，对了。这样的话，放学以后，送到你家里…」\n「不要碰我！」\n一瞬间，就超出了极限。\n\n「…呼」\n当春日温暖的阳光逐渐西斜，周围的气温也冷却到了会让人想起冬天刚刚过去。此时，和纱正一个人走出校门。\n她的脸上依然保持着刚才那愤怒的表情，紧闭着的嘴，眯细的眼，以及和往常一样的鼻梁，酝酿出了一股令人难以接近的锐利美。\n而那些对她敬而远之的行人，自然不知道导致她有着这样美到恐怖的表情的契机，只是一件非常无聊，非常小孩子气的事情。\n「这全都是那家伙的错」\n当和纱如同砸一般地打开门冲出教室的时候，包括那名男学生在内，所有人都闭上了嘴，呆呆地目送着突然变得很粗暴的和纱。\n那简直和直到去年为止，自己还在的音乐科的教室完全一样，是和纱非常不愿意看到的情景。\n因为这样的话，自己转到普通科来就完全没有意义了。\n在别人不认识自己，自己也不认识别人的新班级里，本想着这次终于可以度过平淡无聊的日常生活的和纱，在来到普通科的第一天，就遇到了自己很不情愿的，一如往常的情况。\n所以，和纱一如既往地绝望了。\n到头来，什么都没有改变。\n在峰城大附属学园这个被封闭的世界中，能够在理解、认同自己的前提下以正确的方式对自己置之不理的人，连一个都没有。\n…虽然从这个说法来看，任何人都会觉得她与周围产生摩擦完全是自作自受，但是由于「任何人」中间经常是不包括和纱的，所以这种决裂事件每年都如同例行公事一般，并且之后大概也会继续下去。\n\n自从开学典礼那天，她仰望天空以来，早已过了两年…\n冬马和纱，依然讨厌天空。\n她一直讨厌着，春日里这种广阔薄云的白色天空。\n并且，也讨厌老师、学生，以及周围的一切。\n对于进入自己视野中的一切事物，当时的她都有足够的理由去憎恶。\n所以冬马和纱…对于今天遇见的，那态度十分亲近的男学生，也很讨厌。\n峰城大学附属学园里，一共有三间音乐室。\n位于主教学楼的第一音乐室，会在普通科音乐课时使用，在放学以后则是由音乐系的学生社团在使用。\n位于新校舍的第三音乐室，则是音乐科的专用教室被整日占据着，而且也由于位置距离普通科十分遥远，所以一般学生从来不会靠近。\n然后，是第二音乐室。\n位于第一音乐室隔壁，在音乐科教室依然在主教学楼的时候，它曾经是音乐科的专用教室，但是现在，不管是上课还是社团活动都没有使用这间教室，所以它实质上已经成为了一间没人用的教室。\n本来，为了方便校内复数的音乐社团，本应在放学后开放使用的，但是之所以学生和老师都没有对这间教室的封闭提出不满，是有其理由的。\n这个理由，并不是都市传说、七大不可思议或是学校的鬼故事之类的，而是由于处于各个立场上的人们的认识不同积累而成的。\n普通科的学生，依然认为这间教室仍然和以前一样，是音乐科专用的。\n音乐科的学生，已经不认同这间教室的存在价值了。\n至于教师们…都在有意识地回避着和现在这间教室的使用者有关的话题。\n今天，那间无人使用的第二音乐室里依然响起了钢琴的音色。\n从开学典礼以后已经过了一个星期。到头来，升入三年级，转入普通科的今年，和纱依然还是老样子，不论是上课时还是放学后都依然是这间教室的居民…依然是「第二音乐室的主人」。\n\n在钢琴音色的间隙之中，「Highway Star」的吉他独奏随风流淌了进来。\n\n和纱第一次被带来这里，是在两年前的春天。\n那是她将带她来的班主任老师赶走，占据音乐教室，将自己「以家人的知名度和捐款为后盾的旁若无人的问题儿童」的评价板上钉钉的值得纪念的日子。\n从那以后，这间教室就成了即使和它有所关联的人也不愿接近的地方，那台她母亲捐赠的视另外三百万捐款为粪土的古典钢琴，到头来却成了她女儿专用的玩具。\n和纱没有归还音乐室的钥匙，自己保管着，在自己有兴趣弹琴的时候，或者是没兴趣干其他事的时候，就会擅自进入这间教室，开始不顾时间地埋头弹奏钢琴，有时也会将音乐室里其他的乐器顺手抓来弹奏一番。\n\n吉他的音色转变成了「Crazy Train」。\n自从两年前的大赛以后，身为钢琴家的和纱就再没有出现在舞台上了。\n毕竟，自从那天以后，和纱就不会再开心地弹钢琴了。\n所以，这既不是练习也不是玩耍，只是惰性而已。\n她既不会追求技术，也不会在意失误，也不会感叹自己的水平有所退步，只是什么都不想地，为了让自己什么都不去思考而弹着钢琴。\n她只是为了让讨厌的事情，痛苦的事情，悲伤的事情全部从自己头脑中消失，而专心致志地弹着钢琴。\n虽然开心的事情也随之一并消失了，但是没有必要去在意这些。\n因为，开心快乐的事情，和纱已经有好一阵子没有遇到过了…\n\n吉他的音色变成了「White　Album」…\n\n「啊～，真是的—」\n但是那天的和纱，像是放弃了以往什么都不想的习惯一般，焦急地敲击着键盘。\n当然，这并不是因为她对自己的钢琴技巧感到绝望了…\n「弹得真烂啊！」\n那只是因为那随风飘来的吉他旋律，实在是太过不成熟，让她无法接受。\n那个旋律，在这几天，会随着夕阳一起出现。\n当吹奏乐部和合唱部的全体练习结束，第一音乐室空出来后，似乎还有谁留在那里进行个人练习，于是那错误百出的吉他独奏，就会与和纱那洪流一般的钢琴旋律重合在一起。\n说实话，这对和纱来说是再烦心不过了。\n这大概是某个趁着入学的时期一时兴起想要组建乐队而开始学吉他的新学生，但是他技术和素质的匮乏，对于天生就拥有最大限度的技术和素质的和纱来说，实在是无法容忍。\n而且他的吉他也对和纱的演奏产生了负面的影响，她甚至有好几次感觉自己的手指弹出的音符都有些错位，于是她也没有心情再继续弹下去了。\n「回去吧…」\n对面的吉他，依然在演奏着错误百出的「White Album」。\n和纱怀着绝对不让这噪音再进入自己耳中的决心，捂着耳朵快步走出了教学楼。\n在回家的路上，为了治愈她那由于无聊的事情而疲惫不堪的大脑，她下定决心，要补充大量的糖分…\n\n冬马和纱，非常喜欢滑软的布丁。\n更准确的说，不只是布丁，只要是甜的东西她都很喜欢。\n这不知是由于她那铁杆甜食党母亲的遗传，还是她母亲以甜食养育她的结果，从小时候起一直到现在，和纱那很小孩子气的味觉一直亘古不变地在与她牙齿的健康展开着壮烈的战斗。\n…不，改变还是稍微有一点。\n只不过这个变化，就是她变得比以前更加喜欢甜食了。\n从小时候起就不能吃的辣味现在当然也不吃，苦味、酸味也被她从嗜好中排除，现在连冷或热的食物也开始挑剔了，使得她那本来就狭窄的食物选择范围变得更加狭窄了。\n比起冰淇淋她更喜欢布丁和饼干，比起柠檬茶她更喜欢奶茶，至于碳酸饮料和果汁她根本就不喝…\n虽然只有咖啡被她容忍到了现在，但是那大概也只是为了做样子给周围看，如果不用大量的砂糖和牛奶将味道瞒混过去的话，那刺痛喉咙的苦味和热度就会让她无法忍受。\n现在，和纱本人并没有在意她这个喜好的变化。\n但是，如果是心理咨询师或者精神医生对她进行诊察的话，也许就会注意到，是她内心的黑暗对她的味觉造成了深刻的影响。\n和纱本人还不知道，她的大脑从很早之前就已经发出悲鸣了。\n在喊着，至少不让味觉受到刺激。\n在喊着，至少不让舌尖感到痛苦。\n\n「再来一份一样的」\n「…知，知道了」\n现在，和纱依然丝毫没有察觉到这一点，在铲平了第二份布丁之后，很自然地点了第三份。\n虽然只要是布丁，不论种类、材料、价值如何，和纱都很喜欢，但是这家店…Good Days南末次店里推荐的滑软布丁，是和纱最中意的。\n毕竟这家店的布丁和其他店里的比起来实在是太甜了甜到别人一看就不会吃了甚至还以会让人觉得「这算是哪门子的推荐啊」的浓烈的甜味引以为豪，让和纱手里的勺子完全停不下来，顺带也让她脸上满足的微笑丝毫没有要消失的迹象。\n于是，就在和纱满脸浮现着在学校里绝对不会让别人看到的，充满幸福的表情，准备吃下最后一勺的时候…\n「所以说，你不用想太多了啊。只是和大家一起去玩而已啊」\n从自己的正后方，传来最近似乎在哪里听过的声音。\n「到了现在，这是吹了什么风啊？三年级之前，你不是一直没有和我说过话吗，饭塚君」\n「那是…因为小唯你不是在和高田交往吗？」\n「…你真了解啊」\n「因为我一直都想追你啊。听说你有男朋友的时候真是很受打击啊」\n顺带，还听到了最近似乎在哪里听过的轻浮台词。\n「原来如此，于是最近，你就获得新情报了，知道我们分手了吧」\n「…你很敏锐啊」\n和纱尽量不让对方察觉地回过头，发现那里坐着一对穿着峰城大附属制服的男女。\n和纱的猜测，有一半是对的，那个男生她是见过的。\n「什么啊，你以为我现在就会陪你去吗？你以为谁都只要被你宠一下就乖乖跟你走吗？」\n「你会乖乖跟我走吗？那真是大欢迎啊」\n「如果我说，我不是那么随便的女生呢？」\n「那就很有追的价值啊，还是大欢迎」\n「你还真是很懂得怎么对待女生啊。我从小泽那里听说了很多你的事情哦？」\n「你要不要试试那家伙说的话到底是不是真的？」\n纤细的身体，茶色的头发，更重要的是他那如同猫撒娇一般的声音和他的语气，让和纱昨天的记忆极不情愿地复苏了。\n他就是昨晚，和纱回家的时候，在校门口纠缠和纱的男学生。\n『你是F班的冬马和纱吧？』\n『我是G班的饭塚武也。你不知道我吗？』\n『那春希…北原春希你该知道吧？就是坐你旁边那个』\n『我是他朋友，你的事情就是他告诉我的』\n『就是这样，我想跟你更亲近一些，所以才来和你说话的』\n『真是吓到我了啊。一开始竟然还不知道我们年级里有你这么漂亮的女孩子…这可以算是我一生中的最大失误吧？』\n『你现在要去哪儿？如果有时间的话能不能和我一起喝杯茶？』\n『啊～，我没有什么特别的意思。只是想说说话而已』\n『…你似乎是很认生的人啊』\n『好像到去年为止你都是在音乐科啊？从音乐科转到普通科的人真是罕见啊』\n『说起来，你好象是那个冬马曜子的…』\n他就像那样无止境地对着和纱说着各种话题，但是他那轻浮的嘴也由于某件事不得不合上了。\n由于和纱的回旋踢。\n「嗯～，说的也是啊，如果不是最开始就单独两人约会的话，那也是可以考虑的」\n「哦，即使这样也是大欢迎哦。像这样欲迎还拒的我也很喜欢啊」\n「那，你准备什么时候去？黄金周期间怎么样？」\n即使如此，他今天的战果，看起来似乎比起昨天更值得期待。\n坐在他对面的——和纱猜错了的那一半，她本以为自己不认识，但是其实就是坐在自己前两排——的女学生，虽然似乎是在和他争论，但是她的声音却显得她乐在其中。\n简单来说，不管怎么看都很有戏。\n「那就定在三号吧。早上10点在南末次车站检票口前怎样？」\n「那我就去请另外一个人了哦。如果确定了我就会打你电话」\n「OK，先记下双方的手机号码吧」\n听着那个轻浮的男人与女人的对话，不论是心情还是感受都差到了极点的和纱只好转移地点，在她刚准备以不被他们发现的方式慢慢移动的时候…\n「哎～北原君？那还是有点…」\n接着，这个最近经常听到的名字让她停下了脚步。\n「哎，为什么啊」\n「因为北原君…就是那个班长君吧？」\n那是班上第一个和她说话的男学生。\n那是实在太不看现场氛围，将自己的想法强加于人的班长。\n那是唯一一个至今仍然会和本应被班上孤立了的自己说话的同级生。\n那是眼前这个轻浮男生的朋友。\n那是把自己的情报泄露给这个男生的大嘴巴。\n那是将自己原来是音乐科的学生并且是冬马曜子的女儿这件事调查出来了的，以窥视他人为兴趣的人。\n那是在知道这些之后才特意来接近自己的令人讨厌却又精于算计的最烂的人渣。\n因为这些，所以和纱的愤怒，已经不再是针对着眼前的男生，而是转移到了『北原春希』这个让她完全记住了的名字上。\n「那当然是因为，邀请他一起出去玩的女孩子会很可怜啊」\n「为什么？他有什么不好吗？」\n「…你也知道吧？」\n——我当然很清楚。\n「他的样貌也没那么对不起观众吧？没关系，服装我会帮他选好的」\n「不，他的样貌确实没什么问题。但是啊，他不是很烦吗？」\n「………」\n——很烦。非常的烦。\n「不久之前，他可是突然跑到我家来了啊？还说是从学生住址记录本上调查的」\n——那家伙确实很有可能这么做。\n「那天你是请假了吗？那是说你忘了什么东西？」\n「我是请假了。因为前一天有演唱会所以我跑到现场去了」\n「那他单单只是去探望你而已吧」\n「即使如此，但是你不会觉得他神经太大条了吗？」\n——对，那个男人极度缺乏对别人客气的心理。\n「那他有没有进你们家吗？有没有说要你上茶？」\n「他只是说了几句话之后就马上回去了。即使如此…」\n——即使如此。\n那种对他人过度干涉的态度，只会让他人产生厌恶之情而已…\n「………抱歉，我想起我还有事情要办，先回去了」\n「哎？」\n「…哎？」\n她本来只是在内心嘀咕着的话语，一下子从口中说了出来。\n他那直到刚才为止还像羽毛一般轻浮的语气，一下子变得沉重得令人喘不过气来。\n「这是我该出的钱。今天和你在一起很开心。再见」\n「等、等等啊饭塚君」\n她似乎也跟和纱一样感受到了那份沉重，开始显得有些犹豫地挽留起了他。\n「出去玩的事情，还没有得出结论吧？最后是哪些人一起去啊？」\n「啊～，说起来好像是有这么回事啊」\n「你这是什么意思…」\n但是他似乎已经完全没有再听她说话的意思了。\n「…你在生什么气啊？」\n「我说啊」\n「哎…」\n「你才和他同班半个月而已吧？对他只有这种程度的认识，就不要用那种很了解他的语气评价他」\n「你…在说什么？」\n就是啊，你在说什么啊。\n会去探望只认识半个月的同班同学的人才比较奇怪吧。\n「至少和他来往半年以后，才有资格去评价他。就这样，再见」\n「等等，你和刚才完全判若两人啊饭塚君？喂，等等啊」\n「唔…」\n『饭塚君』从和纱身边快步与她擦肩而过。\n但是，即使和纱不藏不躲，他也完全没有注意到和纱，只是带着一脸完全对对方失去了兴趣的干涸的表情离开了。\n所以，和纱的视线反而无法从他身上移开了。\n那是因为，和纱有了一种错觉，仿佛自己鄙视他的表情原封不动地还给了自己。\n「…那算什么态度啊，他是笨蛋吗！」\n被扔下的她的嘴里发出的骂声，也许和一天前和纱嘴里发出的声音是一样的。\n因为她只是替和纱说出了和纱自己的想法。她嘴里说出的话，实在是太像和纱说的话了。\n所以和纱能够理解她。不，是体会到了与她一样的感受。\n那是既像面如火烧般的屈辱，又像是一盆冷水从头淋到脚一般的，无地自容的感觉。\n而且偏偏，这种感受还是由于那个名为『北原春希』的班长所引起的。\n「冬马」\n「………」\n和纱做了一个梦。\n那是她变成了一只蚂蚁溺水与蜂蜜之中，这种既可以称为天堂又可以称为地狱的梦。\n「冬马…喂…快点起来啊」\n「…唔？」\n从性命和糖分这样究极的抉择之中解放出来了的和纱，一边用手指擦着流出的泪水和口水，一边看着将自己拉回现实的人。\n「早上好。今天少有地在上课前就来了呢」\n「………哈啊」\n「你不要叹气叹得这么大声啊」\n她并不是在叹气，只是在差点说出『北原春希』的时候慌忙将那口气咽了回去。\n能记住别人的全名，这对她来说已经是几年都不曾有过的事情。\n「………咝」\n「早上好！　早上好冬马！预备铃就要响了所以你差不多该起来了」\n「唔…唔呜呜…」\n所以，在他说话的时候那困倦的态度，伸着懒腰表示没有兴趣的态度，有一半都是装出来的。\n虽然她确实不想再被他继续干涉或者追问下去。\n…但是，她更多的是不想被人知道，她其实对这名少年稍微有了一点兴趣。\n「好了，虽然你刚醒但很不好意思，志向调查表，今天中午必须要交了」\n「………哈」\n「这个是老师拜托我回收的。还有，我想你大概已经把表扔了，所以拿了一份新的。像名字这种我知道的东西已经帮你填好了」\n过于明显的干涉。令人厌烦的亲切。显而易见的多管闲事。\n如果用以往的经验来对照的话，这和那些对于和纱，不，对于冬马家的地位、名声、资产虎视眈眈的大人们的居心最为相似。\n「你写的时候我不会看的，写完了我会放进信封，绝对不会偷看的。所以，拜托你在午休前写好」\n但是，他的言行举止之间完全看不出一丝利己的迹象，这让和纱难以言喻地感到浑身不自在。\n「不要揉成一团啊。好好写啊」\n「没兴趣」\n所以和纱不由自主地采取了反抗的态度。\n和一个月前不同，这并不是完全拒绝对方的干涉，而是比那稍微轻微一些的反抗态度。\n「升学也好就职也好未定也好什么都行，总之先写上自己现在的想法，即使没有想法，那也写上没有想法就行了」\n「如果你有时间管我的话，还不如把其他人的都收了…」\n「昨天就已经全收上来了。之后就只差冬马了」\n「…昨天，不是有三个人请假了吗？」\n「我有事先电话通知然后去他们家里回收了。他们即使发烧了也好好地填了表」\n「…笨蛋啊？」\n他的所作所为依然让自己烦到几乎目眩。\n但是这个学园第一循规蹈矩的人，却被学园第一轻浮的男生不可思议地爱戴着。\n这是一对性格完全相反，两人之间完全看不到任何接点的朋友。其间的矛盾，和纱至今无法理解。\n「别说这种过分的话啊。我们班的学生都很认真的」\n「你以为我在说谁…」\n因为无法理解，所以她在犹豫是否应该继续讨厌他。\n她头脑中始终萦绕着自己是不是有了重大的理解错误这样的不安。\n「而且，我们这里是附属学园，只要随便写上『升学到峰城大』就了事了啊。这样一来比起什么都不写，大家会更加不管你啊」\n「我绝对不会去那里的」\n她一边用针锋相对的语气和他说话，一边装作很不经意地仰视着他，但是其实，她的眼神从未从他身上离开，那句话也不过是她的自言自语。\n「你不想说谎吗？…你还真是意外地诚实啊。我对你刮目相看了」\n「…别随便地下结论然后抬高别人。真烦人」\n\n——即使目不转睛地盯着他看，也只会觉得他很普通。完全是平均水平。\n既没有丑到会让人不想看见，也没有美到会把人迷住。\n…不过，拥有上述容貌的男生肯定占总数的1%都不到。\n「如果你不想被别人刮目相看的话，跟周围同化然后被普通人埋没会更有效果哦」\n「你在说什么？」\n\n——但是，他也许比平均水平要稍稍高出一些。\n\n「这样的话，大家就不会因为你某个表现跟平时有落差而提高对你的评价了，反而会对你的行为作出正常的评价吧？」\n「我并不想得到别人的评价」\n\n——作为证据，虽然和纱没有被他的面容迷住，但是即使一直近距离看着也不会觉得难受。\n就算这样一直看下去的话，大概也…\n\n「我不建议你在上课的时候写。可以的话希望你在预铃响之前写完…」\n「我说你啊…」\n\n——不，说到底，自己会这样去评价一位男生，这件事本身也许就是一个错误。\n自己从没有对同年龄的…不，不论哪个年龄层的男人，从来没有一个令自己感兴趣的。\n即使对方是或许是自己父亲的人也一样。\n像这样，还不说对别人，就连对自身都没什么兴趣的自己竟然会想要去评价他人…\n但是，如果是这样的话，那到底该看什么才好？\n到底该以这家伙的什么为基准，去判断好坏呢？\n而那个判断的结果，又会对自己造成怎样的影响呢…？\n\n「不过，弄不好这可能会成为影响一生的选择，所以稍微烦恼一下也好。之后就拜托你了」\n「…」\n回过神来之后，和纱慌忙地将视线转移到纸上开始专心写了起来。\n「哦…佩服佩服」\n那是因为自己刚才的行为和思考实在太过于恶心，让自己从背脊上感到不寒而栗。\n自己竟然目不转睛地看着眼前的少年，满脑子想着他的事情，这简直就像是怀春的少女一般。\n「………北原」\n「有不知道该怎么写的地方吗？」\n「这次我就按你说的做，所以，你也要听我一个要求」\n「啊，当然了。如果你有什么困难随时都可以找我商…」\n「今后，即使你被我无视也不要觉得奇怪。因为你实在是让我觉得很烦很讨厌」\n「是………是吗」\n\n——太愚蠢了，自己竟然会对他人抱有兴趣。\n真是太愚蠢了。\n\n「好了写完了。拿去吧」\n「呜哇，别扔啊。要好好把纸翻到背面…」\n\n——不管这家伙被谁爱戴，都没有关系。\n不管他有多大的人格魅力，都没有意义。\n因为对于自己所在的世界来说，这些事情都不会造成任何影响。\n\n「即使被你看到了我也不在乎。我只是照你说的那样，写了『升学到峰城大』而已」\n「…你会升学吗？」\n「谁知道？」\n「…是吗」\n\n——如果不这样让自己下定决心的话，就会尝到苦果。\n毕竟，这家伙亲近的态度实在很异常。\n如果稍微顺了他的意，那就不知道会被他纠缠多久了。\n\n「事情办完了吧？那么，我继续睡了」\n「啊，抱歉。最后还有一句」\n「…什么？」\n「我知道了…今后，即使冬马无视我，我也不会在意的」\n「啊…嗯」\n自己本来应该已经下定决心了。\n但是在听到他那句表示放弃的话语时，和纱的表情里却微妙地混杂着一丝不高兴…\n「所以，冬马你也是，即使我黏着你说话也别在意」\n「…哈啊啊？」\n自己本来应该已经下定决心了。\n但是在听到他那句表示放弃的话语时，和纱的表情明显变得非常不高兴了。\n\n「早上好，冬马。今天天气真是不错啊我说」\n「给我等等北原。这和约好的不…」\n「因为我听了你的要求，所以你也听我一个不也挺好？」\n「这哪里只是一个要求了！你这家伙脸皮厚到什么程度啊！」\n「冬马…事到如今你还要说这话吗？」\n和纱诅咒了。\n诅咒着，对这个又烦人又喜欢套近乎的家伙竟然会稍微露出一些好脸色的，自己的愚蠢。\n在那之后过了一个月，和纱也逐渐开始明白了。\n依靠北原春希的人与回避他的人，这两派阵营分明的人有着十分明确的倾向。\n对于今年刚刚转入普通科的和纱来说，虽然最开始花了很大功夫才抓到头绪，但是在那之后，只要去查查每年发下的学生手册就能很轻易地得出结论。\n那既不是性别的差别也不是成绩的差别也不是性格的差别，而是去年和前年的班级编成。\n也就是说，在一年级或者二年级与北原春希同班过的人，或者是没有这种经验的人，对待他的态度的差别。\n后者计算着和北原春希的距离，对他的干涉感到反感，对他的说教表现出十分消极的态度，但是最后也只能被他的不折不挠弄到无语。\n至于前者，则在一开始就放弃了对北原春希的抵抗，而是全面地信任他。";
+    const PLUGIN_VERSION = '0.7.1';
+
     const DEFAULT_PRESETS = {
     "combat": {
         "systemPrompt": "你是文字角色扮演的后台事件导演，专职输出供叙事主模型执行的现场推演大纲。\n【客观外部推力铁律（彻底杜绝自说自话）】：\n小纸条绝对严禁代写、预设或脑补玩家的任何言行、招式、内心或态度（严禁出现“面对你的反击/在你的质问下/你警惕地后退……”等任何假定玩家言行的句子）！\n每张小纸条必须且只能描写两项客观要素：\n1. 【客观环境剧变/物理危机】：不可逆的现场物理变故、时间流逝、地形破坏、敌方增援或意外阻碍。\n2. 【NPC的主动作为与战术施压】：NPC基于自身目的与战力，主动采取的具体攻防动作、武器施展或战术压迫。\n无论玩家上一轮输入什么言行，外部环境的物理推力与NPC的主动动作都自然向前推进；若玩家言行偏离战斗，NPC的突发攻势与环境危机必须主动制造压迫感，依据现场条件提供可应对的冲突！\n战斗事件推进规范：交代冲突目标、敌我距离、掩体与可观察破绽。首轮以突发敌袭或动机冲突打破平静，NPC主动出招并留下可防守、闪避、周旋或反击的应对窗口；后续轮次客观推进环境变局与NPC连招施压，绝不假定玩家如何拆招；终局依据玩家真实出招与应对策略判定胜负负伤与残局余波。未开启死亡危险时不设计强制死亡。\n非终局小纸条结尾，必须停留在NPC的具体攻防动作、逼近招式或危机抉择点（Action Hook），留出明确的操作空间供玩家下轮选择！后台真相与数值设定只写入 <event_archive>，结局条件只写入 <event_endings>，纸条绝不替玩家决定行动。\n因果边界：纸条是环境与NPC的可执行计划，不能推翻已经发生的事实。若玩家已离场、阻止触发条件或明确拒绝，依据现场实际条件取消、改写或收束该动作，禁止传送、复活道具或强制亲密。非终局只写客观推力与动作留钩，不假定回应；终局公正评估真实言行，出人意料的合理解法也可成功，沉默与拒绝本身不等于失败。"
@@ -378,6 +380,7 @@
     let initialized = false;
     const revealedIds = new Set();
     const apiLogs = [];
+    let apiLogSeq = 0; // 每条日志的稳定序号：展开状态按 seq 记录，unshift 插入新日志不会让旧下标错位
     let lastRawModelOutput = null;
     const expandedApiLogs = new Set();
 
@@ -506,11 +509,18 @@
         const s = settings || getSettings();
         const fullKey = `${eventKey}.${genreOrFeatureKey}`;
         const userPrompt = s.subPrompts && typeof s.subPrompts[fullKey] === 'string' ? s.subPrompts[fullKey].trim() : '';
-
-        // 若用户保存的为旧版本极简单行模板（长度小于70），平滑升级为最新详尽版
+        // 用户覆盖优先；无覆盖时回落到内置默认/细分配置/自定义模板条目（getSubPromptFallback）
         if (userPrompt) {
             return userPrompt;
         }
+        return getSubPromptFallback(eventKey, genreOrFeatureKey, s);
+    }
+
+    // 不查 subPrompts 覆盖层的兜底解析：内置默认 → 细分配置流派/档位 → 自定义模板条目自身提示词。
+    // 保存侧用它识别「未编辑的默认文本」，等值即不落覆盖层，避免烤入默认后压制模板编辑器的后续修改
+    function getSubPromptFallback(eventKey, genreOrFeatureKey, settings) {
+        const s = settings || getSettings();
+        const fullKey = `${eventKey}.${genreOrFeatureKey}`;
         if (DEFAULT_SUB_PROMPTS[fullKey]) {
             return DEFAULT_SUB_PROMPTS[fullKey];
         }
@@ -519,7 +529,25 @@
         if (genre?.prompt) return genre.prompt;
         // 难度/情感浓度档位提示词（键形如 combat.diff_low），自定义通道与流派提示词一致
         const diff = conf?.difficulties?.find(d => `diff_${d.key}` === genreOrFeatureKey);
-        return diff?.prompt || '';
+        if (diff?.prompt) return diff.prompt;
+        // 自定义模板（键形如 ct_xxx.<gid> / ct_xxx.diff_<did> / ct_xxx.extra_<eid>）：兜底为模板条目自身提示词
+        if (isCustomTypeKey(eventKey)) {
+            const t = getCustomTemplate(eventKey, s);
+            if (t) {
+                const subKey = String(genreOrFeatureKey || '');
+                if (subKey.startsWith('diff_')) {
+                    const d = (Array.isArray(t.depths) ? t.depths : []).find(x => `diff_${x.id}` === subKey);
+                    return d?.prompt || '';
+                }
+                if (subKey.startsWith('extra_')) {
+                    const e = (Array.isArray(t.extras) ? t.extras : []).find(x => `extra_${x.id}` === subKey);
+                    return e?.prompt || '';
+                }
+                const g = (Array.isArray(t.genres) ? t.genres : []).find(x => x.id === subKey);
+                return g?.prompt || '';
+            }
+        }
+        return '';
     }
 
     function getPreset(typeKey, settings) {
@@ -974,6 +1002,7 @@
         return null;
     }
 
+    let wandKeepAliveTimer = null;
     function injectWandMenuButton() {
         const tryInject = () => {
             const menu = findExtensionsMenu();
@@ -1029,20 +1058,22 @@
         };
 
         tryInject();
-        // 持续保持挂载（每秒检查一次，极度轻量，杜绝聊天或卡片切换后丢失）
-        setInterval(tryInject, 1000);
-
-        // 监听魔杖按钮各类交互事件，触发即时快速挂载
-        const onWandInteract = (e) => {
-            if (e.target.closest('#extensionsMenuButton, .extensionsMenuExtensionButton, #leftSendForm')) {
-                setTimeout(tryInject, 20);
-                setTimeout(tryInject, 100);
-            }
-        };
-        document.addEventListener('pointerdown', onWandInteract, true);
-        document.addEventListener('click', onWandInteract, true);
+        // 持续保持挂载（每秒检查一次，极度轻量，杜绝聊天或卡片切换后丢失）。
+        // init 失败重试会再次进入本函数：轮询与 document 级监听只挂一次，防止重试叠加
+        if (!wandKeepAliveTimer) {
+            wandKeepAliveTimer = setInterval(tryInject, 1000);
+            const onWandInteract = (e) => {
+                if (e.target.closest('#extensionsMenuButton, .extensionsMenuExtensionButton, #leftSendForm')) {
+                    setTimeout(tryInject, 20);
+                    setTimeout(tryInject, 100);
+                }
+            };
+            document.addEventListener('pointerdown', onWandInteract, true);
+            document.addEventListener('click', onWandInteract, true);
+        }
     }
 
+    let drawerWaitTimer = null;
     function installExtensionsDrawerEntry() {
         const tryInstallDrawer = () => {
             if (document.getElementById('se-drawer-entry')) return true;
@@ -1076,8 +1107,13 @@
         };
 
         if (tryInstallDrawer()) return;
-        const drawerTimer = setInterval(() => {
-            if (tryInstallDrawer()) clearInterval(drawerTimer);
+        // init 重试会重复进入：等待定时器只保留一个，装好后自清
+        if (drawerWaitTimer) return;
+        drawerWaitTimer = setInterval(() => {
+            if (tryInstallDrawer()) {
+                clearInterval(drawerWaitTimer);
+                drawerWaitTimer = null;
+            }
         }, 1000);
     }
 
@@ -1108,9 +1144,9 @@
             injectWandMenuButton();
             installExtensionsDrawerEntry();
             setupSlashCommand();
-            console.log('[ST Direct] 剧情导演 v0.6.0 已启动（独立系统纸条 + 分轮暗箱）');
+            console.log('[ST Direct] 剧情导演 v' + PLUGIN_VERSION + ' 已启动（独立系统纸条 + 分轮暗箱）');
             if (window.toastr) {
-                toastr.success('剧情导演 v0.6.0 已加载（独立系统纸条与分轮暗箱已就绪）', '', { timeOut: 2500 });
+                toastr.success('剧情导演 v' + PLUGIN_VERSION + ' 已加载（独立系统纸条与分轮暗箱已就绪）', '', { timeOut: 2500 });
             }
             
         } catch (e) {
@@ -2033,8 +2069,11 @@
 
             // 移动端长按支持（触摸按住 450ms 自动调出细分菜单）
             let pressTimer = null;
+            let longPressFired = false;
             btn.addEventListener('touchstart', () => {
+                longPressFired = false;
                 pressTimer = setTimeout(() => {
+                    longPressFired = true;
                     openMenu();
                 }, 450);
             }, { passive: true });
@@ -2045,7 +2084,20 @@
                     pressTimer = null;
                 }
             };
-            btn.addEventListener('touchend', clearTimer);
+            // 长按已触发时吞掉随后派发的合成 click：否则菜单打开后 click 仍落在本按钮上
+            // （data-action=generate），会意外发起一次生成/把长按误判为取消（iOS Safari 几乎必现）
+            btn.addEventListener('touchend', (e) => {
+                clearTimer();
+                if (!longPressFired) return;
+                longPressFired = false;
+                e.preventDefault();
+                const swallowClick = (ev) => {
+                    ev.stopPropagation();
+                    ev.preventDefault();
+                };
+                btn.addEventListener('click', swallowClick, true);
+                setTimeout(() => btn.removeEventListener('click', swallowClick, true), 700);
+            });
             btn.addEventListener('touchmove', clearTimer);
             btn.addEventListener('touchcancel', clearTimer);
         });
@@ -2683,13 +2735,19 @@
             s.subConfig.romance.targetHeroine = (root.querySelector('#se-sub-target-heroine')?.value || '').trim();
         }
 
-        // 保存用户在细分弹窗里对各个小事件提示词的修改
+        // 保存用户在细分弹窗里对各个小事件提示词的修改（与兜底一致的默认文本不落覆盖层，同 savePresets）
         if (!s.subPrompts) s.subPrompts = {};
         root.querySelectorAll('.se-sub-inline-textarea').forEach(ta => {
             const key = ta.dataset.subKey;
-            if (key) {
-                s.subPrompts[key] = ta.value;
+            if (!key) return;
+            const dot = key.indexOf('.');
+            const evKey = dot > 0 ? key.slice(0, dot) : key;
+            const subKey = dot > 0 ? key.slice(dot + 1) : '';
+            if (String(ta.value).trim() === String(getSubPromptFallback(evKey, subKey, s)).trim()) {
+                delete s.subPrompts[key];
+                return;
             }
+            s.subPrompts[key] = ta.value;
         });
 
         persistSettings(s);
@@ -3289,12 +3347,24 @@
         if (idx < 0) return;
         const name = list[idx].name || '未命名模板';
         list.splice(idx, 1);
+        // 同步清理该模板在预设工坊的覆盖键（主提示词覆盖 + 流派/深度/额外覆盖），键规则与 collectCustomTemplateOverrides 对称：
+        // 否则残留会随每次持久化长期带出，且日后导入同 id 的旧分享文件时会静默挂上陈旧覆盖
+        if (s.presets && typeof s.presets === 'object') {
+            delete s.presets[templateId];
+        }
+        if (s.subPrompts && typeof s.subPrompts === 'object') {
+            const keyPrefix = templateId + '.';
+            for (const k of Object.keys(s.subPrompts)) {
+                if (k.startsWith(keyPrefix)) delete s.subPrompts[k];
+            }
+        }
         s.customTemplates = list;
         persistSettings(s);
         if (currentGeneratingTypeKey === templateId) cancelCurrentGeneration();
         syncCustomEventTypes(s);
         refreshCustomRows();
-        if (window.toastr) toastr.success('已删除自定义模板「' + name + '」');
+        // 模板名用户可控，toastr 按 HTML 渲染消息，必须转义防注入
+        if (window.toastr) toastr.success('已删除自定义模板「' + escapeHtml(name) + '」');
     }
 
     // 主面板自定义模板行（恋爱与随机事件之间）；保存/删除/挂载后调用以同步按钮与注册状态
@@ -3305,6 +3375,10 @@
         if (wrap) wrap.innerHTML = renderCustomTemplateRowsHtml(getSettings());
         bindSubMenuTriggers();
         updateBadges();
+        // 生成途中重建了模板行：恢复该行按钮的「生成中」视觉态（isGenerating 守卫仍在，仅视觉态丢失）
+        if (isGenerating && currentGeneratingTypeKey) {
+            setGeneratingUI(currentGeneratingTypeKey, true);
+        }
     }
 
     function renderCustomTemplateRowsHtml(s) {
@@ -3699,7 +3773,7 @@
 
     // ========== 面板右下角调整大小（全局唯一把手，对齐当前可见面板；悬浮胶囊与悬浮球不参与） ==========
 
-    const RESIZE_PANEL_IDS = ['se-panel', 'se-settings', 'se-events', 'se-presets', 'se-api-log', 'se-sub-modal', 'se-stage-modal', 'se-prompt-viewer-modal', 'se-world-info-modal', 'se-custom-template-modal', 'se-template-io-modal'];
+    const RESIZE_PANEL_IDS = ['se-panel', 'se-settings', 'se-events', 'se-presets', 'se-api-log', 'se-sub-modal', 'se-stage-modal', 'se-prompt-viewer-modal', 'se-world-info-modal', 'se-variable-modal', 'se-custom-template-modal', 'se-template-io-modal'];
     let resizePanelObserver = null;
     let resizePanelSizeObserver = null;
 
@@ -4444,7 +4518,8 @@
 
         if (action === 'save-event-turns') {
             const id = el.dataset.id;
-            const input = root?.querySelector(`.se-event-turns-input[data-id="${id}"]`);
+            // event.id 内嵌模板名（可能含引号等选择器元字符），必须 CSS.escape 否则 querySelector 抛 SyntaxError
+            const input = root?.querySelector(`.se-event-turns-input[data-id="${CSS.escape(id)}"]`);
             if (input) {
                 setEventTurns(id, Number(input.value));
             }
@@ -4467,7 +4542,8 @@
 
         if (action === 'modal-save-turns') {
             const id = el.dataset.id;
-            const input = root?.querySelector(`.se-modal-turns-input[data-id="${id}"]`);
+            // 同 save-event-turns：event.id 需 CSS.escape
+            const input = root?.querySelector(`.se-modal-turns-input[data-id="${CSS.escape(id)}"]`);
             if (input) {
                 setEventTurns(id, Number(input.value));
                 openStageModalForEvent(id);
@@ -4793,9 +4869,11 @@
 
         if (action === 'toggle-api-log') {
             const index = Number(el.dataset.index);
-            if (Number.isFinite(index)) {
-                if (expandedApiLogs.has(index)) expandedApiLogs.delete(index);
-                else expandedApiLogs.add(index);
+            const log = apiLogs[index];
+            // 展开状态按日志稳定 seq 记录：unshift 插入新日志后旧下标整体位移，按下标记录会套到别的日志上
+            if (log && Number.isFinite(index)) {
+                if (expandedApiLogs.has(log.seq)) expandedApiLogs.delete(log.seq);
+                else expandedApiLogs.add(log.seq);
                 renderApiLogs();
             }
             return;
@@ -5084,6 +5162,12 @@
         root?.querySelectorAll('#se-preset-list textarea[data-preset-key]').forEach(textarea => {
             const key = textarea.dataset.presetKey;
             if (!key) return;
+            // 与内置默认一致（未编辑过的默认文本）不落覆盖层：烤入会冻结当时版本的默认预设，
+            // 之后插件更新默认或「恢复默认」语义都会被旧覆盖压住；已存在的等值旧覆盖顺带清除（输出不变）
+            if (String(textarea.value).trim() === String(DEFAULT_PRESETS[key]?.systemPrompt || '').trim()) {
+                delete presets[key];
+                return;
+            }
             if (!presets[key]) presets[key] = {};
             presets[key].systemPrompt = textarea.value;
         });
@@ -5091,6 +5175,15 @@
         root?.querySelectorAll('#se-preset-list textarea[data-sub-prompt-key]').forEach(textarea => {
             const key = textarea.dataset.subPromptKey;
             if (!key) return;
+            const dot = key.indexOf('.');
+            const evKey = dot > 0 ? key.slice(0, dot) : key;
+            const subKey = dot > 0 ? key.slice(dot + 1) : '';
+            // 与兜底一致（未编辑的默认文本/与模板条目相同）则不写覆盖层；已存在的等值旧覆盖一并清除（输出不变），
+            // 修复「打开预设工坊点一次保存后，模板编辑器修改被烤入的默认覆盖静默压制不生效」的问题
+            if (String(textarea.value).trim() === String(getSubPromptFallback(evKey, subKey, s)).trim()) {
+                delete subPrompts[key];
+                return;
+            }
             subPrompts[key] = textarea.value;
         });
 
@@ -5478,7 +5571,8 @@
             const enemyNotice = event.enemyProfile ? ` (遭遇对手: ${escapeHtml(event.enemyProfile)})` : '';
             const autoMode = settings.autoSendMode || (settings.autoSend === false ? 'none' : 'auto');
             const sendNotice = autoMode === 'auto' ? '已生成并发送 ' : (autoMode === 'fill' ? '已生成并填入对话框，可追加提示词后发送 ' : '已保存，可在事件列表发送 ');
-            if (window.toastr) toastr.success(sendNotice + event.id + enemyNotice);
+            // event.id 内嵌模板名（导入模板名用户可控），toastr 按 HTML 渲染必须转义防注入（同下方 error 分支）
+            if (window.toastr) toastr.success(sendNotice + escapeHtml(event.id) + enemyNotice);
         } catch (err) {
             if (err?.name === 'AbortError' || err?.message?.includes('取消') || activeGenerationController?.signal?.aborted) {
                 console.log('[ST Direct] 生成已由用户主动取消');
@@ -5948,8 +6042,11 @@
                     ? Boolean(selections[compositeKey])
                     : (selections[rawUid] !== undefined ? Boolean(selections[rawUid]) : isConstant);
                 const overrideObj = overrides[compositeKey] || overrides[rawUid] || null;
-                const title = overrideObj?.title || defaultTitle;
-                const content = overrideObj?.content || defaultContent;
+                // 覆盖值按「是字符串即采纳」判断：空串是合法的已清空状态，|| 兜底会让用户清空后的原文复活
+                const hasTitleOverride = !!(overrideObj && typeof overrideObj.title === 'string');
+                const hasContentOverride = !!(overrideObj && typeof overrideObj.content === 'string');
+                const title = hasTitleOverride ? overrideObj.title : defaultTitle;
+                const content = hasContentOverride ? overrideObj.content : defaultContent;
                 const isModified = Boolean(overrideObj && (overrideObj.title !== defaultTitle || overrideObj.content !== defaultContent));
 
                 allList.push({
@@ -6399,6 +6496,7 @@
     }
 
     function pushApiLog(entry) {
+        entry.seq = ++apiLogSeq;
         apiLogs.unshift(entry);
         if (apiLogs.length > 30) apiLogs.pop();
         if (root?.querySelector('#se-api-log')?.style.display !== 'none') {
@@ -6421,7 +6519,7 @@
         list.innerHTML = apiLogs.map((log, index) => {
             const statusText = log.status === 'success' ? '成功' : (log.status || '请求中');
             const statusClass = log.status === 'success' ? 'se-api-status-ok' : 'se-api-status-bad';
-            const expanded = expandedApiLogs.has(index);
+            const expanded = expandedApiLogs.has(log.seq);
             const toggleText = expanded ? '收起完整' : '展开完整';
             const payloadText = JSON.stringify(log.payload || {}, null, 2);
             return `
@@ -6523,7 +6621,11 @@
 
             log.url = url;
             const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), 300000);
+            let attemptTimedOut = false;
+            const timer = setTimeout(() => {
+                attemptTimedOut = true;
+                controller.abort();
+            }, 300000);
 
             const abortHandler = () => controller.abort();
             if (parentSignal) {
@@ -6582,7 +6684,10 @@
                     lastError.name = 'AbortError';
                     break;
                 }
-                lastError = err?.name === 'AbortError' ? new Error('请求超时（5分钟），请检查模型或降低输出上限') : err;
+                // 仅本轮超时定时器真正触发的 abort 归因为超时；其余 AbortError（如竞态窗口内的用户取消）保留原始错误，避免误报
+                lastError = (err?.name === 'AbortError' && attemptTimedOut)
+                    ? new Error('请求超时（5分钟），请检查模型或降低输出上限')
+                    : err;
                 break;
             } finally {
                 clearTimeout(timer);
@@ -7597,7 +7702,21 @@ var Decompress = /*#__PURE__*/ (function () {
         return Array.from(new Set(ids));
     }
 
+    let modelListLoading = false;
     async function loadModelList(settings) {
+        // 防连点：进行中时直接提示并返回，避免多端点串行请求链叠加、toast 与 datalist 结果互相覆盖
+        if (modelListLoading) {
+            if (window.toastr) toastr.info('正在获取模型列表，请稍候…');
+            return;
+        }
+        modelListLoading = true;
+        try {
+            await loadModelListInner(settings);
+        } finally {
+            modelListLoading = false;
+        }
+    }
+    async function loadModelListInner(settings) {
         const base = cleanBaseUrl(settings.baseUrl);
         if (!base) {
             if (window.toastr) toastr.warning('请先填写 API 地址');
@@ -7643,7 +7762,21 @@ var Decompress = /*#__PURE__*/ (function () {
         }
     }
 
+    let connectionTestLoading = false;
     async function testLLMConnection(settings) {
+        // 防连点（同 loadModelList）
+        if (connectionTestLoading) {
+            if (window.toastr) toastr.info('正在测试连接，请稍候…');
+            return;
+        }
+        connectionTestLoading = true;
+        try {
+            await testLLMConnectionInner(settings);
+        } finally {
+            connectionTestLoading = false;
+        }
+    }
+    async function testLLMConnectionInner(settings) {
         const base = cleanBaseUrl(settings.baseUrl);
         if (!base) {
             if (window.toastr) toastr.warning('请先填写 API 地址');
@@ -7708,7 +7841,8 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
         const text = normalizeEventToken(value);
         return events.find(event => {
             const id = normalizeEventToken(event.id);
-            const shortId = id.match(/[abcd]\d{4,}$/)?.[0];
+            // 短编号 = 模板前缀字母 + 4 位序号；自定义模板前缀为 e-z（耗尽后 x2/x3），不能只认固定模板的 a-d
+            const shortId = id.match(/[a-z]\d{4,}$/)?.[0];
             const variants = [id, shortId].filter(Boolean);
             return variants.some(token => {
                 if (!text.includes(token)) return false;
@@ -8567,8 +8701,12 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
                 return;
             }
             const oldMax = Number(state.activeEvent.maxTurns) || 8;
+            if (oldMax >= 30) {
+                // 已达上限如实提示并直接返回，不做无效扩展（原实现钳回 30 却仍报「已扩展至 30 回合」）
+                if (window.toastr) toastr.warning('回合上限已达 30 回合，无法继续扩展');
+                return;
+            }
             state.activeEvent.maxTurns = oldMax + 1;
-            if (state.activeEvent.maxTurns > 30) state.activeEvent.maxTurns = 30;
             rebuildStagePlan(state.activeEvent, oldMax);
             registerInjection(buildActiveStagePrompt(state.activeEvent));
             await saveChatState();
@@ -8702,7 +8840,7 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
         if (!modal || !body) return;
         if (panel) panel.style.display = 'none';
 
-        titleEl.textContent = '独立系统纸条与暗箱机制说明 (v0.6.0)';
+        titleEl.textContent = '独立系统纸条与暗箱机制说明 (v' + PLUGIN_VERSION + ')';
         body.innerHTML = `
             <div class="se-stage-status-bar">
                 <div>
@@ -9981,7 +10119,8 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
         await saveChatState();
         updateFloatingCapsule();
         renderEventList();
-        if (window.toastr) toastr.info(`已删除事件 ${eventId}`);
+        // eventId 内嵌模板名，toastr 按 HTML 渲染，必须转义防注入
+        if (window.toastr) toastr.info(`已删除事件 ${escapeHtml(eventId)}`);
     }
 
     async function clearAllEvents() {
@@ -10078,6 +10217,9 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
         if (!eventSource || !eventTypes || typeof eventSource.on !== 'function') {
             return;
         }
+        // 先置位再注册：注册中途抛异常宁可缺一个监听（下次启动补齐），也不能让重试把已注册的
+        // handler 再挂一遍——MESSAGE_RECEIVED/GENERATION_ENDED 双挂会导致回合计数双跳
+        stEventsBound = true;
 
         if (eventTypes.MESSAGE_SENT) {
             eventSource.on(eventTypes.MESSAGE_SENT, onMessageSent);
@@ -10161,7 +10303,6 @@ const DIRECTOR_BLOCK = /(?:<(director_override|director_event|director_system_ov
 
 
 
-        stEventsBound = true;
         console.log('[ST Direct] 核心事件监听器已就绪');
     }
 
