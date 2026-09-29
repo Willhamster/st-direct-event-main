@@ -453,12 +453,12 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         assert(saveHead.includes('syncVariableSelectionsFromDom();'), 'saveVariableModal does not sync from DOM');
     });
     check('WI/var modal search boxes use in-flow svg layout like the prompt viewer',()=>{
-        const css = fs.readFileSync(path.join(__dirname,'..','style.css'),'utf8');
+        const css = fs.readFileSync(path.join(__dirname,'..','style.css'),'utf8').replace(/\r\n/g, '\n');
         const svgStart = css.indexOf('.se-wi-search-box svg {');
         const svgBlock = css.slice(svgStart, css.indexOf('}', svgStart));
         assert(!svgBlock.includes('position: absolute'), 'search svg must not be absolutely positioned (overlaps text when host overrides input padding)');
         assert(svgBlock.includes('flex-shrink: 0'), 'search svg must be an in-flow flex item');
-        const inputStart = css.indexOf('.se-wi-search-input {');
+        const inputStart = css.indexOf('#st-direct-event-root .se-wi-search-input {\n    flex: 1;');
         const inputBlock = css.slice(inputStart, css.indexOf('}', inputStart));
         assert(!inputBlock.includes('30px'), 'search input must not rely on left padding to avoid the icon');
         assert(inputBlock.includes('flex: 1') && inputBlock.includes('min-width: 0'), 'search input must flex within the box');
@@ -1040,6 +1040,74 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         assert(css.includes('.se-pv-header-close {\n        display: none;\n    }'), 'pv header close must default to hidden on desktop');
         assert(mq.includes('.se-prompt-viewer-modal .se-modal-header .se-pv-row-icon-btn') && mq.includes('display: none !important'), 'viewer icon buttons must be hidden on mobile');
         assert(mq.includes('.se-prompt-viewer-modal .se-modal-header .se-pv-header-close') && mq.includes('display: inline-flex !important'), 'viewer text close must show on mobile');
+        const closeBlock = css.slice(css.indexOf('.se-prompt-viewer-modal .se-modal-header .se-pv-header-close'), css.indexOf('}', css.indexOf('.se-prompt-viewer-modal .se-modal-header .se-pv-header-close')));
+        assert(!closeBlock.includes('padding') && !closeBlock.includes('font-size') && !closeBlock.includes('font-weight') && !closeBlock.includes('min-height'), 'viewer close button must fall back to the shared .se-modal-header button sizing (no mobile-only enlargement)');
+        assert(css.includes('.se-modal-header button {\n    padding: 4px 10px;\n    font-size: 12px;'), 'shared modal header button rule must remain the sizing source for all modal close buttons');
+    });
+    check('Overflow hardening: dvh fallbacks for desktop-mode shells and shrinkable header titles',()=>{
+        const css = fs.readFileSync(path.join(__dirname,'..','style.css'),'utf8').replace(/\r\n/g, '\n');
+        const viewer = css.slice(css.indexOf('\n    .se-prompt-viewer-modal {'), css.indexOf('}', css.indexOf('\n    .se-prompt-viewer-modal {')));
+        assert(viewer.includes('max-height: 90vh;') && viewer.includes('max-height: calc(90dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));'), 'viewer shell must carry the dvh+safe-area fallback for >768 desktop-mode viewports');
+        const wi = css.slice(css.indexOf('\n.se-world-info-modal {'), css.indexOf('}', css.indexOf('\n.se-world-info-modal {')));
+        assert(wi.includes('max-height: calc(100vh - 60px);') && wi.includes('max-height: calc(100dvh - 60px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));'), 'world-info shell (one rule shared by five modals) must carry the dvh+safe-area fallback');
+        assert(css.includes('.se-modal-header > span:first-child {\n    min-width: 0;\n    overflow-wrap: anywhere;\n}'), 'header title span must be shrinkable so pathological long tokens cannot push the close button out of the shell');
+    });
+    check('Mobile fix: viewer search row wraps and match-only checkbox takes its own line',()=>{
+        const css = fs.readFileSync(path.join(__dirname,'..','style.css'),'utf8').replace(/\r\n/g, '\n');
+        const mq = css.slice(css.indexOf('@media (max-width: 768px)'), css.indexOf('/* 滚动条（主面板内容区 + 各二级弹窗内滚容器） */'));
+        assert(mq.includes('.se-pv-filter-row {\n        flex-wrap: wrap !important;'), 'pv filter row must wrap on mobile');
+        assert(mq.includes('.se-pv-filter-row .se-pv-checkbox-label {\n        flex-basis: 100% !important;'), 'nowrap checkbox must take a full line instead of being clipped off-canvas');
+    });
+    check('Mobile fix: viewer search input shrink hardened and authored transparent style restored',()=>{
+        const css = fs.readFileSync(path.join(__dirname,'..','style.css'),'utf8').replace(/\r\n/g, '\n');
+        const mq = css.slice(css.indexOf('@media (max-width: 768px)'), css.indexOf('/* 滚动条（主面板内容区 + 各二级弹窗内滚容器） */'));
+        assert(mq.includes('.se-pv-search-box {\n        min-width: 0 !important;') && mq.includes('.se-pv-search-input {\n        min-width: 0 !important;'), 'pv search shrink must be hardened against host cascade');
+        assert(css.includes('#st-direct-event-root .se-pv-search-box .se-pv-search-input {\n        flex: 1;\n        min-width: 0;\n        padding: 0;\n        background: transparent !important;\n        border: none !important;'), 'pv search input must keep authored transparent borderless look ((1,2,0)+!important beats the (1,1,1) contrast lock, no box-in-box)');
+    });
+    check('Mobile fix: viewer message rows stack desc/snippet full-width and grow copy touch target',()=>{
+        const css = fs.readFileSync(path.join(__dirname,'..','style.css'),'utf8').replace(/\r\n/g, '\n');
+        assert(css.includes('.se-pv-role-desc {\n        font-size: 11px;\n        font-weight: 600;\n        color: var(--se-text-title);\n        white-space: nowrap;\n        overflow: hidden;\n        text-overflow: ellipsis;\n    }'), 'role desc must ellipsize in place instead of overflowing under copy/expand buttons');
+        const mq = css.slice(css.indexOf('@media (max-width: 768px)'), css.indexOf('/* 滚动条（主面板内容区 + 各二级弹窗内滚容器） */'));
+        assert(mq.includes('.se-pv-row-left {\n        flex-wrap: wrap !important;'), 'pv row left must wrap on mobile');
+        assert(mq.includes('.se-pv-row-left .se-pv-role-desc,\n    #st-direct-event-root .se-pv-row-left .se-pv-snippet {\n        flex-basis: 100% !important;'), 'desc/snippet must take full lines on mobile');
+        assert(mq.includes('.se-pv-row-icon-btn {\n        padding: 8px 10px !important;'), 'row copy button touch target must grow on mobile');
+    });
+    check('Mobile fix: viewer meta and stats rows wrap with breakable model names',()=>{
+        const css = fs.readFileSync(path.join(__dirname,'..','style.css'),'utf8').replace(/\r\n/g, '\n');
+        const mq = css.slice(css.indexOf('@media (max-width: 768px)'), css.indexOf('/* 滚动条（主面板内容区 + 各二级弹窗内滚容器） */'));
+        assert(mq.includes('.se-pv-meta-row {\n        flex-wrap: wrap !important;') && mq.includes('.se-pv-meta-row strong {\n        overflow-wrap: anywhere;'), 'meta row must wrap and long model names must break');
+        assert(mq.includes('.se-pv-stats-row {\n        flex-wrap: wrap !important;'), 'stats row must wrap on mobile');
+    });
+    check('Mobile fix: variable/world-info search counter takes its own line instead of clipping to first char',()=>{
+        const css = fs.readFileSync(path.join(__dirname,'..','style.css'),'utf8').replace(/\r\n/g, '\n');
+        const mq = css.slice(css.indexOf('@media (max-width: 768px)'), css.indexOf('/* 滚动条（主面板内容区 + 各二级弹窗内滚容器） */'));
+        assert(mq.includes('.se-wi-search-row {\n        flex-wrap: wrap !important;'), 'wi search row must wrap on mobile');
+        assert(mq.includes('.se-wi-search-row .se-wi-counter {\n        flex-basis: 100% !important;'), 'nowrap counter (已选 X 个顶层分支…) must take a full line');
+        assert(mq.includes('.se-wi-search-input {\n        min-width: 0 !important;'), 'wi search input shrink must be hardened');
+        assert(css.includes('#st-direct-event-root .se-wi-search-input {\n    flex: 1;\n    min-width: 0;\n    padding: 6px 12px;\n    font-size: 12px;'), 'wi search input must win specificity over the global input rule');
+    });
+    check('Mobile fix: stage outline status bar, turns ctrls and view tabs wrap on narrow screens',()=>{
+        const css = fs.readFileSync(path.join(__dirname,'..','style.css'),'utf8').replace(/\r\n/g, '\n');
+        assert(css.includes('#st-direct-event-root .se-stage-turns-ctrls { flex-wrap: wrap; row-gap: 4px; }'), 'stage turns ctrls must wrap (the missing sibling of the 540px event-list fix)');
+        assert(css.includes('#st-direct-event-root .se-stage-status-bar { flex-wrap: wrap; row-gap: 6px; }'), 'stage status bar must wrap on mobile');
+        assert(css.includes('#st-direct-event-root .se-stage-view-tabs { flex-wrap: wrap; row-gap: 6px; }'), 'stage view tabs must wrap instead of squeezing into vertical text');
+    });
+    check('Mobile fix: event actions and import/export rows wrap; API log urls break',()=>{
+        const css = fs.readFileSync(path.join(__dirname,'..','style.css'),'utf8').replace(/\r\n/g, '\n');
+        assert(css.includes('#st-direct-event-root .se-event-actions { flex-wrap: wrap; }'), 'event card actions must wrap on narrow screens');
+        const tioBase = css.indexOf('#st-direct-event-root .se-tio-row .se-btn-action {\n    flex: 1 1 0;');
+        const tioMq = css.indexOf('@media (max-width: 540px) {\n    #st-direct-event-root .se-tio-row {');
+        assert(tioBase > -1 && tioMq > tioBase, 'tio-row MQ block must sit after its base rules to win the cascade');
+        assert(css.slice(tioMq).includes('min-width: max-content;'), 'nowrap export buttons must refuse text truncation and wrap whole');
+        assert(css.includes('.se-api-log-url,\n.se-api-log-type {\n    word-break: break-all;\n    overflow-wrap: anywhere;'), 'api log url/type lines must break long urls');
+    });
+    check('Mobile fix: inline 2-col grids collapse via se-grid-2col and heroine row wraps',()=>{
+        const css = fs.readFileSync(path.join(__dirname,'..','style.css'),'utf8').replace(/\r\n/g, '\n');
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        assert(src.split('class="se-grid-2col"').length - 1 === 2, 'both inline 1fr 1fr grids must carry the se-grid-2col class');
+        assert(css.includes('#st-direct-event-root .se-grid-2col { grid-template-columns: 1fr !important; }'), '2-col grids must collapse to one column on narrow screens');
+        assert(src.includes('display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:8px;'), 'heroine lock row must wrap so the clear button stays reachable');
+        assert(css.includes('#st-direct-event-root #se-sub-target-heroine {\n        min-width: 150px;'), 'heroine input must keep a usable min width instead of being squeezed to ~73px');
     });
     check('PLUGIN_VERSION matches manifest and stale version strings are gone',()=>{
         const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
