@@ -221,6 +221,8 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
     rs.ctx.chat.push({is_user:false, mes:'第一轮回复'});
     await rs.emit('MESSAGE_RECEIVED',1,'normal');
     assert.equal(rs.api.getChatState().activeEvent.currentTurn, 2);
+    // 回复落地后 ST 会发 GENERATION_ENDED（hideStopButton 语义）复位生成中标志，恢复推进在此之后才可用
+    await rs.emit('GENERATION_ENDED', rs.ctx.chat.length);
     await rs.api.stopActiveEvent();
     await rs.api.setActiveEventById('推理事件c0001');
     check('Panel toggle resume keeps turn progress and reinjects current slip',()=>{
@@ -1236,6 +1238,214 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         assert(m, 'PLUGIN_VERSION constant missing');
         assert.equal(m[1], mf.version, 'PLUGIN_VERSION must match manifest version');
         assert(!src.includes('v0.6.0'), 'stale v0.6.0 strings must be removed');
+    });
+    // ========== 0.7.11 修复批次：宏替换 / 世界书指纹自愈 / 回退作废标记 / 守卫补全 ==========
+    check('Side-model prompt pipeline substitutes char/user macros while preserving player input verbatim',()=>{
+        const hm1 = harness({ctx: {name1: '测试用户', name2: '凛'}});
+        hm1.api.persistSettings({ ...hm1.api.DEFAULT_SETTINGS, enableJailbreak: true, jailbreakPrompt: '破限 {{char}} 与 {{user}} 共处。', enableWorldInfo: false, enableVarInjection: false, subPrompts: { 'combat.dice_roll': '检查 {{char}} 与 {{user}} 的站位' } });
+        const out = hm1.api.buildEventPrompt(hm1.api.EVENT_TYPES.combat, '<interactive_input>玩家输入 {{user}} 原话</interactive_input>', hm1.api.getSettings(), []).map(m => m.content).join('\n');
+        assert(out.includes('破限 凛 与 测试用户 共处。'), 'jailbreak macros must be substituted');
+        assert(out.includes('检查 凛 与 测试用户 的站位'), 'sub-prompt macros must be substituted at the assembly point');
+        assert(!out.includes('{{char}}'), 'literal {{char}} must not reach the side model');
+        assert(out.includes('玩家输入 {{user}} 原话'), 'player input must stay byte-exact');
+    });
+    const hfp = harness({ctx: {worldInfo: [
+        {uid: 3, comment: '魔物图鉴', content: '旧内容', constant: false, world: 'MyLore', order: 1},
+        {uid: 4, comment: '地图设定', content: '地图内容', constant: false, world: 'MyLore', order: 2},
+    ]}});
+    hfp.api.persistSettings({ ...hfp.api.DEFAULT_SETTINGS, worldInfoSelections: { 'MyLore::3': true, 'MyLore::4': true }, worldInfoOverrides: { 'MyLore::4': { title: '重写标题', content: '覆盖正文' } }, worldInfoFingerprints: {} });
+    await hfp.api.refreshWorldInfoCache(hfp.api.getSettings());
+    hfp.ctx.worldInfo[0].content = '全新的食谱内容';
+    await hfp.api.refreshWorldInfoCache(hfp.api.getSettings());
+    check('World-info fingerprint self-heal clears stale selection/override on uid reuse',()=>{
+        const s2 = hfp.api.getSettings();
+        assert(s2.worldInfoSelections['MyLore::3'] === undefined, 'stale selection must be healed away');
+        assert(s2.worldInfoOverrides['MyLore::3'] === undefined, 'stale override must be healed away');
+        assert.equal(s2.worldInfoSelections['MyLore::4'], true, 'unchanged entry selection must survive');
+        assert.equal(s2.worldInfoOverrides['MyLore::4']?.title, '重写标题', 'unchanged entry override must survive');
+        assert(s2.worldInfoFingerprints['MyLore::3'] && s2.worldInfoFingerprints['MyLore::3'] !== '', 'baseline fingerprint must be written');
+    });
+    const hrw = harness(); seed(hrw);
+    hrw.ctx.chat.push({is_user:true,mes:'【突发事件】 推理事件（c 0 0 0 1）'});
+    await hrw.emit('GENERATION_STARTED','normal',{},false); await hrw.emit('MESSAGE_SENT',0);
+    const reqR = request(hrw, hrw.ctx.chat[0].mes, true); await hrw.emit('CHAT_COMPLETION_PROMPT_READY', reqR);
+    hrw.ctx.chat.push({is_user:false,mes:'第一轮回复'});
+    await hrw.emit('MESSAGE_RECEIVED',1,'normal');
+    hrw.ctx.chat.push({is_user:false,mes:'第二轮回复'});
+    await hrw.emit('MESSAGE_RECEIVED',2,'normal');
+    await hrw.emit('GENERATION_ENDED', hrw.ctx.chat.length);
+    check('Two-round event ends after round 2 with both floor marks present',()=>{
+        const st = hrw.api.getChatState();
+        assert.equal(st.activeEvent.isActive, false, 'event must have ended after exhausting maxTurns');
+        assert.equal(hrw.ctx.chat[1].extra?.st_direct?.round, 1);
+        assert.equal(hrw.ctx.chat[2].extra?.st_direct?.round, 2);
+    });
+    await hrw.api.handleCapsuleAction('rewind-turn');
+    check('Rewind invalidates marks of the re-acted round and later',()=>{
+        const st = hrw.api.getChatState();
+        assert.equal(st.activeEvent.currentTurn, 2, 'rewind returns to round 2');
+        assert.equal(st.activeEvent.isActive, true, 'rewind reactivates the event');
+        assert(hrw.ctx.chat[1].extra?.st_direct, 'round-1 mark on an earlier floor must survive');
+        assert(!hrw.ctx.chat[2].extra?.st_direct, 'stale round-2 mark must be invalidated');
+    });
+    await hrw.emit('MESSAGE_DELETED', 2);
+    check('Deleting the re-acted reply after rewind keeps the event at the re-acted round',()=>{
+        const st = hrw.api.getChatState();
+        assert.equal(st.activeEvent.currentTurn, 2, 'must not jump to a future round via stale marks');
+        assert.equal(st.activeEvent.isActive, true, 'must not be terminated by stale marks');
+    });
+    const hsw2 = harness(); seed(hsw2);
+    hsw2.api.getChatState().events.push({id:'事件B0001', title:'事件B', type:'reasoning', content: raw, maxTurns: 2});
+    hsw2.ctx.chat.push({is_user:true,mes:'【突发事件】 推理事件（c 0 0 0 1）'});
+    await hsw2.emit('GENERATION_STARTED','normal',{},false);
+    await hsw2.api.setActiveEventById('事件B0001');
+    check('Switching to another event is blocked while the main model is replying',()=>{
+        assert.notEqual(hsw2.api.getChatState().activeEvent?.id, '事件B0001', 'fresh activation must refuse during generation');
+    });
+    await hsw2.emit('GENERATION_ENDED', hsw2.ctx.chat.length);
+    await hsw2.api.setActiveEventById('事件B0001');
+    check('Switching to another event works once the reply has landed',()=>{
+        assert.equal(hsw2.api.getChatState().activeEvent?.id, '事件B0001', 'fresh activation must work when idle');
+    });
+    check('Shrinking to the final turn keeps every unplayed note of the current merged group',()=>{
+        const hp2 = harness();
+        const plan = hp2.api.rebuildStagePlan({stages:[1,2,3,4,5,6], maxTurns: 2, currentTurn: 2, stagePlan: [[0,1],[2,3],[4,5]]}, 3);
+        const flat = plan.flat();
+        for (let i = 0; i < 6; i++) assert(flat.includes(i), `note ${i} must not be dropped`);
+        assert.equal(plan[0].join(','), '0,1', 'played turns must stay untouched');
+        assert.equal(plan[1].join(','), '2,3,4,5', 'final turn must absorb the whole current group plus the rest');
+    });
+    check('Round-2 fix wiring: macro layer, fingerprint heal, WI modal, misc consistency anchors',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        assert(src.includes('function substitutePromptMacros'), 'macro substitute helper missing');
+        assert(src.includes('substitutePromptMacros(subInstructions.join'), 'sub-prompt block must substitute at the assembly point');
+        assert(src.includes("substitutePromptMacros(preset.systemPrompt || '')"), 'preset block must substitute');
+        const gspAt = src.indexOf('function getSubPrompt(');
+        assert(!src.slice(gspAt, gspAt + 800).includes('substitutePromptMacros'), 'getSubPrompt feeds editor textareas and must stay raw to avoid baking names');
+        assert(src.includes('worldInfoFingerprints: {}') && src.includes('worldEntryFingerprint('), 'fingerprint self-heal missing');
+        const addAt = src.indexOf('function addCustomWorldInfoEntry');
+        assert(src.slice(addAt, addAt + 1000).includes('groupKey: WI_CUSTOM_GROUP_KEY'), 'new custom WI entry must land in the custom group');
+        assert(src.includes('.flatMap(book => Object.values(book?.entries || {}))'), 'worldInfoCache fallback must expand book entries');
+        assert(src.includes("mark(ctx?.chatMetadata?.world_info || ctx?.chatMetadata?.world, 'chat')"), 'chat-bound book source must read the real ST metadata key');
+        const restoreAt = src.indexOf('function restoreWorldInfoEntry');
+        assert(src.slice(restoreAt, restoreAt + 1000).includes("String(uid).split('::')"), 'restore must also delete legacy rawUid override keys');
+        const delFacAt = src.indexOf('delFactionBtn.addEventListener');
+        assert(src.slice(delFacAt, delFacAt + 1400).includes('untouched'), 'faction delete must conditionally clear copied hard-lock fields');
+        assert(src.includes('当前上下文没有可用的角色名'), 'fill-char empty fallback must not write a pseudo name');
+        assert(src.includes("rawMessage.includes('事件已保存')"), 'auto-send rejection must not report 生成失败');
+        assert(src.includes('emptyErr.retryable = true'), 'zero-byte 200 response must join the retry path');
+        assert(src.includes('invalidateFutureDirectMarks(state.activeEvent, state.activeEvent.currentTurn)') && src.includes('invalidateFutureDirectMarks(active, round)'), 'both rewind entries must invalidate stale marks');
+        const setAt2 = src.indexOf('async function setActiveEventById');
+        assert(src.slice(setAt2, setAt2 + 1800).split('isMainGenerationBusy()').length >= 3, 'both activate branches must carry the busy guard');
+    });
+    // ========== 0.7.10 修复批次：跨聊天护栏 / processing 释放 / 导入数据安全 / UI 接线 ==========
+    const hBusy = harness(); seed(hBusy);
+    hBusy.ctx.chat.push({is_user:true,mes:'【突发事件】 推理事件（c 0 0 0 1）'});
+    await hBusy.emit('GENERATION_STARTED','normal',{},false); await hBusy.emit('MESSAGE_SENT',0);
+    const reqBusy = request(hBusy, hBusy.ctx.chat[0].mes, true); await hBusy.emit('CHAT_COMPLETION_PROMPT_READY', reqBusy);
+    hBusy.ctx.chat.push({is_user:false,mes:'第一轮回复'});
+    await hBusy.emit('MESSAGE_RECEIVED',1,'normal');
+    await hBusy.emit('GENERATION_ENDED', hBusy.ctx.chat.length);
+    check('Committed round releases the busy flag so capsule works right after landing',()=>{
+        assert.equal(hBusy.api.getChatState().activeEvent.currentTurn, 2);
+        assert.equal(hBusy.api.isMainGenerationBusy(), false, 'processing must not stay sticky after commit');
+    });
+    const hCross = harness(); seed(hCross);
+    hCross.ctx.chat.push({is_user:true,mes:'【突发事件】 推理事件（c 0 0 0 1）'});
+    await hCross.emit('GENERATION_STARTED','normal',{},false); await hCross.emit('MESSAGE_SENT',0);
+    const reqCross = request(hCross, hCross.ctx.chat[0].mes, true); await hCross.emit('CHAT_COMPLETION_PROMPT_READY', reqCross);
+    hCross.ctx.chatId = 'another-chat';
+    hCross.ctx.chat.push({is_user:false,mes:'另一个聊天自己的回复'});
+    await hCross.emit('MESSAGE_RECEIVED',1,'normal');
+    check('Cross-chat late broadcast must not advance or mark the current chat event',()=>{
+        assert.equal(hCross.api.getChatState().activeEvent.currentTurn, 1, 'floor advancer chatId guard missing');
+        assert(!hCross.ctx.chat[1].extra?.st_direct, 'cross-chat message must not be marked');
+    });
+    check('Import double overwrite demotes the second to auto-numbered new',()=>{
+        const ho = harness();
+        const mkTpl = (id, prefix, name, prompt) => ({ id, prefix, name, mainPrompt: '主提示词 ' + prompt, turns: 2, genres: [{ id: 'g1', label: '流', badge: '', desc: '', prompt }], depths: [], extras: [], selectedGenreId: 'g1', selectedDepthId: '', selectedExtraIds: [], createdAt: 1, updatedAt: 1 });
+        ho.api.persistSettings({ ...ho.api.getSettings(), customTemplates: [mkTpl('ct_local', 'b', '悬疑', '本地')] });
+        const r = ho.api.parseCustomTemplateImportPayload(JSON.stringify({ templates: [mkTpl('ct_a', 'e', '悬疑', '第一个'), mkTpl('ct_b', 'f', '悬疑', '第二个')] }), ho.api.getSettings());
+        assert.equal(ho.api.computeImportConflicts(r, ho.api.getSettings()).length, 2, 'both rows must conflict with the local template');
+        assert.equal(ho.api.applyCustomTemplateImport(r, { 0: 'overwrite', 1: 'overwrite' }), true);
+        const after = ho.api.getCustomTemplates(ho.api.getSettings());
+        assert.equal(after.length, 2, 'double overwrite must not drop the first import');
+        assert.equal(after.find(t => t.id === 'ct_local').mainPrompt, '主提示词 第一个', 'first overwrite must win the local slot');
+        const second = after.find(t => t.id !== 'ct_local');
+        assert.equal(second.name, '悬疑1', 'second overwrite must be demoted to auto-numbered new');
+        assert.equal(second.mainPrompt, '主提示词 第二个', 'demoted import must keep its own body');
+    });
+    check('subPrompts merge is whole-pick so deleted override keys never resurrect',()=>{
+        const hm = harness();
+        hm.api.persistSettings({ ...hm.api.DEFAULT_SETTINGS, subPrompts: { 'ct_x.g1': '覆盖' } });
+        hm.ctx.extensionSettings['st-direct-event'].subPrompts = { 'ct_x.g1': '覆盖', 'ct_old.g1': '旧覆盖' };
+        const ls = JSON.parse(hm.local.get('st_direct_event_settings_v1'));
+        delete ls.subPrompts['ct_old.g1'];
+        hm.local.set('st_direct_event_settings_v1', JSON.stringify(ls));
+        const loaded = hm.api.getSettings();
+        assert(!Object.keys(loaded.subPrompts || {}).includes('ct_old.g1'), 'deleted override key must not resurrect from the server copy');
+        assert.equal(loaded.subPrompts['ct_x.g1'], '覆盖', 'latest local keys must survive');
+    });
+    check('Overwrite import cleans stale override keys of the replaced template',()=>{
+        const hp = harness();
+        const mkTpl = (id, prefix, name, prompt) => ({ id, prefix, name, mainPrompt: '主提示词 ' + prompt, turns: 2, genres: [{ id: 'g1', label: '流', badge: '', desc: '', prompt }], depths: [], extras: [], selectedGenreId: 'g1', selectedDepthId: '', selectedExtraIds: [], createdAt: 1, updatedAt: 1 });
+        hp.api.persistSettings({ ...hp.api.getSettings(), customTemplates: [mkTpl('ct_local', 'b', '悬疑', '本地')], presets: { ct_local: { systemPrompt: '陈旧主覆盖' } }, subPrompts: { 'ct_local.g1': '陈旧流派覆盖' } });
+        const r = hp.api.parseCustomTemplateImportPayload(JSON.stringify({ templates: [mkTpl('ct_a', 'e', '悬疑', '新包')] }), hp.api.getSettings());
+        assert.equal(hp.api.applyCustomTemplateImport(r, { 0: 'overwrite' }), true);
+        const s = hp.api.getSettings();
+        assert.equal(hp.api.getCustomTemplates(s).find(t => t.id === 'ct_local').mainPrompt, '主提示词 新包', 'overwrite must replace the body');
+        assert(!s.presets?.ct_local, 'stale main-prompt override must be cleaned on overwrite');
+        assert(!Object.keys(s.subPrompts || {}).some(k => k.startsWith('ct_local.')), 'stale sub-prompt overrides must be cleaned on overwrite');
+    });
+    check('Import regenerates non-ct_ ids into the ct_ namespace',()=>{
+        const hq = harness();
+        const r = hq.api.parseCustomTemplateImportPayload(JSON.stringify({ templates: [{ id: 'mypack', prefix: 'z', name: '我的包', mainPrompt: '主提示词', turns: 2, genres: [{ id: 'g1', label: '流', badge: '', desc: '', prompt: '流派' }], depths: [], extras: [], selectedGenreId: 'g1', selectedDepthId: '', selectedExtraIds: [], createdAt: 1, updatedAt: 1 }] }), hq.api.getSettings());
+        assert.equal(r.ok, true);
+        assert(r.templates[0].id.startsWith('ct_'), 'non-ct_ id must be regenerated into ct_ namespace');
+        assert.equal(hq.api.isCustomTypeKey(r.templates[0].id), true, 'imported template must route through the custom pipeline');
+    });
+    check('Auto-numbering continues trailing digits instead of appending',()=>{
+        const hr = harness();
+        assert.equal(hr.api.nextFreeCustomTemplateName('悬疑', ['悬疑', '悬疑1']), '悬疑2');
+        assert.equal(hr.api.nextFreeCustomTemplateName('战斗1', ['战斗1', '战斗11']), '战斗2', 'trailing digit must increment, not concatenate');
+        assert.equal(hr.api.nextFreeCustomTemplateName('战斗', ['战斗', '战斗1', '战斗2']), '战斗3');
+        assert.equal(hr.api.nextFreeCustomTemplateName('v01', ['v01', 'v02']), 'v03', 'leading-zero width must be preserved');
+        assert.equal(hr.api.nextFreeCustomTemplateName('空闲', ['其他']), '空闲');
+    });
+    check('Core fix wiring: chat guard, processing release, import safety anchors',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        const advPart = src.slice(src.indexOf('function tryAdvanceActiveEvent'), src.indexOf('function bindSTEvents'));
+        assert(advPart.includes('generationRun.chatId !== ctx.chatId'), 'floor advancer must carry the cross-chat guard');
+        assert(advPart.includes('if (!generationRun && idx !== chat.findLastIndex'), 'floor advancer must verify latest assistant floor when no run is active');
+        assert(src.includes('if (run) run.processing = false;'), 'processing must be released unconditionally in finally');
+        assert(src.includes('const consumedTargets = new Set();'), 'double-overwrite consume-once missing');
+        assert(src.includes("merged.subPrompts = Object.hasOwn(ls, 'subPrompts') ? (ls.subPrompts || {}) : (stored.subPrompts || {});"), 'subPrompts whole-pick merge missing');
+        assert(src.includes('function cleanCustomTemplateOverrideKeys') && src.includes('cleanCustomTemplateOverrideKeys(s, target.id);'), 'overwrite import must clean override keys via shared helper');
+        assert(src.includes("!String(oldId).startsWith('ct_')"), 'import must enforce the ct_ namespace');
+    });
+    check('UI fix wiring: raise-to-front, edit snapshots, CSS.escape, toast escape, diff-card guard',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        const stagePart = src.slice(src.indexOf('function openStageModalForEvent'), src.indexOf('let promptViewerState'));
+        assert(stagePart.includes("modal.style.display = 'flex';") && stagePart.includes('bringWindowToFront(modal);'), 'stage modal must raise to front on open');
+        const viewerAt = src.indexOf('async function openPromptViewerModal');
+        assert(src.slice(viewerAt, viewerAt + 3000).includes('bringWindowToFront(modal);'), 'prompt viewer must raise to front on open');
+        const relPart = src.slice(src.indexOf('function renderEventList'), src.indexOf('async function toggleEventActive'));
+        assert(relPart.includes('editSnapshots.set(') && relPart.includes('editSnapshots.forEach(') && relPart.includes('CSS.escape(key.slice(sep + 1))'), 'renderEventList must snapshot and restore unsaved edits');
+        assert(src.includes("btn.querySelector('#se-turns-' + CSS.escape(typeKey))") && src.includes("root.querySelector('#se-badge-' + CSS.escape(t.id))"), 'badge/turns selectors must CSS.escape custom ids');
+        assert(src.includes('escapeHtml(file.name)'), 'file.name must be escaped in import toast');
+        const diffAt = src.indexOf("body.querySelectorAll('.se-diff-card')");
+        assert(src.slice(diffAt, diffAt + 600).includes("e.target.closest('.se-sub-prompt-details')"), 'diff card click must exclude embedded prompt textarea');
+    });
+    check('Consistency fix wiring: slash rewind replan, resume guard, empty-slip persist, clearAll pending',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        const slashAt = src.indexOf("name: 'inject_event_segment'");
+        const slashPart = src.slice(slashAt, slashAt + 2600);
+        assert(slashPart.includes('replanFromCurrent(active, round)') && slashPart.includes('lastCountedMessageId = null;'), 'slash rewind must replan like capsule rewind');
+        const setAt = src.indexOf('async function setActiveEventById');
+        assert(src.slice(setAt, setAt + 1200).includes('isMainGenerationBusy()'), 'panel resume must be guarded during generation');
+        assert((src.match(/与其余终局路径同构：只改内存的话刷新页面后事件会「复活」成推进中/g) || []).length === 2, 'both empty-slip branches must persist state');
+        const clearAt = src.indexOf('async function clearAllEvents');
+        assert(src.slice(clearAt, clearAt + 1600).includes('pendingHiddenEvent = null;'), 'clearAllEvents must clear pendingHiddenEvent');
     });
     check('Bugfix wiring across generation/ui/data layers',()=>{
         const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
