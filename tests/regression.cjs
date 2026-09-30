@@ -1464,6 +1464,90 @@ function check(name,fn){fn();checks++;console.log('PASS '+name);}
         assert(bindHead.includes('stEventsBound = true'), 'stEventsBound must be set before first registration');
         assert(src.includes('setGeneratingUI(currentGeneratingTypeKey, true)'), 'generating visual restore missing');
     });
+    {
+        const hc=harness();const evc=seed(hc);hc.api.activateEvent(evc);
+        await hc.api.handleCapsuleAction('add-turn');
+        check('Capsule add-turn writes back to the source event maxTurns',()=>{
+            const st=hc.api.getChatState();const srcEv=st.events.find(x=>x.id===st.activeEvent.id);
+            assert.equal(srcEv.maxTurns,st.activeEvent.maxTurns,'source event must mirror the active copy');
+            assert.equal(srcEv.maxTurns,3);});
+        await hc.api.handleCapsuleAction('sub-turn');
+        check('Capsule sub-turn writes back to the source event maxTurns',()=>{
+            const st=hc.api.getChatState();const srcEv=st.events.find(x=>x.id===st.activeEvent.id);
+            assert.equal(srcEv.maxTurns,st.activeEvent.maxTurns,'source event must mirror the active copy');
+            assert.equal(srcEv.maxTurns,2);});
+    }
+    {
+        const hb=harness();const evb=seed(hb);
+        await hb.api.changeEventTurns(evb.id,1,10);
+        check('Stepping uses the input value as its base when provided',()=>{
+            assert.equal(hb.api.getChatState().events.find(x=>x.id===evb.id).maxTurns,11);});
+        await hb.api.changeEventTurns(evb.id,1,undefined);
+        check('Stepping falls back to the saved value without an input base',()=>{
+            assert.equal(hb.api.getChatState().events.find(x=>x.id===evb.id).maxTurns,12);});
+        const fake={getAttribute:()=>evb.id,classList:{contains:c=>c==='se-event-turns-input'},value:'10'};
+        hb.api.syncTurnsInputDirty(fake);
+        check('Typing a differing value marks dirty and typing the saved value clears it',()=>{
+            assert(hb.api.turnsInputDirty.has('card:'+evb.id),'differing typed value must be dirty');
+            fake.value='12';
+            hb.api.syncTurnsInputDirty(fake);
+            assert(!hb.api.turnsInputDirty.has('card:'+evb.id),'matching the saved value must clear dirty');});
+        fake.value='9';
+        hb.api.syncTurnsInputDirty(fake);
+        await hb.api.setEventTurns(evb.id,6);
+        check('Committed writes clear both card and modal dirty keys',()=>{
+            assert.equal(hb.api.getChatState().events.find(x=>x.id===evb.id).maxTurns,6);
+            assert(!hb.api.turnsInputDirty.has('card:'+evb.id)&&!hb.api.turnsInputDirty.has('modal:'+evb.id),'committed writes must consume the draft');});
+    }
+    check('Turn-input WYSIWYG wiring: dirty-gated snapshot, base stepping, enter submit, tooltips',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        const inputAt = src.indexOf("root.addEventListener('input', (e) => {");
+        const inputPart = src.slice(inputAt, inputAt + 900);
+        assert(inputPart.includes("e.target.classList?.contains('se-event-turns-input')") && inputPart.includes("e.target.classList?.contains('se-modal-turns-input')") && inputPart.includes('syncTurnsInputDirty(e.target)'), 'turn input dirty tracking must be wired in the input delegation');
+        const keyAt = src.indexOf("e.key !== 'Enter'");
+        const keyPart = src.slice(keyAt, keyAt + 600);
+        assert(keyPart.includes('.se-event-turns-input, .se-modal-turns-input') && keyPart.includes('setEventTurns(id, Number(e.target.value))'), 'enter inside a turns input must submit its value');
+        const relPart = src.slice(src.indexOf('function renderEventList'), src.indexOf('async function toggleEventActive'));
+        assert(relPart.includes("turnsInputDirty.has('card:'"), 'turns input snapshot must be gated by the dirty flag');
+        assert(relPart.includes("editSnapshots.set('ta:' + ta.getAttribute('data-id')"), 'textarea snapshot must stay unconditional (0.7.10 draft protection intact)');
+        assert((relPart.match(/refreshStageModalIfOpen\(\);/g)||[]).length === 2, 'renderEventList must refresh an open stage modal on both exits');
+        assert(src.includes('async function changeEventTurns(eventId, delta, baseTurns)'), 'changeEventTurns must accept the input base');
+        assert(src.includes("readTurnsInputValue('card', id)") && src.includes("readTurnsInputValue('modal', id)"), 'both stepper pairs must read their own input as base');
+        assert(src.includes('title="总回合在输入框当前值基础上减 1"') && src.includes('title="应用输入框中的回合数（框内回车亦可）"'), 'tooltips must describe WYSIWYG semantics');
+    });
+    check('Stage modal live-refresh wiring: signature guard, tab restore, draft rescue',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        const stagePart = src.slice(src.indexOf('let stageModalOpenEventId'), src.indexOf('let promptViewerState'));
+        assert(stagePart.includes('function computeStageModalSignature') && stagePart.includes('function refreshStageModalIfOpen') && stagePart.includes('function renderStageModalBody'), 'modal must be split into open/refresh/body renderer');
+        assert(stagePart.includes('if (signature === stageModalSignature) return;'), 'refresh must skip when the data signature is unchanged');
+        assert(stagePart.includes("stageModalActiveTab === 'slips'") && stagePart.includes("stageModalActiveTab === 'raw'"), 'rebuild must restore the current tab');
+        assert(stagePart.includes('turnsInputDirty.has(draftKey)'), 'refresh must rescue an uncommitted modal draft');
+        assert(stagePart.includes('prevScrollTop') && stagePart.includes('modal.scrollTop = prevScrollTop;'), 'refresh must preserve scroll position');
+        assert(src.includes('stageModalActiveTab = tab;'), 'tab switch must record the current tab');
+        assert(src.includes('stageModalOpenEventId = null;'), 'closing the modal must clear the open id');
+    });
+    check('Settings exits auto-save consistently; reset-fab clears its input; missed refreshes added',()=>{
+        const src = fs.readFileSync(path.join(__dirname,'..','index.js'),'utf8');
+        assert(src.includes('function saveSettingsIfOpen()'), 'shared auto-save helper missing');
+        const oc = src.indexOf("if (action === 'open-settings')");
+        assert(src.slice(oc, oc + 500).includes('saveSettingsIfOpen();'), 'gear toggle-close must auto-save');
+        const cc = src.indexOf("if (action === 'close-settings')");
+        const ccPart = src.slice(cc, cc + 300);
+        assert(ccPart.includes('saveSettingsIfOpen();') && !ccPart.includes('persistSettings(collectSettingsForm())'), 'close-settings must route through the shared helper');
+        for (const act of ['open-events','open-presets','open-api-log']) {
+            const at = src.indexOf(`if (action === '${act}')`);
+            assert(src.slice(at, at + 800).includes('saveSettingsIfOpen();'), act + ' switch must auto-save settings');
+        }
+        const rf = src.indexOf("if (action === 'reset-fab')");
+        const rfPart = src.slice(rf, rf + 500);
+        assert(rfPart.includes("querySelector('#se-fab-icon')") && rfPart.includes("fabInput.value = ''"), 'reset-fab must clear the input so the old URL cannot resurrect');
+        const slashAt = src.indexOf("name: 'inject_event_segment'");
+        const slashPart = src.slice(slashAt, slashAt + 2600);
+        assert(slashPart.indexOf('updateFloatingCapsule();') < slashPart.indexOf('renderEventList();') && slashPart.includes('renderEventList();'), 'slash injection must refresh the event list');
+        const oms = src.indexOf('function onMessageSent');
+        assert(src.slice(oms, oms + 2400).includes('renderEventList();'), 'send-to-activate must refresh the event list');
+    });
+
     check('Production source contains no pictographs',()=>{for(const file of ['index.js','style.css']) assert(!/\p{Extended_Pictographic}/u.test(fs.readFileSync(path.join(__dirname,'..',file),'utf8')));});
     const report={checks,passed:true,date:new Date().toISOString()};fs.writeFileSync(path.join(__dirname,'regression-result.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));
 })().catch(err=>{console.error(err.stack);process.exitCode=1;});
